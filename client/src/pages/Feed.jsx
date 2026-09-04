@@ -98,12 +98,12 @@ export default function Feed() {
 
           {!loading && !error && issues.length > 0 && (
             <>
-              <ul className="divide-y divide-line overflow-hidden rounded-card border
-                border-line bg-surface">
+              <div className="space-y-4">
                 {issues.map((i, idx) => <IssueCard key={i._id} issue={i} index={idx + 1} />)}
-              </ul>
+              </div>
 
-              <div className="mt-4 flex items-center justify-center gap-6 text-sm text-ink-muted">
+              <div className="mt-5 flex items-center justify-between rounded-xl border
+                border-line bg-surface px-5 py-3 text-sm text-ink-muted">
                 <span>Showing 1&ndash;{issues.length} of {total} issues</span>
 
                 {/* A button, not infinite scroll: less code, and it does not break the back
@@ -111,7 +111,7 @@ export default function Feed() {
                 {issues.length < total && (
                   <button type="button" onClick={loadMore} disabled={loadingMore}
                     className="inline-flex cursor-pointer items-center gap-1.5 font-medium
-                      text-brand-600 hover:underline disabled:opacity-60">
+                      text-brand-600 hover:text-brand-700 disabled:opacity-60 transition-colors">
                     {loadingMore ? 'Loading…' : 'Load more'}
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                       strokeWidth="2" className="size-4">

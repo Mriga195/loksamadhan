@@ -35,7 +35,8 @@ export default function FilterBar({ value, onChange, onClear }) {
   const active = ['category', 'status', 'department', 'q'].filter(k => value[k]).length;
 
   return (
-    <section aria-label="Filter issues" className="flex flex-wrap items-center gap-3">
+    <section aria-label="Filter issues" className="space-y-3">
+      {/* Row 1: Status chips */}
       <div role="group" aria-label="Status" className="flex flex-wrap items-center gap-2">
         {STATUSES.map(([val, label, dot]) => {
           const on = (value.status || '') === val;
@@ -43,45 +44,46 @@ export default function FilterBar({ value, onChange, onClear }) {
             <button key={label} type="button" onClick={() => onChange('status', val)}
               aria-pressed={on}
               className={`inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full
-                border px-4 text-sm transition-colors duration-200 ${on
-                  ? 'border-brand-600 bg-brand-50 font-medium text-brand-700'
-                  : 'border-line bg-surface text-ink hover:bg-canvas'}`}>
-              {dot && <span aria-hidden="true" className={`size-2 rounded-full ${dot}`} />}
+                border px-4 text-sm transition-all duration-200 ${on
+                  ? 'border-brand-600 bg-brand-600 font-medium text-white shadow-sm'
+                  : 'border-line bg-surface text-ink hover:bg-canvas hover:border-slate-300'}`}>
+              {dot && <span aria-hidden="true" className={`size-2 rounded-full ${on ? 'bg-white/80' : dot}`} />}
               {label}
             </button>
           );
         })}
       </div>
 
-      <div className="ml-auto flex flex-wrap items-center gap-3">
+      {/* Row 2: Search, dropdowns, clear */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[180px]">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="1.75"
+            className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-ink-muted">
+            <circle cx="11" cy="11" r="7" />
+            <path strokeLinecap="round" d="m16.5 16.5 4 4" />
+          </svg>
+          <input type="search" aria-label="Search" placeholder="Search issues, locations…"
+            value={text} onChange={e => setText(e.target.value)}
+            className={`${control} w-full pl-10 pr-3`} />
+        </div>
+
         <select aria-label="Category" className={`${control} cursor-pointer`}
           value={value.category || ''} onChange={e => onChange('category', e.target.value)}>
-          <option value="">All Categories</option>
+          <option value="">Category</option>
           {CATEGORIES.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
 
         <select aria-label="Department" className={`${control} cursor-pointer`}
           value={value.department || ''} onChange={e => onChange('department', e.target.value)}>
-          <option value="">All Departments</option>
+          <option value="">Department</option>
           {DEPARTMENTS.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
 
-        <div className="relative">
-          <input type="search" aria-label="Search" placeholder="Search issues, locations…"
-            value={text} onChange={e => setText(e.target.value)}
-            className={`${control} w-full pr-10 sm:w-72`} />
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="1.75"
-            className="pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 text-ink-muted">
-            <circle cx="11" cy="11" r="7" />
-            <path strokeLinecap="round" d="m16.5 16.5 4 4" />
-          </svg>
-        </div>
-
         {active > 0 && (
           <button type="button" onClick={onClear}
-            className="min-h-9 cursor-pointer rounded-lg px-2 text-sm font-medium text-brand-600
-              hover:bg-canvas">
+            className="min-h-9 cursor-pointer rounded-lg px-3 text-sm font-medium text-ink-muted
+              hover:text-brand-600 hover:bg-canvas transition-colors">
             Clear
           </button>
         )}
