@@ -19,10 +19,12 @@ const router = createBrowserRouter([
       { path: 'issues/:id', element: <IssueDetail /> },
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
-      { path: 'dashboard', element: <OfficerDashboard /> },
       { path: '*', element: <NotFound /> },
     ],
   },
+  // The dashboard is deliberately NOT a child of <App />: it renders its own shell (top bar +
+  // sidebar), and nesting it would stack that under the public site nav.
+  { path: '/dashboard', element: <OfficerDashboard /> },
 ]);
 
 export default router;
