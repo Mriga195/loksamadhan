@@ -18,12 +18,12 @@ const SEED_PASSWORD = 'password123';
 
 async function seed() {
   await mongoose.connect(process.env.MONGO_URI);
-  console.log('🌱 Connected to MongoDB — seeding…');
+  console.log('Connected to MongoDB — seeding…');
 
   // ── Clear existing data ──
   await User.deleteMany({});
   await Issue.deleteMany({});
-  console.log('  ✓ Cleared users & issues');
+  console.log('cleared users & issues');
 
   const hash = await User.hashPassword(SEED_PASSWORD);
 
@@ -329,7 +329,7 @@ async function seed() {
   console.log(`  ✓ Created ${issues.length} issues (2 duplicate clusters included)`);
 
   // ── Summary ──
-  console.log('\n🎉 Seed complete! Login credentials (all use password: password123):');
+  console.log('\nSeed complete! Login credentials (all use password: password123):');
   console.log('   Admin:    admin@loksamadhan.gov.in');
   console.log('   Officer:  officer.roads@loksamadhan.gov.in');
   console.log('   Officer:  officer.water@loksamadhan.gov.in');
@@ -342,6 +342,6 @@ async function seed() {
 }
 
 seed().catch((err) => {
-  console.error('❌ Seed failed:', err);
+  console.error('Seed failed:', err);
   process.exit(1);
 });
