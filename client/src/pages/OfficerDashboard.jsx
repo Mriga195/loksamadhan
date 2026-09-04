@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { useAuth } from '../AuthContext';
-import Icon from './../components/Icon';
+import Avatar from '../components/Avatar';
+import Icon from '../components/Icon';
 import IssueDrawer, { shortId } from '../components/IssueDrawer';
 import StatsCards from '../components/StatsCards';
 import StatusModal from '../components/StatusModal';
@@ -55,10 +56,6 @@ const NAV = [
 const navClass = ({ isActive }) =>
   `flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-200 ${
     isActive ? 'bg-brand-50 font-medium text-brand-700' : 'text-ink hover:bg-canvas'}`;
-
-// Initials for the avatar chip. Two letters max — "Anil Shinde" is AS, "Anil" is A.
-const initials = name => (name || '?').trim().split(/\s+/).slice(0, 2)
-  .map(w => w[0].toUpperCase()).join('');
 
 export default function OfficerDashboard() {
   const { user, logout } = useAuth();
@@ -178,10 +175,7 @@ export default function OfficerDashboard() {
             <p className="text-sm font-medium leading-tight">{user?.name}</p>
             <p className="text-xs capitalize text-ink-muted">{user?.role}</p>
           </div>
-          <span aria-hidden="true" className="grid size-9 place-items-center rounded-full
-            bg-brand-600 text-sm font-semibold text-white">
-            {initials(user?.name)}
-          </span>
+          <Avatar name={user?.name} />
           <button type="button" onClick={logout} title="Log out" aria-label="Log out"
             className="cursor-pointer rounded-lg p-2 text-ink-muted transition-colors
               hover:bg-canvas hover:text-ink">
