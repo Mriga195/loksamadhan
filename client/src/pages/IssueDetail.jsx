@@ -91,7 +91,7 @@ export default function IssueDetail() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
-      <Link to="/" className="text-sm text-brand-600 hover:underline">&larr; All reports</Link>
+      <Link to="/feed" className="text-sm text-brand-600 hover:underline">&larr; All reports</Link>
 
       {/* If this report is a duplicate child, that is the FIRST thing on the page. It is the
           answer to "why has nothing happened on mine", and it demonstrates hard rule 1 on

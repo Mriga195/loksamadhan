@@ -296,7 +296,7 @@ const Report = () => {
         <div className="pt-4 border-t border-gray-100 flex items-center justify-end space-x-3">
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/feed')}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
           >
             Cancel
