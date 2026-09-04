@@ -42,6 +42,7 @@ export default function IssueDetail() {
   const [error, setError] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [supporting, setSupporting] = useState(false);
+  const [visibleDuplicates, setVisibleDuplicates] = useState(10);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -217,7 +218,7 @@ export default function IssueDetail() {
                 {issue.linkedDuplicates.length === 1 ? 'citizen' : 'citizens'}
               </h2>
               <ul className="mt-2 divide-y divide-line">
-                {issue.linkedDuplicates.map(d => (
+                {issue.linkedDuplicates.slice(0, visibleDuplicates).map(d => (
                   <li key={d._id}>
                     <Link to={`/issues/${d._id}`}
                       className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm hover:text-brand-600">
@@ -229,6 +230,20 @@ export default function IssueDetail() {
                   </li>
                 ))}
               </ul>
+              {visibleDuplicates < issue.linkedDuplicates.length && (
+                <div className="mt-3 pt-2 border-t border-line flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleDuplicates(prev => prev + 10)}
+                    className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors"
+                  >
+                    Show more
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </section>
           )}
         </div>
