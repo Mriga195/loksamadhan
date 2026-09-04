@@ -22,6 +22,8 @@ const publicHistory = (statusHistory = []) =>
  */
 function publicIssue(issue, viewerId = null, extra = {}) {
   const supporters = issue.supporters || [];
+  const reporterId = issue.reporter?._id || issue.reporter;
+  const isReporter = Boolean(viewerId && reporterId && String(reporterId) === String(viewerId));
   return {
     _id: issue._id,
     title: issue.title,
@@ -40,6 +42,7 @@ function publicIssue(issue, viewerId = null, extra = {}) {
     hasSupported: viewerId
       ? supporters.some(id => String(id) === String(viewerId))
       : false,
+    isReporter,
     statusHistory: publicHistory(issue.statusHistory),
     createdAt: issue.createdAt,
     updatedAt: issue.updatedAt,

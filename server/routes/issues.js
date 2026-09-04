@@ -129,13 +129,17 @@ router.get('/:id', auth(false), ah(async (req, res) => {
   const children = await Issue.find({ duplicateOf: issue._id })
     .select('_id title createdAt').sort({ createdAt: -1 }).lean();
 
-  const body = publicIssue(issue, req.user?.id, { duplicateCount: children.length });
+  const viewerId = req.user?.id || req.user?._id;
+  const body = publicIssue(issue, viewerId, { duplicateCount: children.length });
   body.linkedDuplicates = children;   // "Also reported by N citizens"
 
   // If this one is itself a child, the client says "tracked under the original report".
   if (issue.duplicateOf) {
-    const parent = await Issue.findById(issue.duplicateOf).select('_id status title').lean();
+    const parent = await Issue.findById(issue.duplicateOf).select('_id status title reporter').lean();
     body.parent = parent || null;
+    if (viewerId && parent?.reporter && String(parent.reporter) === String(viewerId)) {
+      body.isReporter = true;
+    }
   }
   res.json(body);
 }));
