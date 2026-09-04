@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { api } from '../api';
+import { apiFetch as api } from '../api';
 import { useAuth } from '../AuthContext';
 import MapPicker from '../components/MapPicker';
 import PhotoInput from '../components/PhotoInput';
