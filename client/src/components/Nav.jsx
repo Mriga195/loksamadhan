@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Avatar from './Avatar';
 import Icon from './Icon';
@@ -26,9 +26,18 @@ const link = ({ isActive }) =>
 const cta = 'inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-5 text-sm' +
   ' font-medium text-white transition-colors duration-200 hover:bg-brand-700';
 
+const outline = 'inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-surface px-4 text-sm' +
+  ' font-medium text-ink transition-colors duration-200 hover:bg-canvas hover:border-slate-300';
+
 export default function Nav() {
+  const navigate = useNavigate();
   const { user, loading, logout } = useAuth();
   const isStaff = user?.role === 'officer' || user?.role === 'admin';
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <header className="border-b border-line bg-surface">
@@ -44,17 +53,17 @@ export default function Nav() {
             at a user who is already signed in. The space is held by the row itself. */}
         {loading ? null : user ? (
           <>
-            {isStaff ? (
+            {isStaff && (
               <NavLink to="/dashboard" className={cta}>
                 <Icon name="dashboard" />
                 Dashboard
               </NavLink>
-            ) : (
-              <Link to="/report" className={cta}>
-                <Icon name="plus" />
-                Report an Issue
-              </Link>
             )}
+
+            <Link to="/report" className={isStaff ? outline : cta}>
+              <Icon name="plus" />
+              Report an Issue
+            </Link>
 
             <span className="flex items-center gap-2">
               <Avatar name={user.name} />
@@ -64,7 +73,7 @@ export default function Nav() {
               </span>
             </span>
 
-            <button type="button" onClick={logout} title="Log out" aria-label="Log out"
+            <button type="button" onClick={handleLogout} title="Log out" aria-label="Log out"
               className="cursor-pointer rounded-lg p-2 text-ink-muted transition-colors
                 duration-200 hover:bg-canvas hover:text-ink">
               <Icon name="logout" />
@@ -72,8 +81,12 @@ export default function Nav() {
           </>
         ) : (
           <>
+            <Link to="/login" state={{ from: '/report' }} className={cta}>
+              <Icon name="plus" />
+              Report an Issue
+            </Link>
             <NavLink to="/login" className={link}>Log in</NavLink>
-            <Link to="/register" className={cta}>Sign up</Link>
+            <Link to="/register" className={outline}>Sign up</Link>
           </>
         )}
       </nav>

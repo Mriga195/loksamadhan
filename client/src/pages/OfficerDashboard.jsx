@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { useAuth } from '../AuthContext';
 import Avatar from '../components/Avatar';
@@ -58,9 +58,22 @@ const navClass = ({ isActive }) =>
     isActive ? 'bg-brand-50 font-medium text-brand-700' : 'text-ink hover:bg-canvas'}`;
 
 export default function OfficerDashboard() {
-  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { user, loading: authLoading, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
   const department = user?.department;
+
+  // Protect officer/admin dashboard route
+  useEffect(() => {
+    if (!authLoading && (!user || (user.role !== 'officer' && user.role !== 'admin'))) {
+      navigate('/login', { state: { from: '/dashboard' }, replace: true });
+    }
+  }, [authLoading, user, navigate]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +85,7 @@ export default function OfficerDashboard() {
   const [editing, setEditing] = useState(null);
 
   const load = useCallback(async () => {
+    if (!user || (user.role !== 'officer' && user.role !== 'admin')) return;
     setLoading(true);
     setError(null);
     try {
@@ -85,7 +99,7 @@ export default function OfficerDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, department]);
+  }, [isAdmin, department, user]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -153,6 +167,18 @@ export default function OfficerDashboard() {
     ['overdue', 'Overdue'],
   ];
 
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-canvas">
+        <Skeleton count={2} className="h-28 w-96" />
+      </div>
+    );
+  }
+
+  if (!user || (user.role !== 'officer' && user.role !== 'admin')) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-canvas">
       {/* Top bar spans the full width, above the sidebar, as one continuous surface. */}
@@ -176,7 +202,7 @@ export default function OfficerDashboard() {
             <p className="text-xs capitalize text-ink-muted">{user?.role}</p>
           </div>
           <Avatar name={user?.name} />
-          <button type="button" onClick={logout} title="Log out" aria-label="Log out"
+          <button type="button" onClick={handleLogout} title="Log out" aria-label="Log out"
             className="cursor-pointer rounded-lg p-2 text-ink-muted transition-colors
               hover:bg-canvas hover:text-ink">
             <Icon name="logout" />
