@@ -6,6 +6,7 @@ import Report from './pages/Report';
 import IssueDetail from './pages/IssueDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import OfficerDashboard from './pages/OfficerDashboard';
 
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { path: 'issues/:id', element: <IssueDetail /> },
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
+      { path: 'profile', element: <Profile /> },
       { path: '*', element: <NotFound /> },
     ],
   },

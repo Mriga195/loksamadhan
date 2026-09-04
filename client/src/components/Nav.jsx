@@ -65,13 +65,13 @@ export default function Nav() {
               Report an Issue
             </Link>
 
-            <span className="flex items-center gap-2">
+            <Link to="/profile" className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-canvas" title="My Profile">
               <Avatar name={user.name} />
               <span className="hidden text-sm sm:block">
                 <span className="block font-medium leading-tight">{user.name}</span>
                 <span className="block text-xs capitalize text-ink-muted">{user.role}</span>
               </span>
-            </span>
+            </Link>
 
             <button type="button" onClick={handleLogout} title="Log out" aria-label="Log out"
               className="cursor-pointer rounded-lg p-2 text-ink-muted transition-colors

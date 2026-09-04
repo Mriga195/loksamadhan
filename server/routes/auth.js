@@ -67,7 +67,60 @@ router.post('/login', async (req, res, next) => {
 
 // ── GET /api/auth/me ──
 router.get('/me', auth(), async (req, res) => {
-  res.json({ user: req.user.toPublic() });
+  res.json({ user: req.user.toProfile() });
+});
+
+// ── PATCH /api/auth/me ──
+// Self details edit: name, email, and optional password change
+router.patch('/me', auth(true), async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const { name, email, currentPassword, newPassword } = req.body;
+
+    if (name !== undefined) {
+      const trimmedName = String(name).trim();
+      if (trimmedName.length < 2 || trimmedName.length > 100) {
+        return res.status(400).json({ error: 'Name must be 2–100 characters' });
+      }
+      user.name = trimmedName;
+    }
+
+    if (email !== undefined) {
+      const trimmedEmail = String(email).trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        return res.status(400).json({ error: 'Please enter a valid email address' });
+      }
+      if (trimmedEmail !== user.email) {
+        const exists = await User.findOne({ email: trimmedEmail, _id: { $ne: user._id } });
+        if (exists) {
+          return res.status(409).json({ error: 'Email already registered to another account' });
+        }
+        user.email = trimmedEmail;
+      }
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required to set a new password' });
+      }
+      const valid = await user.comparePassword(currentPassword);
+      if (!valid) {
+        return res.status(400).json({ error: 'Current password is incorrect' });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: 'New password must be at least 6 characters' });
+      }
+      user.passwordHash = await User.hashPassword(newPassword);
+    }
+
+    await user.save();
+    res.json({ user: user.toProfile(), message: 'Profile updated successfully' });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

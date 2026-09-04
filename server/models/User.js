@@ -40,6 +40,20 @@ userSchema.methods.toPublic = function () {
   };
 };
 
+/**
+ * Profile projection for the authenticated user themselves (includes email & createdAt, excludes passwordHash).
+ */
+userSchema.methods.toProfile = function () {
+  return {
+    _id: this._id,
+    name: this.name,
+    email: this.email,
+    role: this.role,
+    department: this.department,
+    createdAt: this.createdAt,
+  };
+};
+
 // ── Static helpers ──
 
 /** Hash a plaintext password (use before saving a new user) */
