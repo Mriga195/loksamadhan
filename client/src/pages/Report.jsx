@@ -34,9 +34,9 @@ const Report = () => {
   useEffect(() => {
     if (user && routeLocation.state?.pendingSupportId) {
       const supportId = routeLocation.state.pendingSupportId;
-      api(`/issues/${supportId}/support`, { method: 'POST' })
+      api(`/api/issues/${supportId}/support`, { method: 'POST' })
         .then(() => {
-          navigate(`/issue/${supportId}`, {
+          navigate(`/issues/${supportId}`, {
             state: { message: 'Support registered for existing report!' }
           });
         })
@@ -75,7 +75,7 @@ const Report = () => {
           text: title.trim(),
         });
 
-        const data = await api(`/issues/similar?${query.toString()}`, {
+        const data = await api(`/api/issues/similar?${query.toString()}`, {
           signal: abortController.signal,
         });
 
@@ -112,8 +112,8 @@ const Report = () => {
     }
 
     try {
-      await api(`/issues/${issueId}/support`, { method: 'POST' });
-      navigate(`/issue/${issueId}`, {
+      await api(`/api/issues/${issueId}/support`, { method: 'POST' });
+      navigate(`/issues/${issueId}`, {
         state: { message: 'You have supported this issue!' },
       });
     } catch (err) {
@@ -170,13 +170,13 @@ const Report = () => {
         formData.append('photos', file);
       });
 
-      const res = await api('/issues', {
+      const res = await api('/api/issues', {
         method: 'POST',
         body: formData,
         isForm: true,
       });
 
-      navigate(`/issue/${res._id || res.id}`, {
+      navigate(`/issues/${res._id || res.id}`, {
         state: { message: 'Issue reported successfully!' },
       });
     } catch (err) {
