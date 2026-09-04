@@ -1,13 +1,12 @@
+import { useEffect, useState } from 'react';
+import { apiFetch } from '../api';
 import Icon from './Icon';
 
-// The four headline metrics above the officer queue.
+// The four headline metrics above the queue and on the public landing page.
 //
-// Every number here — including the sparkline and the "vs last week" delta — is REPLAYED from
-// the issues already on screen and their statusHistory. Nothing is a placeholder and nothing is
-// a second API call. If a number looks wrong, the history is wrong; there is no fudge factor.
-//
-// ponytail: describes the issues the dashboard fetched (server caps a page at 100). At demo
-// size that is every issue; past 100 it becomes "this page", so page the fetch if that day comes.
+// When `issues` is provided with data, metrics are replayed from statusHistory.
+// When rendered without issues (e.g. on the landing page), it fetches /api/stats
+// from the server so all visitors see live global aggregates.
 
 const DAY = 86400000;
 const WINDOW = 14;              // sparkline length, in days
@@ -46,6 +45,7 @@ function dayPoints() {
 // A line plus a faint area fill, normalised to its own range so a flat series is a flat line
 // rather than noise. No chart library for four 100x30 sparklines.
 function Spark({ values, className }) {
+  if (!values || values.length === 0) return null;
   const max = Math.max(...values);
   const min = Math.min(...values);
   const span = max - min || 1;
@@ -106,47 +106,113 @@ function Card({ icon, tone, label, value, unit, delta, downIsGood, series }) {
   );
 }
 
-export default function StatsCards({ issues = [] }) {
-  const points = dayPoints();
-  const series = fn => points.map(fn);
-  // Delta = today minus the same measurement seven days ago, from the same series.
-  const weekDelta = s => s[s.length - 1] - s[s.length - 1 - RESOLVED_WINDOW];
+export default function StatsCards({ issues }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(!issues || issues.length === 0);
 
-  const open = series(t => issues.filter(i => {
-    const s = statusAt(i, t);
-    return s && s !== 'Resolved';
-  }).length);
+  useEffect(() => {
+    if (!issues || issues.length === 0) {
+      let stale = false;
+      setLoading(true);
+      apiFetch('/api/stats')
+        .then(data => {
+          if (!stale) setStats(data);
+        })
+        .catch(err => {
+          console.error('Failed to load stats:', err);
+        })
+        .finally(() => {
+          if (!stale) setLoading(false);
+        });
+      return () => { stale = true; };
+    }
+  }, [issues]);
 
-  const progress = series(t => issues.filter(i => statusAt(i, t) === 'In Progress').length);
+  // If we have an issues array with data, compute client-side
+  if (issues && issues.length > 0) {
+    const points = dayPoints();
+    const series = fn => points.map(fn);
+    const weekDelta = s => s[s.length - 1] - s[s.length - 1 - RESOLVED_WINDOW];
 
-  const resolved = series(t => issues.filter(i => {
-    const r = resolvedAt(i);
-    return r && r <= t && r > t - RESOLVED_WINDOW * DAY;
-  }).length);
+    const open = series(t => issues.filter(i => {
+      const s = statusAt(i, t);
+      return s && s !== 'Resolved';
+    }).length);
 
-  const avgDays = series(t => {
-    const done = issues.filter(i => {
+    const progress = series(t => issues.filter(i => statusAt(i, t) === 'In Progress').length);
+
+    const resolved = series(t => issues.filter(i => {
       const r = resolvedAt(i);
-      return r && r <= t && r > t - AVG_WINDOW * DAY;
-    });
-    if (done.length === 0) return 0;
-    const total = done.reduce((sum, i) => sum + (resolvedAt(i) - new Date(i.createdAt)), 0);
-    return total / done.length / DAY;
-  });
+      return r && r <= t && r > t - RESOLVED_WINDOW * DAY;
+    }).length);
 
-  const last = s => s[s.length - 1];
+    const avgDays = series(t => {
+      const done = issues.filter(i => {
+        const r = resolvedAt(i);
+        return r && r <= t && r > t - AVG_WINDOW * DAY;
+      });
+      if (done.length === 0) return 0;
+      const total = done.reduce((sum, i) => sum + (resolvedAt(i) - new Date(i.createdAt)), 0);
+      return total / done.length / DAY;
+    });
+
+    const last = s => s[s.length - 1];
+
+    return (
+      <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card icon="clipboard" tone="rose" label="Open" value={last(open)}
+          delta={weekDelta(open)} downIsGood series={open} />
+        <Card icon="wrench" tone="blue" label="In Progress" value={last(progress)}
+          delta={weekDelta(progress)} downIsGood series={progress} />
+        <Card icon="check" tone="emerald" label="Resolved this week" value={last(resolved)}
+          delta={weekDelta(resolved)} series={resolved} />
+        <Card icon="clock" tone="violet" label="Avg. resolution time"
+          value={last(avgDays).toFixed(1)} unit="days"
+          delta={weekDelta(avgDays)} downIsGood series={avgDays} />
+      </section>
+    );
+  }
+
+  // Loading skeleton
+  if (loading && !stats) {
+    return (
+      <section aria-label="Summary loading" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="h-36 animate-pulse rounded-card border border-line bg-surface p-5" />
+        ))}
+      </section>
+    );
+  }
+
+  // Use server metrics from /api/stats
+  const m = stats?.metrics;
+  const openVal = m?.open?.value ?? (stats?.total ? stats.total - (stats.byStatus?.Resolved || 0) : 0);
+  const openDelta = m?.open?.delta ?? 0;
+  const openSeries = m?.open?.series ?? [openVal];
+
+  const progVal = m?.progress?.value ?? (stats?.byStatus?.['In Progress'] || 0);
+  const progDelta = m?.progress?.delta ?? 0;
+  const progSeries = m?.progress?.series ?? [progVal];
+
+  const resVal = m?.resolved?.value ?? (stats?.byStatus?.Resolved || 0);
+  const resDelta = m?.resolved?.delta ?? 0;
+  const resSeries = m?.resolved?.series ?? [resVal];
+
+  const avgVal = m?.avgDays?.value ?? 0;
+  const avgDelta = m?.avgDays?.delta ?? 0;
+  const avgSeries = m?.avgDays?.series ?? [avgVal];
 
   return (
     <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Card icon="clipboard" tone="rose" label="Open" value={last(open)}
-        delta={weekDelta(open)} downIsGood series={open} />
-      <Card icon="wrench" tone="blue" label="In Progress" value={last(progress)}
-        delta={weekDelta(progress)} downIsGood series={progress} />
-      <Card icon="check" tone="emerald" label="Resolved this week" value={last(resolved)}
-        delta={weekDelta(resolved)} series={resolved} />
+      <Card icon="clipboard" tone="rose" label="Open" value={openVal}
+        delta={openDelta} downIsGood series={openSeries} />
+      <Card icon="wrench" tone="blue" label="In Progress" value={progVal}
+        delta={progDelta} downIsGood series={progSeries} />
+      <Card icon="check" tone="emerald" label="Resolved this week" value={resVal}
+        delta={resDelta} series={resSeries} />
       <Card icon="clock" tone="violet" label="Avg. resolution time"
-        value={last(avgDays).toFixed(1)} unit="days"
-        delta={weekDelta(avgDays)} downIsGood series={avgDays} />
+        value={avgVal.toFixed(1)} unit="days"
+        delta={avgDelta} downIsGood series={avgSeries} />
     </section>
   );
 }
