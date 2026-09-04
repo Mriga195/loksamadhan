@@ -4,7 +4,7 @@ const { auth, requireRole } = require('../middleware/auth');
 const { STATUSES, CATEGORIES, DEPARTMENTS } = require('../constants');
 
 // GET /api/stats — aggregated counts for dashboard cards
-router.get('/', auth(true), requireRole('officer', 'admin'), async (req, res, next) => {
+router.get('/', auth(false), async (req, res, next) => {
   try {
     // Run all aggregations in parallel for speed
     const [byStatus, byCategory, byDepartment, total, recentActivity] = await Promise.all([
