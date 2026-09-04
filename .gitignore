@@ -5,5 +5,4 @@ server/uploads/*
 !server/uploads/.gitkeep
 client/dist/
 .DS_Store
-
-lanes
+lanes/

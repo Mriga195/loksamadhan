@@ -19,10 +19,8 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ── Index ──
-userSchema.index({ email: 1 }, { unique: true });
-
 // ── Instance methods ──
+
 
 /** Compare plaintext password against stored hash */
 userSchema.methods.comparePassword = function (plaintext) {
