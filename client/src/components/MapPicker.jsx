@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -25,7 +25,18 @@ function MapEvents({ onSelectLocation }) {
   return null;
 }
 
-const DEFAULT_CENTER = [19.0760, 72.8777]; // Mumbai / default city center [lat, lng]
+// Recenter map view when center coordinates change
+function MapRecenter({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center && Array.isArray(center) && center.length === 2) {
+      map.setView(center, 14);
+    }
+  }, [center, map]);
+  return null;
+}
+
+const TEZPUR_CENTER = [26.6338, 92.7926]; // Tezpur, Assam [lat, lng]
 
 const MapPicker = ({ onLocationChange, initialLocation }) => {
   // Leaflet uses [lat, lng], API uses [lng, lat]
@@ -33,8 +44,9 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
     if (initialLocation && Array.isArray(initialLocation) && initialLocation.length === 2) {
       return [initialLocation[1], initialLocation[0]];
     }
-    return DEFAULT_CENTER;
+    return TEZPUR_CENTER;
   });
+  const [mapCenter, setMapCenter] = useState(position);
   const [geoStatus, setGeoStatus] = useState('locating'); // 'locating' | 'success' | 'fallback'
   const markerRef = useRef(null);
 
@@ -46,32 +58,39 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
     }
   };
 
-  useEffect(() => {
-    // If initialLocation was passed, don't override with geolocation
-    if (initialLocation && Array.isArray(initialLocation) && initialLocation.length === 2) {
-      setGeoStatus('success');
-      return;
-    }
-
+  const fetchCurrentLocation = () => {
     if (!navigator.geolocation) {
       setGeoStatus('fallback');
-      updateLocation(DEFAULT_CENTER[0], DEFAULT_CENTER[1]);
+      updateLocation(TEZPUR_CENTER[0], TEZPUR_CENTER[1]);
+      setMapCenter(TEZPUR_CENTER);
       return;
     }
 
+    setGeoStatus('locating');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setGeoStatus('success');
         updateLocation(lat, lng);
+        setMapCenter([lat, lng]);
       },
       (_err) => {
         setGeoStatus('fallback');
-        updateLocation(DEFAULT_CENTER[0], DEFAULT_CENTER[1]);
+        updateLocation(TEZPUR_CENTER[0], TEZPUR_CENTER[1]);
+        setMapCenter(TEZPUR_CENTER);
       },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
+  };
+
+  useEffect(() => {
+    // If initialLocation was passed, don't override with geolocation
+    if (initialLocation && Array.isArray(initialLocation) && initialLocation.length === 2) {
+      setGeoStatus('success');
+      return;
+    }
+    fetchCurrentLocation();
   }, []);
 
   const eventHandlers = useMemo(
@@ -89,6 +108,39 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
 
   return (
     <div className="w-full space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-ink-muted">
+          Drag pin or click map to set location
+        </span>
+        <button
+          type="button"
+          onClick={fetchCurrentLocation}
+          disabled={geoStatus === 'locating'}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-brand-600 shadow-sm transition hover:bg-brand-50 hover:border-brand-300 disabled:opacity-50 cursor-pointer"
+        >
+          {geoStatus === 'locating' ? (
+            <>
+              <svg className="size-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeLinecap="round" />
+              </svg>
+              <span>Locating...</span>
+            </>
+          ) : (
+            <>
+              <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <circle cx="12" cy="12" r="8"/>
+                <line x1="12" y1="2" x2="12" y2="4"/>
+                <line x1="12" y1="20" x2="12" y2="22"/>
+                <line x1="20" y1="12" x2="22" y2="12"/>
+                <line x1="2" y1="12" x2="4" y2="12"/>
+              </svg>
+              <span>Fetch Current Location</span>
+            </>
+          )}
+        </button>
+      </div>
+
       <div className="h-72 w-full rounded-lg overflow-hidden border border-gray-300 relative">
         <MapContainer
           center={position}
@@ -100,6 +152,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <MapRecenter center={mapCenter} />
           <MapEvents onSelectLocation={updateLocation} />
           <Marker
             draggable={true}
@@ -115,7 +168,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span>
           {geoStatus === 'locating' && 'Locating your position...'}
-          {geoStatus === 'fallback' && 'Geolocation unavailable. Drag the pin to your location.'}
+          {geoStatus === 'fallback' && 'Geolocation unavailable. Centered to Tezpur, Assam (drag pin or click map to adjust).'}
           {geoStatus === 'success' && 'Location set. Drag pin or click map to adjust.'}
         </span>
         <span className="font-mono">

@@ -17,7 +17,7 @@ const pin = (n) => L.divIcon({
   iconAnchor: [14, 14],
 });
 
-const DEFAULT_CENTER = [19.076, 72.8777];   // Mumbai, when nothing has coordinates yet
+const DEFAULT_CENTER = [26.6338, 92.7926];   // Tezpur, Assam, when nothing has coordinates yet
 
 // Fit the view to whatever is currently listed. Runs on every filter change, which is exactly
 // when the set of pins changes.
