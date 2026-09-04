@@ -53,17 +53,17 @@ export default function Nav() {
             at a user who is already signed in. The space is held by the row itself. */}
         {loading ? null : user ? (
           <>
-            {isStaff && (
+            {isStaff ? (
               <NavLink to="/dashboard" className={cta}>
                 <Icon name="dashboard" />
                 Dashboard
               </NavLink>
+            ) : (
+              <Link to="/report" className={cta}>
+                <Icon name="plus" />
+                Report an Issue
+              </Link>
             )}
-
-            <Link to="/report" className={isStaff ? outline : cta}>
-              <Icon name="plus" />
-              Report an Issue
-            </Link>
 
             <Link to="/profile" className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-canvas" title="My Profile">
               <Avatar name={user.name} />
