@@ -3,7 +3,7 @@ import App from './App';
 
 // ── Placeholder pages — each lane fills their own ──
 function Feed() { return <h2 className="p-8">Feed — Lane 3 implements</h2>; }
-function Report() { return <h2 className="p-8">Report Issue — Lane 4 implements</h2>; }
+import Report from './pages/Report';
 function IssueDetail() { return <h2 className="p-8">Issue Detail — Lane 3 implements</h2>; }
 function Login() { return <h2 className="p-8">Login — Lane 3 implements</h2>; }
 function Register() { return <h2 className="p-8">Register — Lane 3 implements</h2>; }
