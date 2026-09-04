@@ -48,7 +48,9 @@ export default function IssueDetail() {
     }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, user?._id]);
+
+  const isMine = Boolean(issue?.isReporter || (user && issue?.reporter?._id && String(issue.reporter._id) === String(user._id)));
 
   async function support() {
     // Logged out: send them to log in and come back to this page.
@@ -116,6 +118,11 @@ export default function IssueDetail() {
         <div className="flex flex-wrap items-center gap-2">
           <StatusPill status={issue.status} size="md" />
           <span className="text-sm text-ink-muted">{issue.category}</span>
+          {isMine && (
+            <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700 border border-brand-200">
+              Submitted by you
+            </span>
+          )}
         </div>
         <h1 className="mt-2 text-2xl font-semibold">{issue.title}</h1>
         <p className="mt-2 text-ink-muted">{issue.description}</p>
@@ -182,28 +189,39 @@ export default function IssueDetail() {
         </section>
       )}
 
-      <section className="mt-6 rounded-card border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Affected by this too?</h2>
-        <p className="mt-0.5 text-sm text-ink-muted">
-          {issue.supporterCount === 0
-            ? 'Nobody else has reported this yet.'
-            : `${issue.supporterCount} ${issue.supporterCount === 1 ? 'person has' : 'people have'} said this affects them.`}
-        </p>
-
-        {error && issue && (
-          <p role="alert" className="mt-3 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
-            {error}
+      {isMine && issue.supporterCount > 0 && (
+        <section className="mt-6 rounded-card border border-line bg-surface p-5">
+          <h2 className="text-lg font-semibold">Citizen support</h2>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            {issue.supporterCount} {issue.supporterCount === 1 ? 'other citizen has' : 'other citizens have'} confirmed they are affected by this issue.
           </p>
-        )}
+        </section>
+      )}
 
-        <button type="button" onClick={support} disabled={issue.hasSupported || supporting}
-          className="mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg
-            bg-brand-600 px-4 text-sm font-medium text-white transition-colors duration-200
-            hover:bg-brand-700 disabled:cursor-default disabled:bg-resolved-600 disabled:opacity-100">
-          {supporting && <Spinner label="Saving" />}
-          {issue.hasSupported ? 'You reported this too' : 'I have this problem too'}
-        </button>
-      </section>
+      {!isMine && (
+        <section className="mt-6 rounded-card border border-line bg-surface p-5">
+          <h2 className="text-lg font-semibold">Affected by this too?</h2>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            {issue.supporterCount === 0
+              ? 'Nobody else has reported this yet.'
+              : `${issue.supporterCount} ${issue.supporterCount === 1 ? 'person has' : 'people have'} said this affects them.`}
+          </p>
+
+          {error && issue && (
+            <p role="alert" className="mt-3 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
+              {error}
+            </p>
+          )}
+
+          <button type="button" onClick={support} disabled={issue.hasSupported || supporting}
+            className="mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg
+              bg-brand-600 px-4 text-sm font-medium text-white transition-colors duration-200
+              hover:bg-brand-700 disabled:cursor-default disabled:bg-resolved-600 disabled:opacity-100">
+            {supporting && <Spinner label="Saving" />}
+            {issue.hasSupported ? 'You reported this too' : 'I have this problem too'}
+          </button>
+        </section>
+      )}
     </main>
   );
 }

@@ -19,10 +19,14 @@ function auth(required = true) {
     try {
       const payload = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(payload.sub);
-      if (!user) return res.status(401).json({ error: 'User not found' });
+      if (!user) {
+        if (!required) { req.user = null; return next(); }
+        return res.status(401).json({ error: 'User not found' });
+      }
       req.user = user;
       next();
     } catch {
+      if (!required) { req.user = null; return next(); }
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
   };
