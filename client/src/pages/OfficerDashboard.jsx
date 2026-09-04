@@ -76,11 +76,20 @@ export default function OfficerDashboard() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tab, setTab] = useState('all');
+  const [tab, setTab] = useState(isAdmin ? 'all' : 'issues');
   const [deptFilter, setDeptFilter] = useState('');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(null);
+
+  // Sync tab default once auth state / role loads
+  useEffect(() => {
+    if (!isAdmin && (tab === 'all' || tab === 'unassigned')) {
+      setTab('issues');
+    } else if (isAdmin && (tab === 'issues' || tab === 'submitted' || tab === 'in_progress' || tab === 'resolved')) {
+      setTab('all');
+    }
+  }, [isAdmin, tab]);
 
   const load = useCallback(async () => {
     if (!user || (user.role !== 'officer' && user.role !== 'admin')) return;
@@ -88,8 +97,6 @@ export default function OfficerDashboard() {
     setError(null);
     try {
       const params = new URLSearchParams({ limit: '100', duplicates: 'include' });
-      // Officers see their own department. Admins see everything.
-      if (!isAdmin && department) params.set('department', department);
       const data = await apiFetch(`/api/issues?${params}`);
       setIssues(data.items);
     } catch (e) {
@@ -97,22 +104,25 @@ export default function OfficerDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, department, user]);
+  }, [user]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Unassigned issues have no department, so tab filtering happens here rather than server-side
-  // — `?department=` would exclude exactly the rows the queue is for.
+  // Queue tabs: Admin oversees all + unassigned; Officer is filtered to department by status
   const TABS = useMemo(() => ({
     all: () => true,
-    mine: i => i.department === department,
     unassigned: i => !i.department,
-    overdue: isOverdue,
-  }), [department]);
+    issues: i => i.department === department,
+    submitted: i => i.department === department && i.status === 'Submitted',
+    in_progress: i => i.department === department && (i.status === 'In Progress' || i.status === 'Acknowledged'),
+    resolved: i => i.department === department && i.status === 'Resolved',
+    overdue: i => (isAdmin ? true : i.department === department) && isOverdue(i),
+  }), [department, isAdmin]);
 
   const rows = useMemo(() => {
+    const filterFn = TABS[tab] || (() => true);
     const filtered = issues
-      .filter(TABS[tab])
+      .filter(filterFn)
       .filter(i => !deptFilter || i.department === deptFilter);
     // The officer's actual job is triage, so the order is priority then age.
     return [...filtered].sort((a, b) =>
@@ -153,17 +163,27 @@ export default function OfficerDashboard() {
 
   const counts = {
     all: issues.length,
-    mine: issues.filter(TABS.mine).length,
     unassigned: issues.filter(TABS.unassigned).length,
-    overdue: issues.filter(isOverdue).length,
+    issues: issues.filter(TABS.issues).length,
+    submitted: issues.filter(TABS.submitted).length,
+    in_progress: issues.filter(TABS.in_progress).length,
+    resolved: issues.filter(TABS.resolved).length,
+    overdue: issues.filter(TABS.overdue).length,
   };
 
-  const tabs = [
-    ['all', 'All issues'],
-    ...(department ? [['mine', 'My department']] : []),
-    ['unassigned', 'Unassigned'],
-    ['overdue', 'Overdue'],
-  ];
+  const tabs = isAdmin
+    ? [
+        ['all', 'All issues'],
+        ['unassigned', 'Unassigned'],
+        ['overdue', 'Overdue'],
+      ]
+    : [
+        ['issues', 'Issues'],
+        ['submitted', 'Submitted'],
+        ['in_progress', 'In Progress'],
+        ['resolved', 'Resolved'],
+        ['overdue', 'Overdue'],
+      ];
 
   if (authLoading) {
     return (
