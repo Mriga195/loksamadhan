@@ -28,6 +28,7 @@ function publicIssue(issue, viewerId = null, extra = {}) {
     description: issue.description,
     category: issue.category,
     address: issue.address || null,
+    area: issue.area || null,          // neighbourhood, for Lane 3's filter bar
     location: issue.location,              // { type:'Point', coordinates:[lng, lat] }
     photos: issue.photos || [],            // ['/uploads/abc.jpg']
     status: issue.status,
