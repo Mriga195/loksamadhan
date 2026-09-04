@@ -7,6 +7,7 @@ import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import { Skeleton } from '../components/Spinner';
 import FeedMap from '../components/FeedMap';
+import StatsCards from '../components/StatsCards';
 
 // The public landing page. No token required - the API's GET /api/issues is auth(false), so
 // this must render for a logged-out visitor. Verify in a private window before the demo.
@@ -74,6 +75,8 @@ export default function Feed() {
       {/* The filter bar and the numbered map are the page's title in the design; the heading is
           kept for screen readers and the document outline. */}
       <h1 className="sr-only">Reported issues</h1>
+
+      <StatsCards />
 
       <FilterBar value={filters} onChange={onChange} onClear={onClear} />
 

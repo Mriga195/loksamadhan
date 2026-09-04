@@ -31,7 +31,7 @@ export default function Nav() {
         </Link>
 
         <NavLink to="/" end className={link}>Feed</NavLink>
-        <NavLink to="/report" className={link}>Report Issue</NavLink>
+        {/* <NavLink to="/report" className={link}>Report Issue</NavLink> */}
 
         {/* While the token is being validated, render nothing here rather than flashing
             "Officer Login" at a user who is already signed in. */}
@@ -45,7 +45,7 @@ export default function Nav() {
             </button>
           </>
         ) : (
-          <NavLink to="/login" className={link}>Officer Login</NavLink>
+          <NavLink to="/login" className={link}>Login</NavLink>
         )}
 
         <Link to="/report"
