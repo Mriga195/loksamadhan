@@ -1,6 +1,3 @@
-// One inline-SVG icon set for the dashboard shell. A path dictionary instead of twenty copies
-// of the same <svg> boilerplate, and instead of an icon dependency for twenty glyphs.
-// Every `d` is drawn on the same 24x24 stroke grid, so they line up at any size.
 const PATHS = {
   dashboard: 'M5 20v-6M11 20V8M17 20v-9M3 20h18',
   home: 'M4 11.5 12 4l8 7.5M6 10v9a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1v-9',
@@ -21,13 +18,23 @@ const PATHS = {
   refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6',
   building: 'M4 21h16M6 21V6l6-3 6 3v15M10 10h1M14 10h1M10 14h1M14 14h1',
   photo: 'M4 6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6Zm0 10 4.5-4.5 4 4 3-3L20 16',
+  users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  userPlus: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6',
+  pencil: 'M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z',
+  trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+  chart: 'M18 20V10M12 20V4M6 20v-6',
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+  search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+  filter: 'M22 3H2l8 9.46V19l4 2v-8.54L22 3z',
+  sparkles: 'M12 3v3m0 12v3M3 12h3m12 0h3m-2.5-6.5l-2 2m-7 7l-2 2m0-11l2 2m7 7l2 2',
+  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
 };
 
 export default function Icon({ name, className = 'size-5' }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d={PATHS[name]} />
+      <path d={PATHS[name] || PATHS.clipboard} />
     </svg>
   );
 }

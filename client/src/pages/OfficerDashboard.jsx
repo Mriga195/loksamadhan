@@ -331,18 +331,18 @@ export default function OfficerDashboard() {
               <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-2">Public Portal</p>
               <nav className="space-y-1">
                 <Link
-                  to="/"
+                  to="/feed"
                   className="flex min-h-10 items-center gap-2.5 rounded-xl px-3 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
                 >
                   <Icon name="clipboard" className="size-4" />
                   Public Feed
                 </Link>
                 <Link
-                  to="/map"
+                  to="/"
                   className="flex min-h-10 items-center gap-2.5 rounded-xl px-3 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
                 >
-                  <Icon name="map" className="size-4" />
-                  Civic Map View
+                  <Icon name="home" className="size-4" />
+                  Landing Page
                 </Link>
               </nav>
             </div>
