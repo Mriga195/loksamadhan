@@ -7,3 +7,9 @@ client/dist/
 .DS_Store
 
 lanes
+LANE-1-auth-data.md
+LANE-3-public-client.md
+LANE-2-issues-api.md
+LANE-4-dedup.md
+plan.md
+this-is-the-problem-starry-cosmos.md
