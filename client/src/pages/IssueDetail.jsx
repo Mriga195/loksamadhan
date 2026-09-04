@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { useAuth } from '../AuthContext';
+import FeedMap from '../components/FeedMap';
+import Icon from '../components/Icon';
 import StatusPill from '../components/StatusPill';
 import StatusTimeline from '../components/StatusTimeline';
 import ErrorState from '../components/ErrorState';
@@ -11,12 +13,21 @@ import NotFound from './NotFound';
 
 // Public. This is where a citizen finds out whether anyone did anything, so it has to read as
 // an answer, not a record.
+//
+// Two columns on desktop: the report itself on the left, and what happened to it on the right
+// (Progress + the "me too" action), pinned while the photos scroll. The right column is the
+// answer to "did anything happen", so it should not be below the fold.
 
-function Field({ label, children }) {
+const card = 'rounded-2xl border border-line bg-surface';
+
+function Field({ icon, label, children }) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm">{children}</dd>
+    <div className="flex items-start gap-3">
+      <Icon name={icon} className="mt-0.5 size-[18px] shrink-0 text-ink-muted" />
+      <div className="min-w-0">
+        <dt className="text-xs uppercase tracking-wide text-ink-muted">{label}</dt>
+        <dd className="mt-0.5 truncate text-sm">{children}</dd>
+      </div>
     </div>
   );
 }
@@ -78,28 +89,38 @@ export default function IssueDetail() {
   }
   if (loading) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-6">
-        <Skeleton count={3} className="h-32" />
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <Skeleton count={2} className="h-56" />
+          <Skeleton count={2} className="h-40" />
+        </div>
       </main>
     );
   }
   if (error && !issue) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-6">
+      <main className="mx-auto max-w-6xl px-6 py-8">
         <ErrorState message={error} onRetry={load} />
       </main>
     );
   }
 
+  const photos = issue.photos ?? [];
+  const hasMap = Array.isArray(issue.location?.coordinates) && issue.location.coordinates.length === 2;
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
-      <Link to="/feed" className="text-sm text-brand-600 hover:underline">&larr; All reports</Link>
+    <main className="mx-auto max-w-6xl px-6 py-8">
+      <Link to="/feed"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:underline">
+        <Icon name="left" className="size-4" />
+        All reports
+      </Link>
 
       {/* If this report is a duplicate child, that is the FIRST thing on the page. It is the
           answer to "why has nothing happened on mine", and it demonstrates hard rule 1 on
           screen: nothing was deleted, it was linked. */}
       {issue.duplicateOf && issue.parent && (
-        <div className="mt-4 rounded-card border border-acknowledged-600/30 bg-acknowledged-50 p-4">
+        <div className="mt-4 rounded-2xl border border-acknowledged-600/30 bg-acknowledged-50 p-4">
           <p className="text-sm font-medium">
             This report is linked to an earlier report of the same issue.
           </p>
@@ -114,114 +135,140 @@ export default function IssueDetail() {
         </div>
       )}
 
-      <header className="mt-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusPill status={issue.status} size="md" />
-          <span className="text-sm text-ink-muted">{issue.category}</span>
-          {isMine && (
-            <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700 border border-brand-200">
-              Submitted by you
-            </span>
+      <div className="mt-5 grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        {/* ── The report itself ── */}
+        <div className="space-y-6">
+          <header>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill status={issue.status} size="md" />
+              <span className="rounded-full bg-canvas px-2.5 py-1 text-sm text-ink-muted">
+                {issue.category}
+              </span>
+              {isMine && (
+                <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700 border border-brand-200">
+                  Submitted by you
+                </span>
+              )}
+            </div>
+            <h1 className="mt-3 text-2xl font-bold leading-tight sm:text-[1.75rem]">{issue.title}</h1>
+            <p className="mt-3 text-ink-muted">{issue.description}</p>
+          </header>
+
+          <dl className={`grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-4 ${card}`}>
+            <Field icon="users" label="Department">
+              {issue.department || <span className="text-ink-muted">Not yet assigned</span>}
+            </Field>
+            <Field icon="sliders" label="Priority">
+              {issue.priority || <span className="text-ink-muted">Not set</span>}
+            </Field>
+            <Field icon="clock" label="Reported">
+              <time dateTime={issue.createdAt} title={new Date(issue.createdAt).toLocaleString()}>
+                {timeAgo(issue.createdAt)}
+              </time>
+            </Field>
+            <Field icon="map" label="Location">{issue.area || issue.address || 'Not given'}</Field>
+          </dl>
+
+          {(photos.length > 0 || hasMap) && (
+            <div className={`grid items-start gap-6 ${photos.length > 0 && hasMap ? 'md:grid-cols-2' : ''}`}>
+              {photos.length > 0 && (
+                <section className={`p-5 ${card}`}>
+                  <h2 className="font-semibold">
+                    Images <span className="font-normal text-ink-muted">({photos.length})</span>
+                  </h2>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    Photos help us understand the issue better.
+                  </p>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {photos.map(src => (
+                      <a key={src} href={src} target="_blank" rel="noreferrer"
+                        className="group relative block aspect-square overflow-hidden rounded-xl border border-line">
+                        <img src={src} alt={`Photo of: ${issue.title}`} loading="lazy"
+                          className="size-full object-cover transition-transform duration-200 group-hover:scale-105" />
+                        <span aria-hidden="true"
+                          className="absolute bottom-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-surface/90 text-ink-muted shadow-sm">
+                          <Icon name="zoom" className="size-4" />
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {hasMap && (
+                <section className={`p-5 ${card}`}>
+                  <h2 className="font-semibold">Location</h2>
+                  <p className="mt-1 truncate text-sm text-ink-muted">
+                    {issue.address || issue.area || 'Pinned location'}
+                  </p>
+                  <div className="mt-4 h-56 overflow-hidden rounded-xl border border-line">
+                    <FeedMap issues={[issue]} numbered={false} />
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+
+          {issue.linkedDuplicates?.length > 0 && (
+            <section className={`p-5 ${card}`}>
+              <h2 className="font-semibold">
+                Also reported by {issue.linkedDuplicates.length}{' '}
+                {issue.linkedDuplicates.length === 1 ? 'citizen' : 'citizens'}
+              </h2>
+              <ul className="mt-2 divide-y divide-line">
+                {issue.linkedDuplicates.map(d => (
+                  <li key={d._id}>
+                    <Link to={`/issues/${d._id}`}
+                      className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm hover:text-brand-600">
+                      <span className="truncate">{d.title}</span>
+                      <time dateTime={d.createdAt} className="shrink-0 text-xs text-ink-muted">
+                        {timeAgo(d.createdAt)}
+                      </time>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </div>
-        <h1 className="mt-2 text-2xl font-semibold">{issue.title}</h1>
-        <p className="mt-2 text-ink-muted">{issue.description}</p>
 
-        <dl className="mt-5 grid grid-cols-2 gap-4 rounded-card border border-line bg-surface p-4 sm:grid-cols-4">
-          <Field label="Department">
-            {issue.department || <span className="text-ink-muted">Not yet assigned</span>}
-          </Field>
-          <Field label="Priority">
-            {issue.priority || <span className="text-ink-muted">Not set</span>}
-          </Field>
-          <Field label="Reported">
-            <time dateTime={issue.createdAt} title={new Date(issue.createdAt).toLocaleString()}>
-              {timeAgo(issue.createdAt)}
-            </time>
-          </Field>
-          <Field label="Location">{issue.area || issue.address || 'Not given'}</Field>
-        </dl>
-      </header>
-
-      {issue.photos?.length > 0 && (
-        <section className="mt-6">
-          <h2 className="text-sm font-medium text-ink-muted">Photos</h2>
-          <div className="mt-2 flex flex-wrap gap-3">
-            {issue.photos.map(src => (
-              // Opens full size in a new tab. No lightbox library for a demo with three photos.
-              <a key={src} href={src} target="_blank" rel="noreferrer"
-                className="overflow-hidden rounded-lg border border-line">
-                <img src={src} alt={`Photo of: ${issue.title}`} loading="lazy"
-                  className="h-32 w-auto object-cover" />
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="mt-6 rounded-card border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Progress</h2>
-        <p className="mb-4 mt-0.5 text-xs text-ink-muted">
-          Every status change is recorded and never edited.
-        </p>
-        <StatusTimeline history={issue.statusHistory} />
-      </section>
-
-      {issue.linkedDuplicates?.length > 0 && (
-        <section className="mt-6 rounded-card border border-line bg-surface p-5">
-          <h2 className="text-lg font-semibold">
-            Also reported by {issue.linkedDuplicates.length}{' '}
-            {issue.linkedDuplicates.length === 1 ? 'citizen' : 'citizens'}
-          </h2>
-          <ul className="mt-3 divide-y divide-line">
-            {issue.linkedDuplicates.map(d => (
-              <li key={d._id}>
-                <Link to={`/issues/${d._id}`}
-                  className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm hover:text-brand-600">
-                  <span className="truncate">{d.title}</span>
-                  <time dateTime={d.createdAt} className="shrink-0 text-xs text-ink-muted">
-                    {timeAgo(d.createdAt)}
-                  </time>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {isMine && issue.supporterCount > 0 && (
-        <section className="mt-6 rounded-card border border-line bg-surface p-5">
-          <h2 className="text-lg font-semibold">Citizen support</h2>
-          <p className="mt-0.5 text-sm text-ink-muted">
-            {issue.supporterCount} {issue.supporterCount === 1 ? 'other citizen has' : 'other citizens have'} confirmed they are affected by this issue.
-          </p>
-        </section>
-      )}
-
-      {!isMine && (
-        <section className="mt-6 rounded-card border border-line bg-surface p-5">
-          <h2 className="text-lg font-semibold">Affected by this too?</h2>
-          <p className="mt-0.5 text-sm text-ink-muted">
-            {issue.supporterCount === 0
-              ? 'Nobody else has reported this yet.'
-              : `${issue.supporterCount} ${issue.supporterCount === 1 ? 'person has' : 'people have'} said this affects them.`}
-          </p>
-
-          {error && issue && (
-            <p role="alert" className="mt-3 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
-              {error}
+        {/* ── What happened to it ── */}
+        <aside className="space-y-6 lg:sticky lg:top-24">
+          <section className={`p-5 ${card}`}>
+            <h2 className="font-semibold">Progress</h2>
+            <p className="mb-4 mt-1 text-sm text-ink-muted">
+              Every status change is recorded and never edited.
             </p>
-          )}
+            <StatusTimeline history={issue.statusHistory} />
+          </section>
 
-          <button type="button" onClick={support} disabled={issue.hasSupported || supporting}
-            className="mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg
-              bg-brand-600 px-4 text-sm font-medium text-white transition-colors duration-200
-              hover:bg-brand-700 disabled:cursor-default disabled:bg-resolved-600 disabled:opacity-100">
-            {supporting && <Spinner label="Saving" />}
-            {issue.hasSupported ? 'You reported this too' : 'I have this problem too'}
-          </button>
-        </section>
-      )}
+          <section className={`p-5 ${card}`}>
+            <h2 className="font-semibold">Affected by this too?</h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              {issue.supporterCount === 0
+                ? 'Nobody else has reported this yet.'
+                : `${issue.supporterCount} ${issue.supporterCount === 1 ? 'person has' : 'people have'} said this affects them.`}
+            </p>
+
+            {error && issue && (
+              <p role="alert"
+                className="mt-3 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
+                {error}
+              </p>
+            )}
+
+            <button type="button" onClick={support} disabled={issue.hasSupported || supporting}
+              className="mt-4 inline-flex min-h-11 w-full cursor-pointer items-center justify-center
+                gap-2 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-colors
+                duration-200 hover:bg-brand-700 disabled:cursor-default disabled:bg-resolved-600
+                disabled:opacity-100">
+              {supporting && <Spinner label="Saving" />}
+              {issue.hasSupported ? 'You reported this too' : 'I have this problem too'}
+            </button>
+          </section>
+        </aside>
+      </div>
     </main>
   );
 }
