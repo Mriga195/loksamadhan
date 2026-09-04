@@ -1,24 +1,19 @@
-import React from 'react';
+// Status badge. Colours come from the tokens in index.css (submitted/acknowledged/progress/
+// resolved/rejected), so the pill, the filter chips and the timeline cannot drift apart.
+// Literal class strings — Tailwind cannot see `bg-${key}-50`.
+const STYLE = {
+  Submitted: 'bg-submitted-50 text-submitted-600',
+  Acknowledged: 'bg-acknowledged-50 text-acknowledged-600',
+  'In Progress': 'bg-progress-50 text-progress-600',
+  Resolved: 'bg-resolved-50 text-resolved-600',
+  Rejected: 'bg-rejected-50 text-rejected-600',
+};
 
-const StatusPill = ({ status, className = '' }) => {
-  // Define colors for each status
-  const statusColors = {
-    Submitted: 'bg-slate-100 text-slate-800',
-    Acknowledged: 'bg-blue-100 text-blue-800',
-    'In Progress': 'bg-amber-100 text-amber-800',
-    Resolved: 'bg-green-100 text-green-800',
-    Rejected: 'bg-rose-100 text-rose-800'
-  };
-
-  const bgColor = statusColors[status] || 'bg-gray-100 text-gray-800';
-
+export default function StatusPill({ status, className = '' }) {
   return (
-    <span
-      className={`px-2 py-0.5 rounded text-xs font-medium ${bgColor} ${className}`}
-    >
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
+      ${STYLE[status] || STYLE.Submitted} ${className}`}>
       {status}
     </span>
   );
-};
-
-export default StatusPill;
+}
