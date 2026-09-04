@@ -17,6 +17,14 @@ const pin = (n) => L.divIcon({
   iconAnchor: [14, 14],
 });
 
+// Unnumbered variant, for callers showing a single point — "1" next to one pin is noise.
+const dot = L.divIcon({
+  className: '',
+  html: `<span class="block size-4 rounded-full bg-brand-600 shadow ring-[3px] ring-white"></span>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
 const DEFAULT_CENTER = [26.6338, 92.7926];   // Tezpur, Assam, when nothing has coordinates yet
 
 // Fit the view to whatever is currently listed. Runs on every filter change, which is exactly
@@ -31,7 +39,7 @@ function FitBounds({ points }) {
   return null;
 }
 
-export default function FeedMap({ issues }) {
+export default function FeedMap({ issues, numbered = true }) {
   // [lng, lat] in the API, [lat, lng] in Leaflet. Issues without coordinates are skipped, not
   // dropped from the numbering — the badge must keep matching the card.
   const pins = issues
@@ -48,7 +56,7 @@ export default function FeedMap({ issues }) {
       />
       <FitBounds points={pins.map(p => p.at)} />
       {pins.map(({ issue, n, at }) => (
-        <Marker key={issue._id} position={at} icon={pin(n)}>
+        <Marker key={issue._id} position={at} icon={numbered ? pin(n) : dot}>
           <Popup>
             <strong>{issue.title}</strong>
             <br />
