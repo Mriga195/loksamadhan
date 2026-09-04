@@ -3,6 +3,7 @@
 // Literal class strings — Tailwind cannot see `bg-${key}-50`.
 const STYLE = {
   Submitted: 'bg-submitted-50 text-submitted-600 border border-slate-200',
+  Pending: 'bg-submitted-50 text-submitted-600 border border-slate-200',
   Acknowledged: 'bg-acknowledged-50 text-acknowledged-600 border border-amber-200',
   'In Progress': 'bg-progress-50 text-progress-600 border border-blue-200',
   Resolved: 'bg-resolved-50 text-resolved-600 border border-emerald-200',
@@ -13,10 +14,11 @@ const STYLE = {
 const SIZE = { sm: 'px-2 py-0.5 text-xs', md: 'px-2.5 py-1 text-sm' };
 
 export default function StatusPill({ status, size = 'sm', className = '' }) {
+  const displayLabel = status === 'Submitted' ? 'Pending' : status;
   return (
     <span className={`inline-flex items-center rounded-full font-medium
       ${SIZE[size] || SIZE.sm} ${STYLE[status] || STYLE.Submitted} ${className}`}>
-      {status}
+      {displayLabel}
     </span>
   );
 }

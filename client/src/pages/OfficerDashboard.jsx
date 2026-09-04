@@ -179,7 +179,7 @@ export default function OfficerDashboard() {
       ]
     : [
         ['issues', 'Issues'],
-        ['submitted', 'Submitted'],
+        ['submitted', 'Pending'],
         ['in_progress', 'In Progress'],
         ['resolved', 'Resolved'],
         ['overdue', 'Overdue'],
