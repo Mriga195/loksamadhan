@@ -17,7 +17,7 @@ import StatsCards from '../components/StatsCards';
 // server owns paging and ordering, and there are 15-50 issues.
 // ponytail: refetches the whole page on filter change. Fine at this size.
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 const KEYS = ['category', 'status', 'department', 'q'];
 
 export default function Feed() {
@@ -115,7 +115,7 @@ export default function Feed() {
                   <button type="button" onClick={loadMore} disabled={loadingMore}
                     className="inline-flex cursor-pointer items-center gap-1.5 font-medium
                       text-brand-600 hover:text-brand-700 disabled:opacity-60 transition-colors">
-                    {loadingMore ? 'Loading…' : 'Load more'}
+                    {loadingMore ? 'Loading…' : 'Show more'}
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                       strokeWidth="2" className="size-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
