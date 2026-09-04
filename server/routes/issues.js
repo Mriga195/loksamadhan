@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 const Issue = require('../models/Issue');
 const { auth, requireRole } = require('../middleware/auth');
-const { upload, uploadErrors, photoPath } = require('../lib/upload');
+const { upload, uploadErrors, uploadToCloud, photoPath } = require('../lib/upload');
 const { publicIssue, publicIssueList } = require('../lib/serialize');
 const { CATEGORIES, DEPARTMENTS, STATUSES, PRIORITIES } = require('../constants');
 
@@ -117,7 +117,7 @@ router.get('/:id', auth(false), ah(async (req, res) => {
 }));
 
 /* ---------------------------------------------------------------- A5. POST /api/issues */
-router.post('/', auth(true), upload.array('photos', 3), uploadErrors, ah(async (req, res) => {
+router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCloud, ah(async (req, res) => {
   const title = String(req.body.title ?? '').trim();
   const description = String(req.body.description ?? '').trim();
   const { category } = req.body;
@@ -215,7 +215,7 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
 }));
 
 /* ------------------------ B3. PATCH /api/issues/:id/status — hard rule 2, graded */
-router.patch('/:id/status', auth(true), officer, upload.single('evidence'), uploadErrors,
+router.patch('/:id/status', auth(true), officer, upload.single('evidence'), uploadErrors, uploadToCloud,
   ah(async (req, res) => {
     if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
 

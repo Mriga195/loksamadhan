@@ -1,42 +1,46 @@
-// Photo uploads for POST /api/issues. Disk storage into server/uploads/, served static by app.js.
-const path = require('path');
-const crypto = require('crypto');
-const multer = require('multer');
+// Photo uploads — multer parses multipart into memory, then we push to Cloudinary.
+// Routes keep calling `upload.array()`, `upload.single()`, `uploadErrors`, and `photoPath`
+// exactly as before; only the storage backend changed.
 
-// Whitelist, never a blacklist. The extension comes from THIS map, never from the client's
-// filename: path.extname('evil.jpg.js') is '.js', and the file lands in a statically served
-// directory. Untrusted input decides nothing about the name on disk.
-const EXT_BY_MIME = {
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'image/webp': '.webp',
-};
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+
+// ── Cloudinary config ──
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const FOLDER = process.env.CLOUDINARY_FOLDER || 'loksamadhan';
+
+// Whitelist — only these MIME types are accepted.
+const ALLOWED_MIMES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_FILES = 3;
 
-const storage = multer.diskStorage({
-  destination: path.join(__dirname, '..', 'uploads'),
-  filename: (_req, file, cb) =>
-    cb(null, `${Date.now()}-${crypto.randomUUID()}${EXT_BY_MIME[file.mimetype]}`),
-});
-
+// ── Multer: memory storage (buffer, no disk) ──
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_BYTES, files: MAX_FILES },
   fileFilter: (_req, file, cb) =>
-    EXT_BY_MIME[file.mimetype]
+    ALLOWED_MIMES.has(file.mimetype)
       ? cb(null, true)
       : cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname)),
 });
 
-// Multer throws for oversized/too many/wrong-type files. Left alone those reach the global
-// handler as a 500; lanes 3 and 4 render `error` verbatim, so give the user something readable.
-// Mount this immediately after the upload middleware on any route that accepts files.
+// ── Multer error handler (mount right after upload middleware) ──
 const MULTER_MESSAGES = {
   LIMIT_FILE_SIZE: `Each photo must be under ${MAX_BYTES / 1024 / 1024}MB.`,
   LIMIT_FILE_COUNT: `Upload at most ${MAX_FILES} photos.`,
-  LIMIT_UNEXPECTED_FILE: 'Photos must be JPEG, PNG, or WebP.',
+  LIMIT_UNEXPECTED_FILE: 'Photos must be JPEG, PNG, WebP, or HEIC/HEIF.',
 };
 
 function uploadErrors(err, _req, res, next) {
@@ -44,7 +48,35 @@ function uploadErrors(err, _req, res, next) {
   return res.status(400).json({ error: MULTER_MESSAGES[err.code] || 'Photo upload failed.' });
 }
 
-// Path stored in the document — never an absolute filesystem path.
-const photoPath = file => `/uploads/${file.filename}`;
+// ── Cloudinary uploader: push buffer → Cloudinary, attach URL to file object ──
+function uploadToCloud(req, _res, next) {
+  const files = req.files || (req.file ? [req.file] : []);
+  if (!files.length) return next();
 
-module.exports = { upload, uploadErrors, photoPath, MAX_BYTES, MAX_FILES };
+  const uploads = files.map(
+    (file) =>
+      new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: FOLDER,
+            resource_type: 'image',
+            format: 'webp',              // auto-convert to webp for smaller size
+            transformation: [{ width: 1200, crop: 'limit', quality: 'auto' }],
+          },
+          (err, result) => {
+            if (err) return reject(err);
+            file.cloudinaryUrl = result.secure_url;
+            resolve();
+          }
+        );
+        stream.end(file.buffer);
+      })
+  );
+
+  Promise.all(uploads).then(() => next()).catch(next);
+}
+
+// Returns the Cloudinary URL stored on the file by uploadToCloud.
+const photoPath = (file) => file.cloudinaryUrl;
+
+module.exports = { upload, uploadErrors, uploadToCloud, photoPath, MAX_BYTES, MAX_FILES };
