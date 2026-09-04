@@ -68,6 +68,11 @@ router.get('/', auth(false), ah(async (req, res) => {
     filter.location = { $geoWithin: { $box: [[minLng, minLat], [maxLng, maxLat]] } };
   }
 
+  if (req.query.mine === 'true') {
+    if (!req.user) return res.status(401).json({ error: 'Authentication required.' });
+    filter.reporter = req.user._id;
+  }
+
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));   // hard cap 100
   const sortSpec = sort === 'supported'
@@ -92,6 +97,25 @@ router.get('/', auth(false), ah(async (req, res) => {
     page,
     limit,
   });
+}));
+
+/* ------------------------------------------------------------ GET /api/issues/mine */
+router.get('/mine', auth(true), ah(async (req, res) => {
+  const issues = await Issue.find({ reporter: req.user._id })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const dupCounts = await duplicateCounts(issues);
+  const items = publicIssueList(issues, req.user._id, dupCounts);
+
+  const summary = {
+    total: items.length,
+    submitted: items.filter(i => i.status === 'Submitted').length,
+    inProgress: items.filter(i => i.status === 'In Progress' || i.status === 'Acknowledged').length,
+    resolved: items.filter(i => i.status === 'Resolved').length,
+  };
+
+  res.json({ items, total: items.length, summary });
 }));
 
 /* ------------------------------------------------------------ A4. GET /api/issues/:id */
