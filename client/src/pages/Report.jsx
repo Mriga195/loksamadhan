@@ -11,7 +11,7 @@ const CATEGORIES = ['Road', 'Water', 'Sanitation', 'Streetlight', 'Drainage', 'O
 const Report = () => {
   const navigate = useNavigate();
   const routeLocation = useLocation();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [category, setCategory] = useState('');
   const [address, setAddress] = useState('');
@@ -29,6 +29,13 @@ const Report = () => {
   const [error, setError] = useState(null);
 
   const abortControllerRef = useRef(null);
+
+  // Reporting requires an account — POST /api/issues is auth(true), so an anonymous visitor who
+  // reaches this URL directly would fill the whole form and lose it to a 401 on submit. Waits for
+  // authLoading so a signed-in user with a valid token is never bounced mid-validation.
+  useEffect(() => {
+    if (!authLoading && !user) navigate('/login', { state: { from: '/report' }, replace: true });
+  }, [authLoading, user, navigate]);
 
   // Check if returning from login after "This is my issue" action
   useEffect(() => {

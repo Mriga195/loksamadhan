@@ -1,20 +1,30 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import Avatar from './Avatar';
+import Icon from './Icon';
 
 // Site header. Routes match router.jsx exactly: '/', '/report', '/issues/:id', '/login',
-// '/register', '/dashboard'.
+// '/register'; '/dashboard' is a top-level route with its own shell.
 //
-// No JS dropdown menu. On narrow screens the row wraps onto a second line instead of collapsing
-// behind a hamburger — fewer moving parts, nothing to trap focus in, and it cannot scroll
-// sideways. With six links at most, a menu would be more code for a worse result.
+// The nav shows only what the visitor can actually do:
+//   signed out  — Log in, Sign up. No "Feed" link, because '/' IS the feed and the wordmark
+//                 already goes there; no "Report an issue", because POST /api/issues is
+//                 auth(true) and the form would bounce them to the login page anyway.
+//   citizen     — Report an issue, and who they are signed in as.
+//   officer/admin — Dashboard, and who they are signed in as.
+//
+// No JS dropdown menu behind the avatar. On narrow screens the row wraps onto a second line
+// instead of collapsing behind a hamburger — fewer moving parts, nothing to trap focus in, and
+// it cannot scroll sideways.
 
-// Underline sits on the link itself (border-b) rather than a sliding indicator: no measuring,
-// no resize listener, and it survives wrapping.
 const link = ({ isActive }) =>
   'min-h-11 inline-flex items-center border-b-2 px-1 text-sm transition-colors duration-200 ' +
   (isActive
     ? 'border-brand-600 font-medium text-brand-600'
     : 'border-transparent text-ink hover:text-brand-600');
+
+const cta = 'inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-5 text-sm' +
+  ' font-medium text-white transition-colors duration-200 hover:bg-brand-700';
 
 export default function Nav() {
   const { user, loading, logout } = useAuth();
@@ -24,40 +34,48 @@ export default function Nav() {
     <header className="border-b border-line bg-surface">
       <nav
         aria-label="Main"
-        className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-2 px-6 py-3"
+        className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3"
       >
         <Link to="/" className="mr-auto min-h-11 inline-flex items-center text-xl font-bold">
           <span className="text-brand-600">Lok</span>Samadhan
         </Link>
 
-        <NavLink to="/" end className={link}>Feed</NavLink>
-        {/* <NavLink to="/report" className={link}>Report Issue</NavLink> */}
-
-        {/* While the token is being validated, render nothing here rather than flashing
-            "Officer Login" at a user who is already signed in. */}
+        {/* While the token is being validated, render nothing here rather than flashing "Log in"
+            at a user who is already signed in. The space is held by the row itself. */}
         {loading ? null : user ? (
           <>
-            {isStaff && <NavLink to="/dashboard" className={link}>Dashboard</NavLink>}
-            <span className="text-sm text-ink-muted">{user.name}</span>
-            <button type="button" onClick={logout}
-              className="min-h-11 cursor-pointer text-sm text-ink hover:text-brand-600">
-              Log out
+            {isStaff ? (
+              <NavLink to="/dashboard" className={cta}>
+                <Icon name="dashboard" />
+                Dashboard
+              </NavLink>
+            ) : (
+              <Link to="/report" className={cta}>
+                <Icon name="plus" />
+                Report an Issue
+              </Link>
+            )}
+
+            <span className="flex items-center gap-2">
+              <Avatar name={user.name} />
+              <span className="hidden text-sm sm:block">
+                <span className="block font-medium leading-tight">{user.name}</span>
+                <span className="block text-xs capitalize text-ink-muted">{user.role}</span>
+              </span>
+            </span>
+
+            <button type="button" onClick={logout} title="Log out" aria-label="Log out"
+              className="cursor-pointer rounded-lg p-2 text-ink-muted transition-colors
+                duration-200 hover:bg-canvas hover:text-ink">
+              <Icon name="logout" />
             </button>
           </>
         ) : (
-          <NavLink to="/login" className={link}>Login</NavLink>
+          <>
+            <NavLink to="/login" className={link}>Log in</NavLink>
+            <Link to="/register" className={cta}>Sign up</Link>
+          </>
         )}
-
-        <Link to="/report"
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-5
-            text-sm font-medium text-white transition-colors duration-200 hover:bg-brand-700">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="1.75" className="size-5">
-            <circle cx="12" cy="12" r="9" />
-            <path strokeLinecap="round" d="M12 8.5v7M8.5 12h7" />
-          </svg>
-          Report an Issue
-        </Link>
       </nav>
     </header>
   );
