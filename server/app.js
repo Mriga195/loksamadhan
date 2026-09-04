@@ -14,6 +14,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 // `similar` MUST come before `issues` so /api/issues/similar
 // is not swallowed by /api/issues/:id.
 app.use('/api/auth',   require('./routes/auth'));
+app.use('/api/admin',  require('./routes/admin'));
 app.use('/api/issues', require('./routes/similar'));
 app.use('/api/issues', require('./routes/issues'));
 app.use('/api/stats',  require('./routes/stats'));
