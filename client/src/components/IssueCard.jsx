@@ -20,7 +20,8 @@ export function timeAgo(iso) {
 
 // No photos exist on any seeded issue, so this placeholder is what a judge actually sees on
 // every card. It is a designed element, not a fallback — a broken-image icon would read as a
-// bug. Literal class strings: Tailwind cannot see `bg-${category}-100`.
+// bug. The same glyph tags the department chip. Literal class strings: Tailwind cannot see
+// `bg-${category}-100`.
 const CATEGORY = {
   Road:        { tile: 'bg-amber-100 text-amber-700',     d: 'M4 20 9 4h6l5 16M9.5 12h5' },
   Water:       { tile: 'bg-sky-100 text-sky-700',         d: 'M12 3s6 6.6 6 10.5a6 6 0 0 1-12 0C6 9.6 12 3 12 3Z' },
@@ -30,58 +31,103 @@ const CATEGORY = {
   Other:       { tile: 'bg-violet-100 text-violet-700',   d: 'M12 8h.01M11 12h1v5h1' },
 };
 
-export default function IssueCard({ issue }) {
+// `index` is the card's position in the feed, shown as the badge that ties the row to its pin
+// on the map beside it. 1-based, passed by Feed — the card does not know about the map.
+export default function IssueCard({ issue, index }) {
   const art = CATEGORY[issue.category] || CATEGORY.Other;
   const photo = issue.photos?.[0];
+  const place = issue.address || issue.area;
 
   return (
-    <li className="rounded-card border border-line bg-surface transition-colors duration-200 hover:border-brand-500">
-      {/* One link wrapping the whole card: a single tab stop, and the entire tile is a target. */}
-      <Link to={`/issues/${issue._id}`} className="flex gap-4 p-4">
+    <li className="relative border-l-2 border-transparent transition-colors duration-200
+      hover:border-brand-500 hover:bg-canvas">
+      {/* One link wrapping the whole card: a single tab stop, and the entire row is a target. */}
+      <Link to={`/issues/${issue._id}`} className="flex items-start gap-4 p-5">
         {/* Fixed size and shrink-0 so the row height never changes as images load or fail. */}
-        <div className={`grid size-20 shrink-0 place-items-center overflow-hidden rounded-lg ${art.tile}`}>
+        <div className={`relative grid size-24 shrink-0 place-items-center overflow-hidden
+          rounded-xl ${art.tile}`}>
           {photo ? (
-            <img
-              src={photo}
-              alt=""
-              loading="lazy"
-              className="size-full object-cover"
-              onError={e => { e.currentTarget.hidden = true; }}
-            />
+            <img src={photo} alt="" loading="lazy" className="size-full object-cover"
+              onError={e => { e.currentTarget.hidden = true; }} />
           ) : (
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.5" className="size-8">
+              strokeWidth="1.5" className="size-10">
               <path strokeLinecap="round" strokeLinejoin="round" d={art.d} />
             </svg>
+          )}
+          {index != null && (
+            <span aria-hidden="true" className="absolute -left-2 -top-2 grid size-7
+              place-items-center rounded-full bg-brand-600 text-xs font-semibold text-white
+              ring-2 ring-surface">
+              {index}
+            </span>
           )}
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill status={issue.status} />
-            <span className="text-xs text-ink-muted">{issue.category}</span>
-            {issue.area && <span className="text-xs text-ink-muted">· {issue.area}</span>}
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-lg font-semibold leading-snug">{issue.title}</h3>
+            <StatusPill status={issue.status} className="shrink-0" />
           </div>
 
-          <h3 className="mt-1.5 font-medium">{issue.title}</h3>
-          <p className="mt-1 line-clamp-2 text-sm text-ink-muted">{issue.description}</p>
-
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-ink-muted">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.75" className="size-4 shrink-0">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M12 21s7-5.2 7-10.5a7 7 0 1 0-14 0C5 15.8 12 21 12 21Z" />
+              <circle cx="12" cy="10.5" r="2.25" />
+            </svg>
+            {place || 'Location not given'}
+            <span aria-hidden="true">·</span>
             <time dateTime={issue.createdAt} title={new Date(issue.createdAt).toLocaleString()}>
               {timeAgo(issue.createdAt)}
             </time>
-            {issue.supporterCount > 0 && (
-              <span>{issue.supporterCount} {issue.supporterCount === 1 ? 'person' : 'people'} also affected</span>
-            )}
+          </p>
+
+          {issue.description && (
+            <p className="mt-1.5 line-clamp-2 text-sm text-ink-muted">{issue.description}</p>
+          )}
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs
+              font-medium ${art.tile}`}>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="1.75" className="size-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d={art.d} />
+              </svg>
+              {issue.department || issue.category}
+            </span>
 
             {/* The visible proof of the duplicate-clustering feature. Given the accent colour
                 rather than another grey line, because it is the thing to notice on this card. */}
             {issue.duplicateCount > 0 && (
-              <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-700">
-                +{issue.duplicateCount} similar {issue.duplicateCount === 1 ? 'report' : 'reports'}
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-2 py-1
+                text-xs font-medium text-brand-700">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="1.75" className="size-4">
+                  <rect x="9" y="9" width="11" height="11" rx="2" />
+                  <path strokeLinecap="round" d="M15 5H6a2 2 0 0 0-2 2v9" />
+                </svg>
+                {issue.duplicateCount} possible duplicate{issue.duplicateCount === 1 ? '' : 's'}
               </span>
             )}
           </div>
+        </div>
+
+        <div className="flex w-16 shrink-0 flex-col items-end justify-end self-stretch">
+          {/* Display only — supporting happens on the issue page, where the API call and the
+              "cannot support your own report" error have somewhere to go. */}
+          <span className="flex flex-col items-center text-xs text-ink-muted">
+            <span className="flex items-center gap-1.5">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="1.75" className="size-5">
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M7 11v9H4v-9h3Zm0 0 4.5-8a2 2 0 0 1 3.5 1.9L14 9h4.6a2 2 0 0 1 2 2.5l-1.7 6.5a2 2 0 0 1-2 1.5H7" />
+              </svg>
+              <span className="text-sm font-semibold text-ink">{issue.supporterCount || 0}</span>
+            </span>
+            Me too
+          </span>
         </div>
       </Link>
     </li>

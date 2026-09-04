@@ -44,10 +44,10 @@
   /* Status — one hue per issue state. -50 = badge bg, -600 = text/dot/border */
   --color-submitted-50: var(--color-slate-100);
   --color-submitted-600: var(--color-slate-600);
-  --color-acknowledged-50: var(--color-blue-50);
-  --color-acknowledged-600: var(--color-blue-600);
-  --color-progress-50: var(--color-amber-50);
-  --color-progress-600: var(--color-amber-600);
+  --color-acknowledged-50: var(--color-amber-50);
+  --color-acknowledged-600: var(--color-amber-600);
+  --color-progress-50: var(--color-blue-50);
+  --color-progress-600: var(--color-blue-600);
   --color-resolved-50: var(--color-emerald-50);
   --color-resolved-600: var(--color-emerald-600);
   --color-rejected-50: var(--color-red-50);

@@ -6,6 +6,7 @@ import FilterBar from '../components/FilterBar';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import { Skeleton } from '../components/Spinner';
+import FeedMap from '../components/FeedMap';
 
 // The public landing page. No token required - the API's GET /api/issues is auth(false), so
 // this must render for a logged-out visitor. Verify in a private window before the demo.
@@ -69,52 +70,68 @@ export default function Feed() {
   const hasFilters = KEYS.some(k => filters[k]);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-semibold">Reported issues</h1>
-      <p className="mt-1 text-sm text-ink-muted">
-        Every report filed in your area, and exactly where each one has got to.
-      </p>
+    <main className="mx-auto max-w-7xl px-6 py-6">
+      {/* The filter bar and the numbered map are the page's title in the design; the heading is
+          kept for screen readers and the document outline. */}
+      <h1 className="sr-only">Reported issues</h1>
 
-      <div className="mt-5">
-        <FilterBar value={filters} onChange={onChange} onClear={onClear} />
-      </div>
+      <FilterBar value={filters} onChange={onChange} onClear={onClear} />
 
-      <div className="mt-5">
-        {loading && <Skeleton count={4} className="h-28" />}
+      {/* List left, map right. One column below lg — a 400px-tall map above a list of five
+          cards is worse than no map on a phone, so it is simply not rendered there. */}
+      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div>
+          {loading && <Skeleton count={4} className="h-28" />}
 
-        {!loading && error && <ErrorState message={error} onRetry={() => fetchPage(1)} />}
+          {!loading && error && <ErrorState message={error} onRetry={() => fetchPage(1)} />}
 
-        {!loading && !error && issues.length === 0 && (
-          <EmptyState
-            title={hasFilters ? 'No reports match these filters' : 'No reports yet'}
-            hint={hasFilters
-              ? 'Try a broader search, or clear the filters to see everything.'
-              : 'When someone files the first report, it will appear here.'}
-            actionLabel={hasFilters ? 'Clear filters' : undefined}
-            onAction={hasFilters ? onClear : undefined}
-          />
-        )}
+          {!loading && !error && issues.length === 0 && (
+            <EmptyState
+              title={hasFilters ? 'No reports match these filters' : 'No reports yet'}
+              hint={hasFilters
+                ? 'Try a broader search, or clear the filters to see everything.'
+                : 'When someone files the first report, it will appear here.'}
+              actionLabel={hasFilters ? 'Clear filters' : undefined}
+              onAction={hasFilters ? onClear : undefined}
+            />
+          )}
 
-        {!loading && !error && issues.length > 0 && (
-          <>
-            <p className="mb-3 text-sm text-ink-muted">
-              {total} {total === 1 ? 'report' : 'reports'}
-            </p>
-            <ul className="space-y-3">
-              {issues.map(i => <IssueCard key={i._id} issue={i} />)}
-            </ul>
+          {!loading && !error && issues.length > 0 && (
+            <>
+              <ul className="divide-y divide-line overflow-hidden rounded-card border
+                border-line bg-surface">
+                {issues.map((i, idx) => <IssueCard key={i._id} issue={i} index={idx + 1} />)}
+              </ul>
 
-            {/* A button, not infinite scroll: less code, and it does not break the back button. */}
-            {issues.length < total && (
-              <button type="button" onClick={loadMore} disabled={loadingMore}
-                className="mt-4 min-h-11 w-full cursor-pointer rounded-lg border border-line
-                  bg-surface text-sm font-medium transition-colors duration-200 hover:bg-canvas
-                  disabled:opacity-60">
-                {loadingMore ? 'Loading...' : `Load more (${total - issues.length} left)`}
-              </button>
-            )}
-          </>
-        )}
+              <div className="mt-4 flex items-center justify-center gap-6 text-sm text-ink-muted">
+                <span>Showing 1&ndash;{issues.length} of {total} issues</span>
+
+                {/* A button, not infinite scroll: less code, and it does not break the back
+                    button. */}
+                {issues.length < total && (
+                  <button type="button" onClick={loadMore} disabled={loadingMore}
+                    className="inline-flex cursor-pointer items-center gap-1.5 font-medium
+                      text-brand-600 hover:underline disabled:opacity-60">
+                    {loadingMore ? 'Loading…' : 'Load more'}
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="2" className="size-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* sticky: the map stays beside the list as it scrolls, which is the only reason to
+            show both at once. */}
+        <div className="hidden lg:block">
+          <div className="sticky top-6 h-[calc(100vh-6rem)] overflow-hidden rounded-card
+            border border-line bg-surface">
+            <FeedMap issues={issues} />
+          </div>
+        </div>
       </div>
     </main>
   );
