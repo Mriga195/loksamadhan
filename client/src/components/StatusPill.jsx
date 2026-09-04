@@ -9,10 +9,13 @@ const STYLE = {
   Rejected: 'bg-rejected-50 text-rejected-600 border border-red-200',
 };
 
-export default function StatusPill({ status, className = '' }) {
+// `size` exists because StatusTimeline gives the resolved entry more weight than the rest.
+const SIZE = { sm: 'px-2 py-0.5 text-xs', md: 'px-2.5 py-1 text-sm' };
+
+export default function StatusPill({ status, size = 'sm', className = '' }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
-      ${STYLE[status] || STYLE.Submitted} ${className}`}>
+    <span className={`inline-flex items-center rounded-full font-medium
+      ${SIZE[size] || SIZE.sm} ${STYLE[status] || STYLE.Submitted} ${className}`}>
       {status}
     </span>
   );
