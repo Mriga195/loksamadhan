@@ -4,18 +4,12 @@ import { useAuth } from '../AuthContext';
 import AssignControls from '../components/AssignControls';
 import StatusModal from '../components/StatusModal';
 import StatsCards from '../components/StatsCards';
+import StatusPill from '../components/StatusPill';
 
 // Officer and admin share this page. Admin is a `role === 'admin'` branch, not a second file —
 // the two views differ by one filter and two extra widgets, and a second page would be two
 // places to fix every bug.
 
-// Literal class strings — Tailwind scans source text, so `bg-${key}-50` generates nothing.
-const PILL = {
-  Submitted: 'bg-submitted-50 text-submitted-600',
-  Acknowledged: 'bg-acknowledged-50 text-acknowledged-600',
-  'In Progress': 'bg-progress-50 text-progress-600',
-  Resolved: 'bg-resolved-50 text-resolved-600',
-};
 const PRIORITY_TEXT = {
   high: 'text-priority-high font-semibold',
   medium: 'text-priority-medium',
@@ -128,9 +122,7 @@ export default function OfficerDashboard() {
                   </td>
                   <td className="p-3">{issue.category}</td>
                   <td className="p-3">
-                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${PILL[issue.status] || ''}`}>
-                      {issue.status}
-                    </span>
+                    <StatusPill status={issue.status} />
                   </td>
                   <td className={`p-3 ${PRIORITY_TEXT[issue.priority] || 'text-ink-muted'}`}>
                     {issue.priority || '—'}

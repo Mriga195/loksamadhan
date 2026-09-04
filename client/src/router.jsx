@@ -1,13 +1,13 @@
 import { createBrowserRouter } from 'react-router-dom';
 import App from './App';
 
-// ── Placeholder pages — each lane fills their own ──
-function Feed() { return <h2 className="p-8">Feed — Lane 3 implements</h2>; }
+import Feed from './pages/Feed';
 import Report from './pages/Report';
-function IssueDetail() { return <h2 className="p-8">Issue Detail — Lane 3 implements</h2>; }
-function Login() { return <h2 className="p-8">Login — Lane 3 implements</h2>; }
-function Register() { return <h2 className="p-8">Register — Lane 3 implements</h2>; }
-function OfficerDashboard() { return <h2 className="p-8">Officer Dashboard — Lane 2 implements</h2>; }
+import IssueDetail from './pages/IssueDetail';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import NotFound from './pages/NotFound';
+import OfficerDashboard from './pages/OfficerDashboard';
 
 const router = createBrowserRouter([
   {
@@ -20,6 +20,7 @@ const router = createBrowserRouter([
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
       { path: 'dashboard', element: <OfficerDashboard /> },
+      { path: '*', element: <NotFound /> },
     ],
   },
 ]);

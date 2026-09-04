@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { apiFetch } from '../api';
+import StatusPill from './StatusPill';
 
 // The UI half of hard rule 2: resolution requires a note or evidence.
 //
@@ -10,13 +11,6 @@ import { apiFetch } from '../api';
 // Mirrors server/constants.js STATUSES — there is no 'Rejected' state in this build.
 const STATUSES = ['Submitted', 'Acknowledged', 'In Progress', 'Resolved'];
 
-// Literal class strings — Tailwind scans source text, so `bg-${key}-50` generates nothing.
-const PILL = {
-  Submitted: 'bg-submitted-50 text-submitted-600',
-  Acknowledged: 'bg-acknowledged-50 text-acknowledged-600',
-  'In Progress': 'bg-progress-50 text-progress-600',
-  Resolved: 'bg-resolved-50 text-resolved-600',
-};
 
 export default function StatusModal({ issue, onClose, onSaved }) {
   const [status, setStatus] = useState(issue.status);
@@ -71,9 +65,7 @@ export default function StatusModal({ issue, onClose, onSaved }) {
           <ol className="mt-4 space-y-2 border-l border-line pl-4 text-sm">
             {issue.statusHistory.map((h, i) => (
               <li key={i}>
-                <span className={`rounded px-2 py-0.5 text-xs font-medium ${PILL[h.status] || ''}`}>
-                  {h.status}
-                </span>
+                <StatusPill status={h.status} />
                 <span className="ml-2 text-xs text-ink-muted">
                   {new Date(h.at).toLocaleString()}
                 </span>
