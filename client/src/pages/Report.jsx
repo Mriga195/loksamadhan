@@ -35,6 +35,9 @@ const Report = () => {
   // authLoading so a signed-in user with a valid token is never bounced mid-validation.
   useEffect(() => {
     if (!authLoading && !user) navigate('/login', { state: { from: '/report' }, replace: true });
+    if (!authLoading && user && (user.role === 'officer' || user.role === 'admin')) {
+      navigate('/dashboard', { replace: true });
+    }
   }, [authLoading, user, navigate]);
 
   // Check if returning from login after "This is my issue" action

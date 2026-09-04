@@ -45,12 +45,10 @@ const age = iso => {
   return hours > 0 ? `${hours} hour${hours === 1 ? '' : 's'} ago` : 'just now';
 };
 
-// Only destinations that exist. The mockup's Analytics/Reports/Users/Settings items are not
-// here because they would be dead links, and a nav that lies is worse than a short one.
+// Only destinations that exist for staff:
 const NAV = [
   { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', end: true },
   { to: '/', icon: 'clipboard', label: 'Public feed' },
-  { to: '/report', icon: 'plus', label: 'Report an issue' },
 ];
 
 const navClass = ({ isActive }) =>
@@ -197,11 +195,13 @@ export default function OfficerDashboard() {
         </span>
 
         <div className="ml-auto flex items-center gap-3">
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-medium leading-tight">{user?.name}</p>
-            <p className="text-xs capitalize text-ink-muted">{user?.role}</p>
-          </div>
-          <Avatar name={user?.name} />
+          <Link to="/profile" className="flex items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-canvas" title="My Profile">
+            <div className="hidden text-right sm:block">
+              <p className="text-sm font-medium leading-tight">{user?.name}</p>
+              <p className="text-xs capitalize text-ink-muted">{user?.role}</p>
+            </div>
+            <Avatar name={user?.name} />
+          </Link>
           <button type="button" onClick={handleLogout} title="Log out" aria-label="Log out"
             className="cursor-pointer rounded-lg p-2 text-ink-muted transition-colors
               hover:bg-canvas hover:text-ink">
