@@ -384,7 +384,7 @@ export default function Profile() {
           <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-line pb-3">
             {[
               { key: 'all', label: 'All', count: counts.all },
-              { key: 'Submitted', label: 'Submitted', count: counts.submitted },
+              { key: 'Submitted', label: 'Pending', count: counts.submitted },
               { key: 'in_progress', label: 'In Progress', count: counts.inProgress },
               { key: 'Resolved', label: 'Resolved', count: counts.resolved },
             ].map(({ key, label, count }) => (

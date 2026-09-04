@@ -12,7 +12,7 @@ const DEPARTMENTS = [
 // rather than a fifth dropdown. Dot colour matches StatusPill — same tokens.
 const STATUSES = [
   ['', 'All', ''],
-  ['Submitted', 'Submitted', 'bg-submitted-600'],
+  ['Submitted', 'Pending', 'bg-submitted-600'],
   ['Acknowledged', 'Acknowledged', 'bg-acknowledged-600'],
   ['In Progress', 'In Progress', 'bg-progress-600'],
   ['Resolved', 'Resolved', 'bg-resolved-600'],

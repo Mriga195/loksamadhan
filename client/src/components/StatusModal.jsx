@@ -82,7 +82,7 @@ export default function StatusModal({ issue, onClose, onSaved }) {
             value={status}
             onChange={e => setStatus(e.target.value)}
           >
-            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            {STATUSES.map(s => <option key={s} value={s}>{s === 'Submitted' ? 'Pending' : s}</option>)}
           </select>
         </label>
 
