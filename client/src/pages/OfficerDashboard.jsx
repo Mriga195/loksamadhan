@@ -287,7 +287,7 @@ export default function OfficerDashboard() {
                 >
                   <span className="flex items-center gap-2.5">
                     <Icon name="dashboard" className="size-4" />
-                    Triage Queue
+                    Issues
                   </span>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                     viewMode === 'issues' ? 'bg-white/20 text-white' : 'bg-line text-ink-muted'
@@ -351,13 +351,6 @@ export default function OfficerDashboard() {
                   <Icon name="clipboard" className="size-4" />
                   Public Feed
                 </Link>
-                <Link
-                  to="/"
-                  className="flex min-h-10 items-center gap-2.5 rounded-xl px-3 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
-                >
-                  <Icon name="home" className="size-4" />
-                  Landing Page
-                </Link>
               </nav>
             </div>
           </div>
@@ -385,7 +378,7 @@ export default function OfficerDashboard() {
               }`}
             >
               <Icon name="dashboard" className="size-3.5" />
-              Triage Queue
+              Issues
             </button>
             <button
               type="button"
