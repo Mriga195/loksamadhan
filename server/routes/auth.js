@@ -11,6 +11,35 @@ const signToken = (user) =>
     expiresIn: '7d',
   });
 
+async function verifyGoogleToken(credential) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+
+  // 1. Try local verification via google-auth-library
+  try {
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: clientId,
+    });
+    return ticket.getPayload();
+  } catch (libErr) {
+    console.warn('google-auth-library verification failed, trying tokeninfo fallback:', libErr.message);
+  }
+
+  // 2. Fallback to Google's official tokeninfo API (handles clock skew, certs, etc.)
+  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error_description || data.error || 'Token verification failed');
+  }
+
+  const payload = await res.json();
+  if (payload.aud !== clientId) {
+    throw new Error(`Token audience mismatch: token aud (${payload.aud}) does not match server GOOGLE_CLIENT_ID (${clientId})`);
+  }
+  return payload;
+}
+
 // ── POST /api/auth/google ──
 // Google OAuth verification.
 // Citizens can sign up or log in with a Google credential ID token.
@@ -29,13 +58,12 @@ router.post('/google', async (req, res, next) => {
 
     let payload;
     try {
-      const ticket = await googleClient.verifyIdToken({
-        idToken: credential,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-      payload = ticket.getPayload();
+      payload = await verifyGoogleToken(credential);
     } catch (verifyErr) {
-      return res.status(401).json({ error: 'Invalid or expired Google token' });
+      console.error('Google OAuth verification error:', verifyErr);
+      return res.status(401).json({
+        error: `Google verification failed: ${verifyErr.message || 'Invalid or expired Google token'}`,
+      });
     }
 
     if (!payload || !payload.email) {
