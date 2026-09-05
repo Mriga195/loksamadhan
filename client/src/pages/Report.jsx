@@ -97,7 +97,7 @@ const Report = () => {
       fd.append('category', category);
 
       // Save the location according to the pin; if Landmark or street is filled then save both
-      const landmark = address.trim();
+      const landmark = address.trim().slice(0, 30);
       let finalAddress = '';
       if (landmark && pinAddress) {
         finalAddress = `${landmark}, ${pinAddress}`;
@@ -153,9 +153,20 @@ const Report = () => {
 
         <Step n={2} icon="map" label={t.step2Label} required hint={t.step2Hint}>
           <MapPicker onLocationChange={handleLocationChange} initialLocation={location} />
-          <input type="text" value={address} onChange={e => setAddress(e.target.value)}
-            placeholder={t.step2AddressPlaceholder} className={`${field} mt-4`} />
-          <p className="mt-1.5 text-right text-xs text-ink-muted">{t.step2AddressHint}</p>
+          <input
+            type="text"
+            value={address}
+            maxLength={30}
+            onChange={e => setAddress(e.target.value.slice(0, 30))}
+            placeholder={t.step2AddressPlaceholder}
+            className={`${field} mt-4`}
+          />
+          <div className="mt-1.5 flex items-center justify-between text-xs text-ink-muted">
+            <span>{t.step2AddressHint}</span>
+            <span className={address.length >= 30 ? 'font-semibold text-amber-600' : ''}>
+              {address.length}/30
+            </span>
+          </div>
         </Step>
 
         <Step n={3} icon="clipboard" label={t.step3Label} required hint={t.step3Hint}>
