@@ -251,7 +251,7 @@ export default function Nav() {
       </header>
 
       {/* Mobile sheet. Always mounted so it can slide; `inert` keeps it unfocusable when closed. */}
-      <div id="nav-sheet" inert={!open || undefined} className="fixed inset-0 z-40 md:hidden">
+      <div id="nav-sheet" inert={!open || undefined} className="fixed inset-0 z-40 overflow-hidden md:hidden">
         <button
           type="button" tabIndex={-1} aria-label="Close menu"
           onClick={() => setOpen(false)}

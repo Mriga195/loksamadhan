@@ -43,6 +43,7 @@ export default function Feed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [t, setT] = useState(EN);
+  const [showMap, setShowMap] = useState(false);   // mobile only; from lg up both are always shown
 
   // Translate static strings (not `showingOf` — that's a function, computed inline)
   useEffect(() => {
@@ -110,8 +111,29 @@ export default function Feed() {
 
       {/* List left, map right. One column below lg — a 400px-tall map above a list of five
           cards is worse than no map on a phone, so it is simply not rendered there. */}
+      {/* Below lg the map is a toggle, not a permanent 400px block above the list — but it has to
+          be reachable, because every card carries a numbered badge that only means something
+          next to the pins. */}
+      <button type="button" onClick={() => setShowMap(v => !v)} aria-expanded={showMap}
+        className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl
+          border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink
+          transition-colors hover:bg-canvas lg:hidden">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.75" className="size-4">
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M9 4 3 6.5v13L9 17m0-13 6 3m-6-3v13m6-10 6-2.5v13L15 20m0-13v13m-6-3 6 3" />
+        </svg>
+        {showMap ? 'Hide map' : 'Show map'}
+      </button>
+
+      {showMap && (
+        <div className="mt-3 h-[60vh] overflow-hidden rounded-card border border-line bg-surface lg:hidden">
+          <FeedMap issues={issues} />
+        </div>
+      )}
+
       <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div>
+        <div className="min-w-0">
           {loading && <Skeleton count={4} className="h-28" />}
 
           {!loading && error && <ErrorState message={error} onRetry={() => fetchPage(1)} />}
