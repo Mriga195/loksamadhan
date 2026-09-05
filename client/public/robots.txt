@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /register
+Disallow: /profile
+Disallow: /dashboard
+
+Sitemap: https://loksamadhan.example/sitemap.xml

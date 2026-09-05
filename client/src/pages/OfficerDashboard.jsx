@@ -11,6 +11,7 @@ import StatusPill from '../components/StatusPill';
 import OfficeUsersManager from '../components/OfficeUsersManager';
 import AnalyticsView from '../components/AnalyticsView';
 import { Skeleton } from '../components/Spinner';
+import { useSeo } from '../seo';
 
 const DEPARTMENTS = [
   'Roads & Infrastructure',
@@ -45,6 +46,8 @@ const age = iso => {
 };
 
 export default function OfficerDashboard() {
+  useSeo('Officer dashboard');
+
   const navigate = useNavigate();
   const { user, loading: authLoading, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
