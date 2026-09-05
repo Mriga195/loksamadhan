@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api';
 import Icon from '../components/Icon';
+import Logo from '../components/Logo';
 import { CityScene, ReportScene, ResolvedScene, ShieldScene, TrackScene } from '../components/Illustrations';
 
 // Public landing page at '/'. The feed itself lives at '/feed' — this page's job is to explain
@@ -69,7 +70,15 @@ export default function Home() {
         <CityScene className="absolute inset-x-0 bottom-0 -z-10 h-[300px] w-full" />
 
         <div className="mx-auto max-w-3xl px-4 pt-14 text-center sm:pt-20">
-          <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-[2.5rem]">
+          {/* The wordmark lives here, not in the nav: this is the one place a first-time
+              visitor needs to be told what the site is called. */}
+          <p className="flex items-center justify-center gap-3 text-2xl font-bold tracking-tight
+            sm:text-3xl">
+            <Logo className="size-12 sm:size-14" />
+            <span><span className="text-brand-600">Lok</span>Samadhan</span>
+          </p>
+
+          <h1 className="mt-6 text-3xl font-extrabold leading-tight tracking-tight sm:text-[2.5rem]">
             Report a civic issue.<br className="hidden sm:block" />{' '}
             Watch it get fixed — <span className="text-brand-600">in public.</span>
           </h1>

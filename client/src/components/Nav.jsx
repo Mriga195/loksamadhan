@@ -91,10 +91,9 @@ export default function Nav() {
           shadow-[0_2px_12px_rgba(15,23,42,0.06)] md:px-4 md:py-2.5"
       >
         <div className="flex items-center gap-2">
-          <Link to="/" className="inline-flex min-h-11 items-center gap-2 text-base font-bold
-            md:mr-2 md:text-lg">
-            <Logo className="size-8 md:size-9" />
-            <span className="text-brand-600">Lok</span>Samadhan
+          <Link to="/" aria-label="LokSamadhan — home"
+            className="inline-flex min-h-11 items-center md:mr-2">
+            <Logo className="size-9 md:size-10" />
           </Link>
 
           <div className="hidden items-center gap-2 md:flex">{links}</div>
