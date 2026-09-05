@@ -123,12 +123,13 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
         </button>
       </div>
 
-      <div className="relative h-72 w-full overflow-hidden rounded-lg border border-line">
+      <div className="relative isolate z-0 h-72 w-full overflow-hidden rounded-lg border border-line">
         <MapContainer
           center={position}
           zoom={14}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={false}
+          className="z-0"
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

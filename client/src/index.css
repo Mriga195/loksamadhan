@@ -80,4 +80,10 @@
     outline: 2px solid var(--color-brand-600);
     outline-offset: 2px;
   }
+
+  /* Prevent Leaflet controls and panes (z-400, z-1000) from escaping and overlapping sticky/fixed headers */
+  .leaflet-container {
+    isolation: isolate;
+    z-index: 0 !important;
+  }
 }
