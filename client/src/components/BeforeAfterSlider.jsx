@@ -1,23 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
-import Spinner from './Spinner';
 
 /**
  * Interactive Before & After split comparison slider.
  * Lets citizens and officers drag a divider between the reported defect photo (Before)
  * and the officer's resolution proof photo (After).
  *
- * Includes integrated AI Resolution Verification status (via Groq Vision).
+ * The AI verdict on this evidence lives in the admin triage drawer, not here: it is advisory,
+ * costs a paid call, and only an admin acts on it.
  */
 export default function BeforeAfterSlider({
   beforeSrc,
   afterSrc,
-  aiVerification,
-  onRunVerification,
-  isVerifying = false,
   resolutionNote = '',
-  verifiedBy = null,
-  isStaff = false,
 }) {
   const [sliderPos, setSliderPos] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
@@ -60,103 +55,8 @@ export default function BeforeAfterSlider({
     };
   }, [isDragging, handleMouseMove, handleMouseUp, handleTouchMove]);
 
-  const hasAI = Boolean(aiVerification && (aiVerification.matchScore !== null || aiVerification.summary));
-  const isVerified = Boolean(aiVerification?.verified);
-  const isGroq = aiVerification?.provider === 'groq';
-  const flagged = hasAI && !isVerified && aiVerification.matchScore !== null;
-
-  // A vision model comparing two photos of the same street from different angles will often call
-  // it a mismatch. That is a signal for staff to check, not an accusation to put in front of the
-  // citizen. So citizens see the outcome, never the machine's reasoning or its score — and once an
-  // admin has approved the evidence, their decision settles it and the banner goes away entirely.
-  // matchScore null means no verdict at all — the key is missing, the quota is out, or an image
-  // could not be read. That is an operations problem; citizens should never be shown it.
-  const inconclusive = hasAI && aiVerification.matchScore === null;
-  const softened = !isStaff && flagged;
-  const hideBanner = !isStaff && (!hasAI || inconclusive || (flagged && Boolean(verifiedBy)));
-
-  // Determine banner theme based on verification status
-  let bannerClass = 'border-purple-200 bg-purple-50/40 text-purple-950';
-  let iconBgClass = 'bg-purple-600 text-white';
-  let badgeColorClass = 'bg-purple-100 text-purple-800';
-  let statusTitle = 'AI Resolution Verification';
-
-  if (hasAI) {
-    if (isVerified) {
-      bannerClass = 'border-emerald-200 bg-emerald-50/60 text-emerald-950';
-      iconBgClass = 'bg-emerald-600 text-white';
-      badgeColorClass = 'bg-emerald-100 text-emerald-800';
-      statusTitle = `AI Verified Resolution (${aiVerification.matchScore}% Match Score)`;
-    } else if (aiVerification.matchScore !== null) {
-      bannerClass = 'border-rose-300 bg-rose-50/70 text-rose-950';
-      iconBgClass = 'bg-rose-600 text-white';
-      badgeColorClass = 'bg-rose-100 text-rose-800';
-      statusTitle = `AI Flagged: Evidence Mismatch (${aiVerification.matchScore}% Match)`;
-    } else {
-      bannerClass = 'border-amber-200 bg-amber-50/60 text-amber-950';
-      iconBgClass = 'bg-amber-500 text-white';
-      badgeColorClass = 'bg-amber-100 text-amber-800';
-      statusTitle = 'AI Inspection Pending / Under Review';
-    }
-  }
-
-  if (softened) {
-    bannerClass = 'border-line bg-canvas text-ink';
-    iconBgClass = 'bg-slate-200 text-slate-700';
-    statusTitle = 'Evidence under municipal review';
-  }
-
   return (
     <div className="space-y-4">
-      {/* ── AI Verification Banner (staff always; citizens only when it says something useful) ── */}
-      {!hideBanner && (
-      <div className={`rounded-2xl border p-4 transition-all duration-300 ${bannerClass}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className={`grid size-9 place-items-center rounded-xl text-base shadow-sm ${iconBgClass}`}>
-              {softened ? '🔎' : hasAI ? (isVerified ? '✓' : (aiVerification?.matchScore !== null ? '⚠️' : '🤖')) : '🤖'}
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold leading-tight">
-                  {statusTitle}
-                </h3>
-                {hasAI && !softened && (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeColorClass}`}>
-                    {isGroq ? 'Groq Vision AI' : 'Rule Verified'}
-                  </span>
-                )}
-                {verifiedBy && (
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                    ✓ Admin Approved
-                  </span>
-                )}
-              </div>
-              <p className="mt-0.5 text-xs text-ink-muted leading-relaxed">
-                {softened
-                  ? 'An automated check could not confirm the repair from these photos. A municipal officer is reviewing the evidence.'
-                  : hasAI
-                    ? aiVerification.summary
-                    : 'Multi-modal AI vision inspection analyzes physical before-and-after change.'}
-              </p>
-            </div>
-          </div>
-
-          {isStaff && onRunVerification && (
-            <button
-              type="button"
-              onClick={onRunVerification}
-              disabled={isVerifying}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-purple-300 bg-white px-3 py-1 text-xs font-semibold text-purple-700 shadow-sm transition-all duration-200 hover:bg-purple-50 hover:border-purple-400 disabled:opacity-60 cursor-pointer"
-            >
-              {isVerifying ? <Spinner label="Analyzing…" /> : <Icon name="refresh" className="size-3.5" />}
-              <span>{hasAI && isGroq ? 'Re-Verify with AI' : 'Run AI Inspection'}</span>
-            </button>
-          )}
-        </div>
-      </div>
-      )}
-
       {/* ── Interactive Split Comparison Slider ── */}
       <div
         ref={containerRef}

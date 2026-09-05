@@ -121,6 +121,69 @@ function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
   );
 }
 
+// ── AI verdict on the officer's proof photos ──
+// Admin-only and advisory: a vision model comparing two photos of the same street from different
+// angles will often call it a mismatch, so this informs the approve/reject decision, never makes it.
+function AIProofCheck({ issue }) {
+  const [ai, setAi] = useState(issue.aiVerification || null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const hasBothPhotos = (issue.photos?.length || 0) > 0 && (issue.resolution?.evidence?.length || 0) > 0;
+  const score = ai?.matchScore;
+  const hasVerdict = ai && score !== null && score !== undefined;
+
+  async function run() {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await apiFetch(`/api/ai/issues/${issue._id}/verify-resolution?force=true`, { method: 'POST' });
+      setAi(res?.aiVerification || null);
+    } catch (e) {
+      setErr(e.message || 'AI check could not be completed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!hasBothPhotos) return null;
+
+  return (
+    <div className="rounded-lg border border-purple-200/70 bg-white/70 p-2.5 space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900">
+          AI proof check
+        </span>
+        <button
+          type="button"
+          onClick={run}
+          disabled={busy}
+          className="rounded-md border border-purple-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-purple-700 hover:bg-purple-50 disabled:opacity-50 cursor-pointer"
+        >
+          {busy ? 'Analysing…' : hasVerdict ? 'Re-run' : 'Run check'}
+        </button>
+      </div>
+
+      {err && <p className="text-[11px] font-medium text-rose-600">{err}</p>}
+
+      {hasVerdict ? (
+        <div className="space-y-1">
+          <p className={`text-[11px] font-bold ${ai.verified ? 'text-emerald-700' : 'text-amber-700'}`}>
+            {ai.verified ? '✓ Photos look consistent' : '⚠ Possible mismatch'} — {score}% match
+          </p>
+          <p className="text-[11px] leading-snug text-ink-muted">{ai.summary}</p>
+          <p className="text-[10px] text-ink-muted">Advisory only — your approval is what decides this issue.</p>
+        </div>
+      ) : (
+        <p className="text-[11px] text-ink-muted">
+          {ai?.summary || 'Not run yet. Compares the citizen photo against the officer proof.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Admin-Specific Actions based on issue state ──
 function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
   const [actionLoading, setActionLoading] = useState(false);
@@ -229,6 +292,7 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
           {issue.resolution?.note && (
             <p className="text-xs italic text-purple-800">Officer note: "{issue.resolution.note}"</p>
           )}
+          <AIProofCheck issue={issue} />
           {!showRejectForm ? (
             <div className="flex gap-2">
               <button

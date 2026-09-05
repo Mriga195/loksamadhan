@@ -66,7 +66,6 @@ export default function IssueDetail() {
   const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [showAdminRejectInput, setShowAdminRejectInput] = useState(false);
   const [showAttachModal, setShowAttachModal] = useState(false);
-  const [isVerifyingAI, setIsVerifyingAI] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,25 +197,6 @@ export default function IssueDetail() {
       setActionError(e.message);
     } finally {
       setAdminActionLoading(false);
-    }
-  }
-
-  // AI Resolution Verification trigger
-  async function handleRunAIVerification() {
-    if (!issue?._id || isVerifyingAI) return;
-    setIsVerifyingAI(true);
-    setActionError(null);
-    try {
-      const res = await apiFetch(`/api/ai/issues/${issue._id}/verify-resolution?force=true`, {
-        method: 'POST',
-      });
-      if (res?.aiVerification) {
-        setIssue(prev => ({ ...prev, aiVerification: res.aiVerification }));
-      }
-    } catch (e) {
-      setActionError(e.message || 'AI resolution verification failed.');
-    } finally {
-      setIsVerifyingAI(false);
     }
   }
 
@@ -628,12 +608,7 @@ export default function IssueDetail() {
                 <BeforeAfterSlider
                   beforeSrc={photos[0]}
                   afterSrc={resolutionPhotos[0]}
-                  aiVerification={issue.aiVerification}
-                  onRunVerification={handleRunAIVerification}
-                  isVerifying={isVerifyingAI}
                   resolutionNote={issue.resolution?.note}
-                  verifiedBy={issue.resolution?.verifiedBy}
-                  isStaff={isStaff}
                 />
               )}
 
