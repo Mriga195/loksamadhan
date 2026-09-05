@@ -17,6 +17,7 @@ export default function BeforeAfterSlider({
   isVerifying = false,
   resolutionNote = '',
   verifiedBy = null,
+  isStaff = false,
 }) {
   const [sliderPos, setSliderPos] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
@@ -62,6 +63,17 @@ export default function BeforeAfterSlider({
   const hasAI = Boolean(aiVerification && (aiVerification.matchScore !== null || aiVerification.summary));
   const isVerified = Boolean(aiVerification?.verified);
   const isGroq = aiVerification?.provider === 'groq';
+  const flagged = hasAI && !isVerified && aiVerification.matchScore !== null;
+
+  // A vision model comparing two photos of the same street from different angles will often call
+  // it a mismatch. That is a signal for staff to check, not an accusation to put in front of the
+  // citizen. So citizens see the outcome, never the machine's reasoning or its score — and once an
+  // admin has approved the evidence, their decision settles it and the banner goes away entirely.
+  // matchScore null means no verdict at all — the key is missing, the quota is out, or an image
+  // could not be read. That is an operations problem; citizens should never be shown it.
+  const inconclusive = hasAI && aiVerification.matchScore === null;
+  const softened = !isStaff && flagged;
+  const hideBanner = !isStaff && (!hasAI || inconclusive || (flagged && Boolean(verifiedBy)));
 
   // Determine banner theme based on verification status
   let bannerClass = 'border-purple-200 bg-purple-50/40 text-purple-950';
@@ -88,21 +100,28 @@ export default function BeforeAfterSlider({
     }
   }
 
+  if (softened) {
+    bannerClass = 'border-line bg-canvas text-ink';
+    iconBgClass = 'bg-slate-200 text-slate-700';
+    statusTitle = 'Evidence under municipal review';
+  }
+
   return (
     <div className="space-y-4">
-      {/* ── AI Verification Banner (if available or triggerable) ── */}
+      {/* ── AI Verification Banner (staff always; citizens only when it says something useful) ── */}
+      {!hideBanner && (
       <div className={`rounded-2xl border p-4 transition-all duration-300 ${bannerClass}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className={`grid size-9 place-items-center rounded-xl text-base shadow-sm ${iconBgClass}`}>
-              {hasAI ? (isVerified ? '✓' : (aiVerification?.matchScore !== null ? '⚠️' : '🤖')) : '🤖'}
+              {softened ? '🔎' : hasAI ? (isVerified ? '✓' : (aiVerification?.matchScore !== null ? '⚠️' : '🤖')) : '🤖'}
             </span>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold leading-tight">
                   {statusTitle}
                 </h3>
-                {hasAI && (
+                {hasAI && !softened && (
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeColorClass}`}>
                     {isGroq ? 'Groq Vision AI' : 'Rule Verified'}
                   </span>
@@ -114,14 +133,16 @@ export default function BeforeAfterSlider({
                 )}
               </div>
               <p className="mt-0.5 text-xs text-ink-muted leading-relaxed">
-                {hasAI
-                  ? aiVerification.summary
-                  : 'Multi-modal AI vision inspection analyzes physical before-and-after change.'}
+                {softened
+                  ? 'An automated check could not confirm the repair from these photos. A municipal officer is reviewing the evidence.'
+                  : hasAI
+                    ? aiVerification.summary
+                    : 'Multi-modal AI vision inspection analyzes physical before-and-after change.'}
               </p>
             </div>
           </div>
 
-          {onRunVerification && (
+          {isStaff && onRunVerification && (
             <button
               type="button"
               onClick={onRunVerification}
@@ -134,6 +155,7 @@ export default function BeforeAfterSlider({
           )}
         </div>
       </div>
+      )}
 
       {/* ── Interactive Split Comparison Slider ── */}
       <div

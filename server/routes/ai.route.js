@@ -30,7 +30,10 @@ router.post('/issues/:id/verify-resolution', auth(false), async (req, res, next)
     // Do not treat old heuristic/mock results as permanent cache when Groq key is available
     const isHeuristic = issue.aiVerification?.provider === 'heuristic';
     const isCached = issue.aiVerification && issue.aiVerification.verifiedAt && !isHeuristic;
-    const forceRefresh = req.query.force === 'true' || isHeuristic;
+    // force=true re-runs a paid vision call, so it is staff-only as documented above — otherwise
+    // any anonymous visitor could drain the Groq quota by reloading with the flag.
+    const isStaff = req.user?.role === 'officer' || req.user?.role === 'admin';
+    const forceRefresh = (req.query.force === 'true' && isStaff) || isHeuristic;
 
     if (isCached && !forceRefresh) {
       return res.json({

@@ -633,6 +633,7 @@ export default function IssueDetail() {
                   isVerifying={isVerifyingAI}
                   resolutionNote={issue.resolution?.note}
                   verifiedBy={issue.resolution?.verifiedBy}
+                  isStaff={isStaff}
                 />
               )}
 
