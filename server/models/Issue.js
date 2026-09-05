@@ -44,6 +44,16 @@ const issueSchema = new mongoose.Schema(
       adminNotes: { type: String, default: '' },
     },
 
+    // AI Resolution Verification (Before vs After photo analysis)
+    aiVerification: {
+      verified: { type: Boolean, default: null },
+      matchScore: { type: Number, default: null }, // 0 - 100
+      summary: { type: String, default: '' },
+      confidence: { type: String, default: null }, // 'High' | 'Medium' | 'Low'
+      verifiedAt: { type: Date, default: null },
+      provider: { type: String, default: null }, // 'groq' | 'heuristic'
+    },
+
     // Citizen satisfaction & final closure feedback
     citizenFeedback: {
       satisfied: { type: Boolean, default: null },
@@ -109,6 +119,7 @@ issueSchema.methods.toPublic = function () {
     priority: this.priority,
     status: this.status,
     resolution: this.resolution || null,
+    aiVerification: this.aiVerification || null,
     citizenFeedback: this.citizenFeedback || null,
     duplicateOf: this.duplicateOf,
     supporterCount: this.supporters ? this.supporters.length : 0,

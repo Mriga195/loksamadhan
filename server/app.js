@@ -28,6 +28,7 @@ app.use('/api/issues', require('./routes/issues'));
 app.use('/api/stats',  require('./routes/stats'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/translate', require('./routes/translate.route'));
+app.use('/api/ai',        require('./routes/ai.route'));
 
 // ── Global error handler ──
 app.use((err, _req, res, _next) =>

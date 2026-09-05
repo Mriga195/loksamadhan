@@ -51,6 +51,7 @@ function publicIssue(issue, viewerId = null, extra = {}) {
       : null,
     priority: issue.priority || null,
     resolution: issue.resolution || null,
+    aiVerification: issue.aiVerification || null,
     citizenFeedback: issue.citizenFeedback || null,
     duplicateOf: issue.duplicateOf || null,
     duplicateCount: extra.duplicateCount ?? 0,
