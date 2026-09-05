@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Spinner from '../components/Spinner';
 import AuthShell, { PasswordField } from '../components/AuthShell';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 import { field, primaryBtn } from '../formStyles';
 
 // Citizen sign-up only. There is deliberately no role selector: routes/auth.js hardcodes
@@ -21,7 +22,7 @@ const POINTS = [
 ];
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,6 +50,16 @@ export default function Register() {
     }
   }
 
+  async function handleGoogleSuccess(credential) {
+    setError(null);
+    try {
+      await loginWithGoogle(credential);
+      navigate(from, { replace: true, state: draft ? { draft } : undefined });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <AuthShell
       tone="green"
@@ -62,12 +73,26 @@ export default function Register() {
         An account lets you report issues and support reports filed by others.
       </p>
 
-      <form onSubmit={submit} className="mt-6">
-        {error && (
-          <p role="alert" className="mb-4 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
-            {error}
-          </p>
-        )}
+      {error && (
+        <p role="alert" className="mt-4 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
+          {error}
+        </p>
+      )}
+
+      <div className="mt-6">
+        <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signup_with" onError={(err) => setError(err.message)} />
+      </div>
+
+      <div className="relative my-6 text-center">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-line" />
+        </div>
+        <span className="relative bg-surface px-3 text-xs uppercase tracking-wider text-ink-muted">
+          Or register with email
+        </span>
+      </div>
+
+      <form onSubmit={submit}>
 
         <label className="block text-sm font-medium">
           Full name
