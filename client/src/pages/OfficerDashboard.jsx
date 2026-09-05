@@ -23,7 +23,9 @@ const DEPARTMENTS = [
 
 const OVERDUE_DAYS = 7;
 const isOverdue = issue =>
-  issue.status !== 'Resolved' && Date.now() - new Date(issue.createdAt) > OVERDUE_DAYS * 86400000;
+  issue.status !== 'Resolved' &&
+  issue.status !== 'Closed' &&
+  Date.now() - new Date(issue.createdAt) > OVERDUE_DAYS * 86400000;
 
 const PER_PAGE = 10;
 

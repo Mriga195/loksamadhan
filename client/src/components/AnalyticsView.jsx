@@ -16,10 +16,10 @@ export default function AnalyticsView({ issues = [] }) {
     return DEPARTMENTS.map(dept => {
       const deptIssues = issues.filter(i => i.department === dept);
       const total = deptIssues.length;
-      const resolved = deptIssues.filter(i => i.status === 'Resolved').length;
+      const resolved = deptIssues.filter(i => i.status === 'Resolved' || i.status === 'Closed').length;
       const inProgress = deptIssues.filter(i => i.status === 'In Progress' || i.status === 'Acknowledged').length;
       const pending = deptIssues.filter(i => i.status === 'Submitted').length;
-      const overdue = deptIssues.filter(i => i.status !== 'Resolved' && Date.now() - new Date(i.createdAt) > 7 * 86400000).length;
+      const overdue = deptIssues.filter(i => i.status !== 'Resolved' && i.status !== 'Closed' && Date.now() - new Date(i.createdAt) > 7 * 86400000).length;
       const rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
 
       return { dept, total, resolved, inProgress, pending, overdue, rate };
@@ -44,9 +44,9 @@ export default function AnalyticsView({ issues = [] }) {
 
   // Overall metrics
   const totalCount = issues.length;
-  const resolvedCount = issues.filter(i => i.status === 'Resolved').length;
+  const resolvedCount = issues.filter(i => i.status === 'Resolved' || i.status === 'Closed').length;
   const overallRate = totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 0;
-  const overdueCount = issues.filter(i => i.status !== 'Resolved' && Date.now() - new Date(i.createdAt) > 7 * 86400000).length;
+  const overdueCount = issues.filter(i => i.status !== 'Resolved' && i.status !== 'Closed' && Date.now() - new Date(i.createdAt) > 7 * 86400000).length;
 
   return (
     <div className="space-y-6">

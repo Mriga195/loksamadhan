@@ -18,7 +18,7 @@ function statusAt(issue, t) {
 }
 
 function resolvedAt(issue) {
-  const entry = (issue.statusHistory || []).filter(h => h.status === 'Resolved').pop();
+  const entry = (issue.statusHistory || []).filter(h => h.status === 'Resolved' || h.status === 'Closed').pop();
   return entry ? new Date(entry.at).getTime() : null;
 }
 
@@ -90,7 +90,7 @@ router.get('/', auth(false), async (req, res, next) => {
 
     const openSeries = series(t => allIssues.filter(i => {
       const s = statusAt(i, t);
-      return s && s !== 'Resolved';
+      return s && s !== 'Resolved' && s !== 'Closed';
     }).length);
 
     const progressSeries = series(t => allIssues.filter(i => statusAt(i, t) === 'In Progress').length);
