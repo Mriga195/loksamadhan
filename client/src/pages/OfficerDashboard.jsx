@@ -68,7 +68,7 @@ export default function OfficerDashboard() {
   const [error, setError] = useState(null);
 
   // Queue state
-  const [tab, setTab] = useState(isAdmin ? 'all' : 'issues');
+  const [tab, setTab] = useState('my_allotted'); // will be corrected by sync effect
   const [deptFilter, setDeptFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,12 +78,13 @@ export default function OfficerDashboard() {
 
   // Sync tab default once auth state / role loads
   useEffect(() => {
-    if (!isAdmin && (tab === 'all' || tab === 'unassigned')) {
-      setTab('issues');
-    } else if (isAdmin && (tab === 'issues' || tab === 'submitted' || tab === 'in_progress' || tab === 'resolved')) {
-      setTab('all');
+    if (!user) return;
+    if (!isAdmin && (tab === 'all' || tab === 'unassigned' || tab === 'pending_verification' && false)) {
+      setTab('my_allotted');
+    } else if (isAdmin && (tab === 'my_allotted' || tab === 'issues')) {
+      setTab('unassigned'); // admin sees unassigned first — that's the primary triage job
     }
-  }, [isAdmin, tab]);
+  }, [isAdmin, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async (isManualRefresh = false) => {
     if (!user || (user.role !== 'officer' && user.role !== 'admin')) return;
