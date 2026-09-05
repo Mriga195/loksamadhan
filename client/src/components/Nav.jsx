@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { useLang } from '../LangContext';
 import Avatar from './Avatar';
 import Icon from './Icon';
+import LangToggle from './LangToggle';
 import Logo from './Logo';
 
 // Site header. Routes match router.jsx exactly: '/' (landing), '/feed', '/departments',
@@ -37,13 +39,34 @@ const outline = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-
   ' border-line bg-surface px-4 text-sm font-medium text-ink transition-colors duration-200' +
   ' hover:bg-canvas hover:border-slate-300';
 
+// English originals — used as initial state and as fallback keys.
+const EN = {
+  feed: 'Feed',
+  departments: 'Departments',
+  dashboard: 'Dashboard',
+  report: 'Report an Issue',
+  login: 'Log in',
+  signup: 'Sign up',
+  logout: 'Log out',
+};
+
 export default function Nav() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { user, loading, logout } = useAuth();
+  const { lang, translate } = useLang();
   const isStaff = user?.role === 'officer' || user?.role === 'admin';
 
   const [open, setOpen] = useState(false);
+  const [t, setT] = useState(EN);
+
+  // Translate nav strings whenever the language changes.
+  useEffect(() => {
+    if (lang === 'en') { setT(EN); return; }
+    translate(Object.values(EN)).then((vals) => {
+      setT(Object.fromEntries(Object.keys(EN).map((k, i) => [k, vals[i]])));
+    });
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Any navigation closes the panel — otherwise tapping "Feed" leaves the menu covering it.
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -66,34 +89,35 @@ export default function Nav() {
     <>
       <NavLink to="/feed" className={item}>
         <Icon name="home" className="size-[18px]" />
-        Feed
+        {t.feed}
       </NavLink>
 
       <NavLink to="/departments" className={item}>
         <Icon name="building" className="size-[18px]" />
-        Departments
+        {t.departments}
       </NavLink>
 
       {isStaff && !loading && (
         <NavLink to="/dashboard" className={item}>
           <Icon name="dashboard" className="size-[18px]" />
-          Dashboard
+          {t.dashboard}
         </NavLink>
       )}
     </>
   );
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-30 px-4 pt-4">
+    <header className="sticky top-0 z-30 px-4 pt-4">
       <nav
         aria-label="Main"
-        className="pointer-events-auto mx-auto max-w-7xl rounded-2xl border border-line bg-surface px-3 py-2
+        className="mx-auto max-w-7xl rounded-2xl border border-line bg-surface px-3 py-2
           shadow-[0_2px_12px_rgba(15,23,42,0.06)] md:px-4 md:py-2.5"
       >
         <div className="flex items-center gap-2">
-          <Link to="/" aria-label="LokSamadhan — home"
-            className="inline-flex min-h-11 items-center md:mr-2">
-            <Logo className="size-9 md:size-10" />
+          <Link to="/" className="inline-flex min-h-11 items-center gap-2 text-base font-bold
+            md:mr-2 md:text-lg">
+            <Logo className="size-8 md:size-9" />
+            <span className="text-brand-600">Lok</span>Samadhan
           </Link>
 
           <div className="hidden items-center gap-2 md:flex">{links}</div>
@@ -106,7 +130,7 @@ export default function Nav() {
                 {!isStaff && (
                   <Link to="/report" className={cta}>
                     <Icon name="plus" className="size-[18px]" />
-                    Report an Issue
+                    {t.report}
                   </Link>
                 )}
 
@@ -119,7 +143,7 @@ export default function Nav() {
                   </span>
                 </Link>
 
-                <button type="button" onClick={handleLogout} title="Log out" aria-label="Log out"
+                <button type="button" onClick={handleLogout} title={t.logout} aria-label={t.logout}
                   className="cursor-pointer rounded-full p-2 text-ink-muted transition-colors
                     duration-200 hover:bg-canvas hover:text-ink">
                   <Icon name="logout" className="size-[18px]" />
@@ -129,12 +153,14 @@ export default function Nav() {
               <>
                 <Link to="/report" className={cta}>
                   <Icon name="plus" className="size-[18px]" />
-                  Report an Issue
+                  {t.report}
                 </Link>
-                <NavLink to="/login" className={item}>Log in</NavLink>
-                <Link to="/register" className={outline}>Sign up</Link>
+                <NavLink to="/login" className={item}>{t.login}</NavLink>
+                <Link to="/register" className={outline}>{t.signup}</Link>
               </>
             )}
+
+            <LangToggle />
           </div>
 
           <button
@@ -160,7 +186,7 @@ export default function Nav() {
                   {!isStaff && (
                     <Link to="/report" className={cta}>
                       <Icon name="plus" className="size-[18px]" />
-                      Report an Issue
+                      {t.report}
                     </Link>
                   )}
 
@@ -177,19 +203,24 @@ export default function Nav() {
                     className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2
                       text-sm font-medium text-ink-muted transition-colors hover:bg-canvas hover:text-ink">
                     <Icon name="logout" className="size-[18px]" />
-                    Log out
+                    {t.logout}
                   </button>
                 </>
               ) : (
                 <>
                   <Link to="/report" className={cta}>
                     <Icon name="plus" className="size-[18px]" />
-                    Report an Issue
+                    {t.report}
                   </Link>
-                  <Link to="/register" className={outline}>Sign up</Link>
-                  <NavLink to="/login" className={item}>Log in</NavLink>
+                  <Link to="/register" className={outline}>{t.signup}</Link>
+                  <NavLink to="/login" className={item}>{t.login}</NavLink>
                 </>
               )}
+
+              {/* Language toggle in mobile menu */}
+              <div className="pt-1">
+                <LangToggle />
+              </div>
             </div>
           </div>
         )}
