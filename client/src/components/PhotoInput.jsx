@@ -48,7 +48,7 @@ export default function PhotoInput({ onPhotosChange }) {
     <div>
       {error && <p role="alert" className="mb-2 text-xs font-medium text-rejected-600">{error}</p>}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {previews.map((url, i) => (
           <div key={url} className="relative aspect-[4/3] overflow-hidden rounded-lg border border-line">
             <img src={url} alt={`Photo ${i + 1}`} className="size-full object-cover" />
