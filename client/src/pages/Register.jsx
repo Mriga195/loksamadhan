@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { useLang } from '../LangContext';
 import Spinner from '../components/Spinner';
 import AuthShell, { PasswordField } from '../components/AuthShell';
 import GoogleAuthButton from '../components/GoogleAuthButton';
@@ -15,18 +16,47 @@ import { field, primaryBtn } from '../formStyles';
 // so the citizen finds out before a round trip.
 const MIN_PASSWORD = 6;
 
-const POINTS = [
+const POINTS_EN = [
   { icon: 'sparkles', title: 'Make a difference', body: 'Your reports help improve public services.' },
-  { icon: 'chart', title: 'Track progress', body: 'Stay informed about the status of your reports.' },
-  { icon: 'shield', title: 'Secure & private', body: 'We protect your information and respect your privacy.' },
+  { icon: 'chart',    title: 'Track progress',    body: 'Stay informed about the status of your reports.' },
+  { icon: 'shield',   title: 'Secure & private',  body: 'We protect your information and respect your privacy.' },
 ];
+
+const EN = {
+  heading: 'Create an account',
+  blurb: 'Join LokSamadhan and help build a better, safer community.',
+  title: 'Create an account',
+  sub: 'An account lets you report issues and support reports filed by others.',
+  nameLabel: 'Full name',
+  emailLabel: 'Email',
+  passwordLabel: 'Password',
+  passwordHint: 'At least 6 characters.',
+  submit: 'Sign up',
+  submitting: 'Creating account…',
+  alreadyRegistered: 'Already registered?',
+  logIn: 'Log in',
+};
 
 export default function Register() {
   const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { lang, translate } = useLang();
+  const [t, setT] = useState(EN);
+  const [points, setPoints] = useState(POINTS_EN);
 
-  // Arrives when someone bounced off the report form and chose to sign up instead of log in.
+  useEffect(() => {
+    if (lang === 'en') { setT(EN); setPoints(POINTS_EN); return; }
+    const uiStrings = Object.values(EN);
+    const pointStrings = POINTS_EN.flatMap(p => [p.title, p.body]);
+    translate([...uiStrings, ...pointStrings]).then((vals) => {
+      const uiVals = vals.slice(0, uiStrings.length);
+      const ptVals = vals.slice(uiStrings.length);
+      setT(Object.fromEntries(Object.keys(EN).map((k, i) => [k, uiVals[i]])));
+      setPoints(POINTS_EN.map((p, i) => ({ ...p, title: ptVals[i * 2], body: ptVals[i * 2 + 1] })));
+    });
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const from = location.state?.from || '/';
   const draft = location.state?.draft;
 
@@ -45,7 +75,7 @@ export default function Register() {
       await register(form.name.trim(), form.email.trim(), form.password);
       navigate(from, { replace: true, state: draft ? { draft } : undefined });
     } catch (err) {
-      setError(err.message);          // e.g. "Email already registered", verbatim
+      setError(err.message);
       setPending(false);
     }
   }
@@ -61,17 +91,9 @@ export default function Register() {
   }
 
   return (
-    <AuthShell
-      tone="green"
-      icon="userPlus"
-      heading="Create an account"
-      blurb="Join LokSamadhan and help build a better, safer community."
-      points={POINTS}
-    >
-      <h1 className="text-2xl font-semibold">Create an account</h1>
-      <p className="mt-1 text-sm text-ink-muted">
-        An account lets you report issues and support reports filed by others.
-      </p>
+    <AuthShell tone="green" icon="userPlus" heading={t.heading} blurb={t.blurb} points={points}>
+      <h1 className="text-2xl font-semibold">{t.title}</h1>
+      <p className="mt-1 text-sm text-ink-muted">{t.sub}</p>
 
       {error && (
         <p role="alert" className="mt-4 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
@@ -95,45 +117,29 @@ export default function Register() {
       <form onSubmit={submit}>
 
         <label className="block text-sm font-medium">
-          Full name
-          <input
-            type="text" autoComplete="name" required
-            className={`${field} mt-1`} value={form.name} onChange={set('name')}
-          />
+          {t.nameLabel}
+          <input type="text" autoComplete="name" required
+            className={`${field} mt-1`} value={form.name} onChange={set('name')} />
         </label>
 
         <label className="mt-4 block text-sm font-medium">
-          Email
-          <input
-            type="email" autoComplete="email" required
-            className={`${field} mt-1`} value={form.email} onChange={set('email')}
-          />
+          {t.emailLabel}
+          <input type="email" autoComplete="email" required
+            className={`${field} mt-1`} value={form.email} onChange={set('email')} />
         </label>
 
-        {/* Hint text always occupies its slot, so turning it into an error does not shift
-            the button down the page. */}
-        <PasswordField
-          label="Password"
-          autoComplete="new-password"
-          minLength={MIN_PASSWORD}
-          value={form.password}
-          onChange={set('password')}
-          aria-describedby="pw-hint"
-          hint={`At least ${MIN_PASSWORD} characters.`}
-          hintError={tooShort}
-        />
+        <PasswordField label={t.passwordLabel} autoComplete="new-password"
+          minLength={MIN_PASSWORD} value={form.password} onChange={set('password')}
+          aria-describedby="pw-hint" hint={t.passwordHint} hintError={tooShort} />
 
-        <button
-          type="submit"
-          disabled={pending || tooShort}
-          className={`${primaryBtn} mt-6 w-full`}
-        >
+        <button type="submit" disabled={pending || tooShort} className={`${primaryBtn} mt-6 w-full`}>
           {pending && <Spinner label="Creating account" />}
-          {pending ? 'Creating account…' : 'Sign up'}
+          {pending ? t.submitting : t.submit}
         </button>
 
         <p className="mt-4 text-center text-sm text-ink-muted">
-          Already registered? <Link to="/login" state={location.state} className="text-brand-600 underline">Log in</Link>
+          {t.alreadyRegistered}{' '}
+          <Link to="/login" state={location.state} className="text-brand-600 underline">{t.logIn}</Link>
         </p>
       </form>
     </AuthShell>

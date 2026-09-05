@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api';
+import { useLang } from '../LangContext';
 import Icon from '../components/Icon';
-import Logo from '../components/Logo';
 import { CityScene, ReportScene, ResolvedScene, ShieldScene, TrackScene } from '../components/Illustrations';
 
 // Public landing page at '/'. The feed itself lives at '/feed' — this page's job is to explain
@@ -17,30 +17,49 @@ import { CityScene, ReportScene, ResolvedScene, ShieldScene, TrackScene } from '
 // Each stat keeps the colour its status already has in StatusPill (the tokens in index.css),
 // so a status never means one colour here and another in the feed.
 
-// Literal class strings, both halves — Tailwind cannot see `bg-${key}-50`, same reason
-// StatusPill spells its map out.
-const STATS = [
-  { label: 'Total reports', key: 'total', icon: 'clipboard', tint: 'bg-brand-50 text-brand-600', ink: 'text-brand-600' },
-  { label: 'Submitted', key: 'submitted', icon: 'send', tint: 'bg-submitted-50 text-submitted-600', ink: 'text-submitted-600' },
-  { label: 'Acknowledged', key: 'acknowledged', icon: 'clock', tint: 'bg-acknowledged-50 text-acknowledged-600', ink: 'text-acknowledged-600' },
-  { label: 'In Progress', key: 'inProgress', icon: 'gear', tint: 'bg-progress-50 text-progress-600', ink: 'text-progress-600' },
-  { label: 'Resolved', key: 'resolved', icon: 'check', tint: 'bg-resolved-50 text-resolved-600', ink: 'text-resolved-600' },
+// Literal class strings — Tailwind cannot see `bg-${key}-50`, same reason StatusPill spells its map out.
+const STATS_META = [
+  { key: 'total',        icon: 'clipboard', tint: 'bg-brand-50 text-brand-600',              ink: 'text-brand-600' },
+  { key: 'submitted',    icon: 'send',      tint: 'bg-submitted-50 text-submitted-600',       ink: 'text-submitted-600' },
+  { key: 'acknowledged', icon: 'clock',     tint: 'bg-acknowledged-50 text-acknowledged-600', ink: 'text-acknowledged-600' },
+  { key: 'inProgress',   icon: 'gear',      tint: 'bg-progress-50 text-progress-600',         ink: 'text-progress-600' },
+  { key: 'resolved',     icon: 'check',     tint: 'bg-resolved-50 text-resolved-600',         ink: 'text-resolved-600' },
 ];
 
-const STEPS = [
-  { title: 'Report', Scene: ReportScene, body: 'Pin the location, add a photo, describe the issue. Takes under a minute.' },
-  { title: 'Track', Scene: TrackScene, body: 'Every report is public. Watch it move from Submitted to Resolved.' },
-  { title: 'Resolved', Scene: ResolvedScene, body: 'Closed only with a note or photo evidence from the department — never silently.' },
-];
-
-const TRUST = [
-  'Similar reports are linked to the original, never deleted — your "+1" still counts.',
-  'A report can only be marked Resolved with a note or photo evidence attached.',
-  'Your name and contact details are never shown in a public report.',
-];
+const EN = {
+  heroTitle: 'Report a civic issue. Watch it get fixed — in public.',
+  heroSub: 'Potholes, broken streetlights, uncollected garbage, water leaks. File it once, see it on the map, and follow every status change your municipality makes.',
+  ctaReport: 'Report an Issue',
+  ctaFeed: 'View public feed',
+  howItWorks: 'How it works',
+  stepReportTitle: 'Report',
+  stepReportBody: 'Pin the location, add a photo, describe the issue. Takes under a minute.',
+  stepTrackTitle: 'Track',
+  stepTrackBody: 'Every report is public. Watch it move from Submitted to Resolved.',
+  stepResolvedTitle: 'Resolved',
+  stepResolvedBody: 'Closed only with a note or photo evidence from the department — never silently.',
+  promise: 'What we promise',
+  trust1: 'Similar reports are linked to the original, never deleted — your "+1" still counts.',
+  trust2: 'A report can only be marked Resolved with a note or photo evidence attached.',
+  trust3: 'Your name and contact details are never shown in a public report.',
+  statTotal: 'Total reports',
+  statSubmitted: 'Submitted',
+  statAcknowledged: 'Acknowledged',
+  statInProgress: 'In Progress',
+  statResolved: 'Resolved',
+};
 
 export default function Home() {
+  const { lang, translate } = useLang();
   const [counts, setCounts] = useState(null);
+  const [t, setT] = useState(EN);
+
+  useEffect(() => {
+    if (lang === 'en') { setT(EN); return; }
+    translate(Object.values(EN)).then((vals) => {
+      setT(Object.fromEntries(Object.keys(EN).map((k, i) => [k, vals[i]])));
+    });
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let stale = false;
@@ -59,34 +78,30 @@ export default function Home() {
         inProgress: inProgress.total,
         resolved: resolved.total,
       });
-    }).catch(() => {});   // A landing page with no numbers still works — just skip the strip.
+    }).catch(() => {});
     return () => { stale = true; };
   }, []);
 
+  const statLabels = [t.statTotal, t.statSubmitted, t.statAcknowledged, t.statInProgress, t.statResolved];
+
+  const steps = [
+    { title: t.stepReportTitle,   body: t.stepReportBody,   Scene: ReportScene },
+    { title: t.stepTrackTitle,    body: t.stepTrackBody,    Scene: TrackScene },
+    { title: t.stepResolvedTitle, body: t.stepResolvedBody, Scene: ResolvedScene },
+  ];
+
+  const trust = [t.trust1, t.trust2, t.trust3];
+
   return (
     <main>
-      {/* Hero — copy over a city skyline, with the live counters resting on top of it */}
-      <section className="relative isolate -mt-20 overflow-hidden bg-gradient-to-b
-        from-brand-50 via-brand-50/50 to-canvas pt-20">
+      <section className="relative isolate overflow-hidden bg-gradient-to-b from-brand-50 via-brand-50/50 to-canvas">
         <CityScene className="absolute inset-x-0 bottom-0 -z-10 h-[300px] w-full" />
 
         <div className="mx-auto max-w-3xl px-4 pt-14 text-center sm:pt-20">
-          {/* The wordmark lives here, not in the nav: this is the one place a first-time
-              visitor needs to be told what the site is called. */}
-          <p className="flex items-center justify-center gap-3 text-2xl font-bold tracking-tight
-            sm:text-3xl">
-            <Logo className="size-12 sm:size-14" />
-            <span><span className="text-brand-600">Lok</span>Samadhan</span>
-          </p>
-
-          <h1 className="mt-6 text-3xl font-extrabold leading-tight tracking-tight sm:text-[2.5rem]">
-            Report a civic issue.<br className="hidden sm:block" />{' '}
-            Watch it get fixed — <span className="text-brand-600">in public.</span>
+          <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-[2.5rem]">
+            {t.heroTitle}
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-ink-muted">
-            Potholes, broken streetlights, uncollected garbage, water leaks. File it once,
-            see it on the map, and follow every status change your municipality makes.
-          </p>
+          <p className="mx-auto mt-5 max-w-xl text-ink-muted">{t.heroSub}</p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
             <Link to="/report"
@@ -94,14 +109,14 @@ export default function Home() {
                 bg-brand-600 px-6 text-sm font-medium text-white shadow-sm transition-colors
                 duration-200 hover:bg-brand-700 sm:w-auto">
               <Icon name="plus" className="size-5" />
-              Report an Issue
+              {t.ctaReport}
             </Link>
             <Link to="/feed"
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg
                 border border-line bg-surface px-6 text-sm font-medium shadow-sm
                 transition-colors duration-200 hover:bg-canvas sm:w-auto">
               <Icon name="clipboard" className="size-5" />
-              View public feed
+              {t.ctaFeed}
             </Link>
           </div>
         </div>
@@ -111,12 +126,12 @@ export default function Home() {
             <dl className="grid grid-cols-2 gap-y-6 rounded-2xl border border-line bg-surface
               p-6 shadow-[0_10px_40px_rgba(15,23,42,0.08)] sm:grid-cols-5 sm:gap-0
               sm:divide-x sm:divide-line">
-              {STATS.map(({ label, key, icon, tint, ink }) => (
+              {STATS_META.map(({ key, icon, tint, ink }, idx) => (
                 <div key={key} className="flex flex-col items-center gap-2 px-2 text-center">
                   <span className={`grid size-11 place-items-center rounded-full ${tint}`}>
                     <Icon name={icon} />
                   </span>
-                  <dt className="text-xs text-ink-muted">{label}</dt>
+                  <dt className="text-xs text-ink-muted">{statLabels[idx]}</dt>
                   <dd className={`text-2xl font-bold ${ink}`}>{counts[key]}</dd>
                 </div>
               ))}
@@ -125,13 +140,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How it works */}
       <section className="mx-auto max-w-7xl px-4 py-16">
-        <h2 className="text-center text-xl font-semibold">How it works</h2>
+        <h2 className="text-center text-xl font-semibold">{t.howItWorks}</h2>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
-          {STEPS.map(({ title, body, Scene }, i) => (
-            <div key={title}
+          {steps.map(({ title, body, Scene }, i) => (
+            <div key={i}
               className="relative rounded-2xl border border-line bg-surface p-6 shadow-sm">
               <span className="absolute left-6 top-6 z-10 grid size-8 place-items-center
                 rounded-full bg-brand-600 text-sm font-semibold text-white">
@@ -146,8 +160,7 @@ export default function Home() {
               <h3 className="mt-5 font-semibold">{title}</h3>
               <p className="mt-2 text-sm text-ink-muted">{body}</p>
 
-              {/* Dotted run between cards — decorative, so it stops at the last one */}
-              {i < STEPS.length - 1 && (
+              {i < steps.length - 1 && (
                 <span aria-hidden="true"
                   className="absolute -right-6 top-1/2 hidden w-6 border-t-2 border-dashed
                     border-brand-200 sm:block" />
@@ -157,17 +170,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Trust / hard rules, in plain language */}
       <section className="mx-auto max-w-7xl px-4 pb-20">
         <div className="grid items-center gap-8 rounded-2xl border border-line
           bg-gradient-to-r from-resolved-50 to-surface p-8 sm:grid-cols-[220px_1fr]">
           <ShieldScene className="mx-auto h-40 w-auto" />
 
           <div>
-            <h2 className="text-xl font-semibold">What we promise</h2>
+            <h2 className="text-xl font-semibold">{t.promise}</h2>
             <ul className="mt-5 space-y-4">
-              {TRUST.map(line => (
-                <li key={line} className="flex items-start gap-3 text-sm text-ink-muted">
+              {trust.map((line, i) => (
+                <li key={i} className="flex items-start gap-3 text-sm text-ink-muted">
                   <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full
                     bg-resolved-600 text-white">
                     <Icon name="tick" className="size-3.5" />
