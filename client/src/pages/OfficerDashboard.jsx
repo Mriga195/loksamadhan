@@ -109,7 +109,7 @@ export default function OfficerDashboard() {
   // Filter predicates
   const TABS = useMemo(() => ({
     all: () => true,
-    unassigned: i => !i.department,
+    unassigned: i => (!i.department || !i.assignedOfficer) && i.status !== 'Closed' && i.status !== 'Resolved',
     pending_verification: i => i.status === 'Pending Verification',
     unsatisfied: i => i.status === 'Unsatisfied',
     my_allotted: i => i.assignedOfficer && String(i.assignedOfficer?._id || i.assignedOfficer) === String(user?._id),
@@ -191,6 +191,7 @@ export default function OfficerDashboard() {
     ? [
         ['all', 'All Issues'],
         ['unassigned', 'Unassigned'],
+        ['in_progress', 'In Progress'],
         ['pending_verification', 'Needs Verification'],
         ['unsatisfied', 'Citizen Unsatisfied'],
         ['resolved', 'Resolved'],
