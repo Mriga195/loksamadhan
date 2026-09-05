@@ -263,9 +263,8 @@ router.get('/:id', auth(false), ah(async (req, res) => {
 router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCloud, ah(async (req, res) => {
   const title = String(req.body.title ?? '').trim();
   const description = String(req.body.description ?? '').trim();
-  const { category } = req.body;
-  const address = String(req.body.address ?? '').trim();
-  const area = String(req.body.area ?? '').trim();
+  let address = String(req.body.address ?? '').trim();
+  let area = String(req.body.area ?? '').trim();
 
   if (title.length < 5 || title.length > 120) return bad(res, 'Title must be 5–120 characters.');
   if (description.length < 10 || description.length > 2000) return bad(res, 'Description must be 10–2000 characters.');
@@ -274,6 +273,35 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
   const lng = Number(req.body.lng);
   const lat = Number(req.body.lat);
   if (!validLngLat(lng, lat)) return bad(res, 'Valid lng and lat are required.');
+
+  // Fallback: If address not provided by client, resolve location according to pin
+  if (!address) {
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { 'User-Agent': 'LokSamadhanCivicApp/1.0', 'Accept-Language': 'en' }, signal: AbortSignal.timeout(3000) }
+      );
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        const addr = geoData.address || {};
+        const street = addr.road || addr.street || addr.footway || '';
+        const neighbourhood = addr.suburb || addr.neighbourhood || addr.residential || '';
+        const city = addr.city || addr.town || addr.village || 'Tezpur';
+        const state = addr.state || 'Assam';
+        const parts = [street, neighbourhood, city, state].filter(Boolean);
+        address = parts.join(', ') || geoData.display_name || 'Tezpur, Assam';
+        if (!area) area = neighbourhood || city || 'Tezpur';
+      }
+    } catch {
+      if (!address) address = 'Tezpur, Assam';
+      if (!area) area = 'Tezpur';
+    }
+  }
+
+  if (!area) {
+    const parts = address.split(',').map(s => s.trim()).filter(Boolean);
+    area = parts.length > 1 ? parts[parts.length - 2] : (parts[0] || 'Tezpur');
+  }
 
   // ── Smart Duplicate Detection: auto-group if same category within 1 km ──
   // Only link to a root issue that is still open (not Closed/Resolved)
