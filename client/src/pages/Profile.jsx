@@ -7,7 +7,6 @@ import Icon from '../components/Icon';
 import EmptyState from '../components/EmptyState';
 import StatusPill from '../components/StatusPill';
 import { timeAgo } from '../components/IssueCard';
-import { CityScene } from '../components/Illustrations';
 import Spinner, { Skeleton } from '../components/Spinner';
 import { PasswordField } from '../components/AuthShell';
 import { field, primaryBtn } from '../formStyles';
@@ -191,14 +190,18 @@ export default function Profile() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
-      {/* ── Header: skyline banner, identity sitting on it ── */}
-      <section className="overflow-hidden rounded-card border border-line bg-surface shadow-sm">
-        <div className="relative h-32 bg-gradient-to-b from-brand-100 to-brand-50 sm:h-40">
-          <CityScene className="absolute inset-x-0 bottom-0 h-full w-full" />
-        </div>
+      {/* ── Header: the skyline is the whole card, identity sits on top of it ── */}
+      <section className="relative overflow-hidden rounded-card border border-line
+        bg-gradient-to-b from-brand-100 to-brand-50 shadow-sm">
+        <img src="/profile-banner.webp" alt="" aria-hidden="true"
+          className="absolute inset-0 size-full object-cover object-center" />
+        {/* The illustration is pale, but not uniformly: this keeps the name and the meta row
+            on an even ground instead of letting a rooftop run through them. */}
+        <div aria-hidden="true"
+          className="absolute inset-0 bg-gradient-to-t from-surface/95 via-surface/70 to-surface/25" />
 
-        <div className="px-5 pb-5 sm:px-6 sm:pb-6">
-          <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
+        <div className="relative px-5 py-6 sm:px-6 sm:py-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-end gap-4">
               <span className="rounded-full bg-surface p-1 shadow-sm ring-4 ring-surface">
                 <Avatar name={user.name} className="size-20 text-2xl font-bold sm:size-24" />
@@ -223,8 +226,8 @@ export default function Profile() {
             )}
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-line
-            pt-4 text-xs text-ink-muted">
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 border-t
+            border-line/70 pt-4 text-xs text-ink-muted">
             <span className="flex items-center gap-1.5">
               <Icon name="clock" className="size-4" />
               Member since {memberDate}

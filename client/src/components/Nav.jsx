@@ -118,11 +118,15 @@ export default function Nav() {
             md:mr-2 md:text-lg">
             <Logo className="size-8 md:size-9" />
             <span className="text-brand-600">Lok</span>Samadhan
+        <div className="flex items-center gap-2 md:grid md:grid-cols-[1fr_auto_1fr]">
+          <Link to="/" aria-label="LokSamadhan — home"
+            className="inline-flex min-h-11 items-center md:mr-2">
+            <Logo className="size-9 md:size-10" />
           </Link>
 
-          <div className="hidden items-center gap-2 md:flex">{links}</div>
+          <div className="hidden items-center gap-2 md:flex md:justify-self-center">{links}</div>
 
-          <div className="ml-auto hidden items-center gap-2 md:flex">
+          <div className="ml-auto hidden items-center gap-2 md:flex md:justify-self-end">
             {/* While the token is being validated, render nothing here rather than flashing
                 "Log in" at a user who is already signed in. The space is held by the row. */}
             {loading ? null : user ? (

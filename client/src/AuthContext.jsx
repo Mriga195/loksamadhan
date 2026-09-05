@@ -47,6 +47,20 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const loginWithGoogle = async (authPayload) => {
+    const body = typeof authPayload === 'string'
+      ? { credential: authPayload }
+      : authPayload;
+    const data = await apiFetch('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    localStorage.setItem('token', data.token);
+    setToken(data.token);
+    setUser(data.user);
+    return data.user;
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -58,7 +72,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, loginWithGoogle, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

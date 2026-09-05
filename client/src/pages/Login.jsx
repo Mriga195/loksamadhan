@@ -5,6 +5,7 @@ import { useLang } from '../LangContext';
 import Spinner from '../components/Spinner';
 import Icon from '../components/Icon';
 import AuthShell, { PasswordField } from '../components/AuthShell';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 import { field, primaryBtn } from '../formStyles';
 
 // Seeded accounts, click to fill. This is not decoration: a judge will not type credentials out
@@ -39,7 +40,7 @@ const EN = {
 };
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { lang, translate } = useLang();
@@ -80,6 +81,18 @@ export default function Login() {
     }
   }
 
+  async function handleGoogleSuccess(credential) {
+    setError(null);
+    try {
+      const user = await loginWithGoogle(credential);
+      const target = from !== '/' ? from
+        : (user.role === 'officer' || user.role === 'admin') ? '/dashboard' : '/';
+      navigate(target, { replace: true, state: location.state?.draft ? { draft: location.state.draft } : undefined });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <AuthShell tone="brand" icon="shield" heading={t.heading} blurb={t.blurb} points={points}>
       <h1 className="text-2xl font-semibold">{t.title}</h1>
@@ -91,6 +104,27 @@ export default function Login() {
             {error}
           </p>
         )}
+      {/* Errors sit above the fields and are announced, not just coloured. */}
+      {error && (
+        <p role="alert" className="mt-4 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
+          {error}
+        </p>
+      )}
+
+      <div className="mt-6">
+        <GoogleAuthButton onSuccess={handleGoogleSuccess} label="Sign in with Google" onError={(err) => setError(err.message)} />
+      </div>
+
+      <div className="relative my-6 text-center">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-line" />
+        </div>
+        <span className="relative bg-surface px-3 text-xs uppercase tracking-wider text-ink-muted">
+          Or continue with email
+        </span>
+      </div>
+
+      <form onSubmit={submit}>
 
         <label className="block text-sm font-medium">
           {t.emailLabel}
