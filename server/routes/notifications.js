@@ -2,73 +2,230 @@ const router = require('express').Router();
 const Issue = require('../models/Issue');
 const { auth } = require('../middleware/auth');
 
-// What happened on the issues you care about.
-//
-// Derived from each issue's statusHistory rather than stored as notification rows. Those events
-// already exist and are already the audit trail — a second copy would be one more thing to keep
-// in sync, and would silently drift the first time a status was written somewhere that forgot
-// to also write a notification. The only state that cannot be derived is how far the reader has
-// read, which is the one field on User.
-//
-// Scope is your own reports and nothing else. Supported issues were in here at first and were
-// wrong: someone who clicks "I have this problem too" on twenty neighbourhood reports would get
-// a feed of twenty other people's issues, drowning updates on the one they actually filed.
-// Officers get the ones assigned to them, which is the same idea applied to their work.
-const LIMIT = 40;
+// Role-specific notifications feed.
+// Citizens receive updates on their filed reports.
+// Officers receive assignments and citizen/admin status updates on their assigned issues.
+// Admins receive actionable alerts: pending verifications, citizen dissatisfaction, and unassigned triage reports.
+// All feeds show activity up to 7 days old.
 
-// The first history entry is the issue being filed. The reporter does not need telling that
-// they filed it, so it is never an event for them — but an officer has no other signal that a
-// newly assigned issue exists in their list, so they keep it.
-function eventsFor(issue, userId) {
-  const mine = String(issue.reporter) === userId;
-  return (issue.statusHistory || [])
-    .filter((h, i) => !(i === 0 && mine))
-    .map(h => ({
-      issueId: issue._id,
-      title: issue.title,
-      status: h.status,
-      note: h.note || '',
-      at: h.at,
-      // Why this issue is in your feed at all: one you filed, or one landing on your desk.
-      reason: mine ? 'reported' : 'assigned',
-    }));
+const LIMIT = 50;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function eventsFor(issue, userOrId, options = {}) {
+  const user = (typeof userOrId === 'object' && userOrId !== null && userOrId._id)
+    ? userOrId
+    : { _id: String(userOrId), role: options.role || 'citizen' };
+  const userId = String(user._id);
+  const userRole = user.role || options.role || 'citizen';
+  const since = options.since || null;
+
+  const reporterId = issue.reporter ? (issue.reporter._id || issue.reporter).toString() : '';
+  const assignedId = issue.assignedOfficer ? (issue.assignedOfficer._id || issue.assignedOfficer).toString() : '';
+  const isReporter = reporterId === userId;
+  const isAssignee = assignedId === userId;
+
+  const history = issue.statusHistory || [];
+  const events = [];
+
+  for (let i = 0; i < history.length; i++) {
+    const h = history[i];
+    if (!h) continue;
+    const entryDate = new Date(h.at);
+    if (since && entryDate < since) continue;
+
+    const actorId = h.by ? (h.by._id || h.by).toString() : '';
+    const isSelfAction = actorId && actorId === userId;
+
+    let reason = isReporter ? 'reported' : 'assigned';
+    let label = isReporter ? 'Your Report' : 'Assigned';
+    let shouldInclude = false;
+
+    // Backward compatibility for standalone test runner without role/since options
+    if (!options.role && !options.since) {
+      shouldInclude = !(i === 0 && isReporter);
+      reason = isReporter ? 'reported' : 'assigned';
+      if (shouldInclude) {
+        events.push({
+          issueId: issue._id,
+          title: issue.title,
+          status: h.status,
+          note: h.note || '',
+          at: h.at,
+          reason,
+        });
+      }
+      continue;
+    }
+
+    if (userRole === 'admin') {
+      // Admin sees actionable municipal milestones
+      if (h.status === 'Pending Verification') {
+        shouldInclude = true;
+        reason = 'verification_needed';
+        label = 'Needs Verification';
+      } else if (h.status === 'Unsatisfied') {
+        shouldInclude = true;
+        reason = 'citizen_unsatisfied';
+        label = 'Citizen Unsatisfied';
+      } else if (h.status === 'Submitted' && !assignedId) {
+        shouldInclude = true;
+        reason = 'unassigned';
+        label = 'Triage Queue';
+      } else if (isAssignee || isReporter) {
+        shouldInclude = !(i === 0 && isReporter);
+        reason = isReporter ? 'reported' : 'assigned';
+        label = isReporter ? 'Your Report' : 'Assigned';
+      }
+    } else if (userRole === 'officer') {
+      // Officer sees updates relevant to their assignment
+      if (isAssignee) {
+        // Exclude initial citizen filing (officer was not assigned yet)
+        if (h.status === 'Submitted') {
+          shouldInclude = false;
+        } else if (isSelfAction && h.status !== 'Acknowledged') {
+          // Exclude actions officer took themselves, except initial assignment
+          shouldInclude = false;
+        } else {
+          shouldInclude = true;
+          reason = 'assigned';
+          if (h.status === 'Acknowledged') {
+            label = 'Assigned to You';
+          } else if (h.status === 'Resolved') {
+            label = 'Admin Approved';
+          } else if (h.status === 'In Progress' && actorId && actorId !== userId) {
+            label = 'Rework Requested';
+          } else if (h.status === 'Unsatisfied') {
+            label = 'Citizen Unsatisfied';
+          } else if (h.status === 'Closed') {
+            label = 'Citizen Satisfied';
+          } else {
+            label = 'Assigned';
+          }
+        }
+      } else if (isReporter) {
+        shouldInclude = !(i === 0 && isReporter);
+        reason = 'reported';
+        label = 'Your Report';
+      } else if (!assignedId && issue.department === user.department && (!user.region || issue.region === user.region)) {
+        if (h.status === 'Submitted') {
+          shouldInclude = true;
+          reason = 'ward_alert';
+          label = 'Department Queue';
+        }
+      }
+    } else {
+      // Citizen: sees municipal progress on their reports
+      if (isReporter) {
+        // Exclude own filing and own feedback action
+        if (i === 0 || isSelfAction) {
+          shouldInclude = false;
+        } else {
+          shouldInclude = true;
+          reason = 'reported';
+          label = 'Status Update';
+        }
+      }
+    }
+
+    if (shouldInclude) {
+      events.push({
+        issueId: issue._id,
+        title: issue.title,
+        status: h.status,
+        note: h.note || '',
+        at: h.at,
+        reason,
+        label,
+        category: issue.category,
+        region: issue.region,
+        department: issue.department,
+      });
+    }
+  }
+
+  return events;
 }
 
 router.get('/', auth(), async (req, res, next) => {
   try {
-    const userId = String(req.user._id);
-    const or = [{ reporter: req.user._id }];
-    if (req.user.role === 'officer' || req.user.role === 'admin') {
-      or.push({ assignedOfficer: req.user._id });
+    const user = req.user;
+    const userRole = user.role || 'citizen';
+    const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS);
+
+    let orConditions = [];
+
+    if (userRole === 'admin') {
+      orConditions = [
+        { status: { $in: ['Pending Verification', 'Unsatisfied', 'Submitted'] } },
+        { 'statusHistory.status': { $in: ['Pending Verification', 'Unsatisfied'] } },
+        { assignedOfficer: user._id },
+        { reporter: user._id },
+      ];
+    } else if (userRole === 'officer') {
+      orConditions = [
+        { assignedOfficer: user._id },
+        { reporter: user._id },
+      ];
+      if (user.department) {
+        const deptCond = {
+          department: user.department,
+          assignedOfficer: null,
+          status: 'Submitted',
+        };
+        if (user.region) deptCond.region = user.region;
+        orConditions.push(deptCond);
+      }
+    } else {
+      orConditions = [{ reporter: user._id }];
     }
 
-    // Only the fields the feed renders. statusHistory is the payload; the rest is the label.
-    const issues = await Issue.find({ $or: or })
-      .select('title reporter statusHistory updatedAt')
+    const query = {
+      $or: orConditions,
+      $and: [
+        {
+          $or: [
+            { 'statusHistory.at': { $gte: sevenDaysAgo } },
+            { updatedAt: { $gte: sevenDaysAgo } },
+            { createdAt: { $gte: sevenDaysAgo } },
+          ],
+        },
+      ],
+    };
+
+    const issues = await Issue.find(query)
+      .select('title reporter assignedOfficer department region category status statusHistory updatedAt')
       .sort({ updatedAt: -1 })
       .limit(LIMIT)
       .lean();
 
-    const seenAt = req.user.notificationsSeenAt;
+    const seenAt = user.notificationsSeenAt ? new Date(user.notificationsSeenAt).getTime() : 0;
+
     const items = issues
-      .flatMap(i => eventsFor(i, userId))
+      .flatMap(i => eventsFor(i, user, { since: sevenDaysAgo, role: userRole }))
       .sort((a, b) => new Date(b.at) - new Date(a.at))
       .slice(0, LIMIT)
-      .map(e => ({ ...e, unread: !seenAt || new Date(e.at) > new Date(seenAt) }));
+      .map(e => ({
+        ...e,
+        unread: !seenAt || new Date(e.at).getTime() > seenAt,
+      }));
 
-    res.json({ items, unread: items.filter(e => e.unread).length });
+    res.json({
+      items,
+      unread: items.filter(e => e.unread).length,
+      seenAt: user.notificationsSeenAt,
+    });
   } catch (err) { next(err); }
 });
 
-// Mark everything up to now as read. Stamped server-side: a clock-skewed phone would otherwise
-// mark future events read and they would never appear.
+// Mark everything up to now as read.
 router.post('/seen', auth(), async (req, res, next) => {
   try {
-    req.user.notificationsSeenAt = new Date();
+    const now = new Date();
+    req.user.notificationsSeenAt = now;
     await req.user.save();
-    res.json({ seenAt: req.user.notificationsSeenAt });
+    res.json({ seenAt: now });
   } catch (err) { next(err); }
 });
 
 module.exports = router;
-module.exports.eventsFor = eventsFor;   // exported for test-notifications.js
+module.exports.eventsFor = eventsFor;

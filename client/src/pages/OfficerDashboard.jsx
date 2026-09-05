@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { useAuth } from '../AuthContext';
@@ -11,6 +11,7 @@ import StatusPill from '../components/StatusPill';
 import OfficeUsersManager from '../components/OfficeUsersManager';
 import AnalyticsView from '../components/AnalyticsView';
 import ConfirmDialog from '../components/ConfirmDialog';
+import NotificationBell from '../components/NotificationBell';
 import { Skeleton } from '../components/Spinner';
 import { useSeo } from '../seo';
 
@@ -24,9 +25,14 @@ const DEPARTMENTS = [
 ];
 
 // "Late" is decided once, on the server, from the per-category targets in lib/sla.js and
-// shipped on every issue. This used to be a flat 7 days computed here, which meant a 3-day
-// water breach did not surface in this queue for another four days.
-const isOverdue = issue => issue.sla?.state === 'overdue';
+// shipped on every issue. An issue that is already resolved, closed, or submitted for verification
+// is not an active SLA breach in the triage queue.
+const isOverdue = issue =>
+  issue.sla?.state === 'overdue' &&
+  issue.status !== 'Resolved' &&
+  issue.status !== 'Closed' &&
+  issue.status !== 'Pending Verification';
+
 
 const PER_PAGE = 10;
 
@@ -53,14 +59,22 @@ export default function OfficerDashboard() {
   const isAdmin = user?.role === 'admin';
   const department = user?.department;
 
+  const isLoggingOut = useRef(false);
+
   // Protect officer/admin dashboard route
   useEffect(() => {
-    if (!authLoading && (!user || (user.role !== 'officer' && user.role !== 'admin'))) {
-      navigate('/login', { state: { from: '/dashboard' }, replace: true });
+    if (isLoggingOut.current) return;
+    if (!authLoading) {
+      if (!user) {
+        navigate('/login', { state: { from: '/dashboard' }, replace: true });
+      } else if (user.role !== 'officer' && user.role !== 'admin') {
+        navigate('/', { replace: true });
+      }
     }
   }, [authLoading, user, navigate]);
 
   const handleLogout = () => {
+    isLoggingOut.current = true;
     logout();
     navigate('/login', { replace: true });
   };
@@ -77,6 +91,7 @@ export default function OfficerDashboard() {
   const [deptFilter, setDeptFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('priority_desc'); // 'priority_desc' | 'priority_asc' | 'time_desc' | 'time_asc'
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -176,16 +191,32 @@ export default function OfficerDashboard() {
         );
       });
 
-    return [...filtered].sort((a, b) =>
-      (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3)
-      || new Date(b.createdAt) - new Date(a.createdAt));
-  }, [issues, tab, deptFilter, priorityFilter, searchQuery, TABS, duplicatesByParent]);
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'time_desc') {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      if (sortBy === 'time_asc') {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+      if (sortBy === 'priority_asc') {
+        const pA = PRIORITY_RANK[a.priority] ?? 3;
+        const pB = PRIORITY_RANK[b.priority] ?? 3;
+        if (pA !== pB) return pB - pA;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      // Default: priority_desc (High -> Medium -> Low, then newest)
+      const pA = PRIORITY_RANK[a.priority] ?? 3;
+      const pB = PRIORITY_RANK[b.priority] ?? 3;
+      if (pA !== pB) return pA - pB;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [issues, tab, deptFilter, priorityFilter, searchQuery, sortBy, TABS, duplicatesByParent]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const current = Math.min(page, pageCount);
   const visible = rows.slice((current - 1) * PER_PAGE, current * PER_PAGE);
 
-  useEffect(() => { setPage(1); }, [tab, deptFilter, priorityFilter, searchQuery]);
+  useEffect(() => { setPage(1); }, [tab, deptFilter, priorityFilter, searchQuery, sortBy]);
 
   const replace = updated =>
     setIssues(list => list.map(i => (i._id === updated._id ? { ...i, ...updated } : i)));
@@ -308,6 +339,8 @@ export default function OfficerDashboard() {
             <span className="hidden sm:inline">{refreshing ? 'Syncing…' : 'Refresh'}</span>
           </button>
 
+          <NotificationBell />
+
           <div className="h-5 w-px bg-line hidden sm:block" />
 
           <Link to="/profile" className="flex items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-canvas" title="My Profile">
@@ -366,11 +399,13 @@ export default function OfficerDashboard() {
                       : 'text-ink-muted hover:bg-canvas hover:text-ink'
                   }`}
                 >
-                  <span className="flex items-center gap-2.5">
-                    <Icon name="chart" className="size-4" />
-                    Analytics & Insights
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <Icon name="chart" className="size-4 shrink-0" />
+                    <span className="truncate whitespace-nowrap">Analytics</span>
                   </span>
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 ${
+                    viewMode === 'analytics' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
+                  }`}>
                     Live
                   </span>
                 </button>
@@ -390,11 +425,13 @@ export default function OfficerDashboard() {
                         : 'text-ink-muted hover:bg-canvas hover:text-ink'
                     }`}
                   >
-                    <span className="flex items-center gap-2.5">
-                      <Icon name="users" className="size-4" />
-                      Office Users & Staff
+                    <span className="flex items-center gap-2.5 min-w-0">
+                      <Icon name="users" className="size-4 shrink-0" />
+                      <span className="truncate whitespace-nowrap">Office Users</span>
                     </span>
-                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 ${
+                      viewMode === 'users' ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
+                    }`}>
                       Admin
                     </span>
                   </button>
@@ -419,7 +456,7 @@ export default function OfficerDashboard() {
           <div className="rounded-xl border border-line bg-canvas p-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-ink">
               <Icon name="shield" className="size-4 text-brand-600" />
-              Role: <span className="capitalize">{user.role}</span>
+              Role: <span className="capitalize">{user?.role}</span>
             </div>
             <p className="mt-1 text-[11px] text-ink-muted">
               {isAdmin ? 'System-wide administrative & staff control' : `Assigned: ${department || 'General Administration'}`}
@@ -495,7 +532,7 @@ export default function OfficerDashboard() {
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
                       <span className="relative inline-flex size-2 rounded-full bg-rose-600" />
                     </span>
-                    {counts.overdue} issue{counts.overdue === 1 ? '' : 's'} past 7-day SLA target!
+                    {counts.overdue} issue{counts.overdue === 1 ? '' : 's'} past SLA target deadline!
                   </div>
                 )}
               </div>
@@ -560,7 +597,7 @@ export default function OfficerDashboard() {
                       {/* Search & Granular Filters Row */}
                       <div className="grid gap-2 sm:grid-cols-12 pt-2 border-t border-line/50">
                         {/* Search Input */}
-                        <div className="relative sm:col-span-6">
+                        <div className={`relative ${isAdmin ? 'sm:col-span-4' : 'sm:col-span-5'}`}>
                           <Icon name="search" className="absolute left-3 top-2.5 size-4 text-slate-400" />
                           <input
                             type="text"
@@ -581,12 +618,12 @@ export default function OfficerDashboard() {
                         </div>
 
                         {/* Priority Filter */}
-                        <div className="sm:col-span-3">
+                        <div className={isAdmin ? 'sm:col-span-2' : 'sm:col-span-3'}>
                           <select
                             aria-label="Filter Priority"
                             value={priorityFilter}
                             onChange={e => setPriorityFilter(e.target.value)}
-                            className="w-full rounded-lg border border-line bg-canvas px-3 py-1.5 text-xs text-ink cursor-pointer focus:border-brand-500 focus:outline-none"
+                            className="w-full rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-xs text-ink cursor-pointer focus:border-brand-500 focus:outline-none"
                           >
                             <option value="">All Priorities</option>
                             <option value="high">High Priority Only</option>
@@ -602,13 +639,28 @@ export default function OfficerDashboard() {
                               aria-label="Filter Department"
                               value={deptFilter}
                               onChange={e => setDeptFilter(e.target.value)}
-                              className="w-full rounded-lg border border-line bg-canvas px-3 py-1.5 text-xs text-ink cursor-pointer focus:border-brand-500 focus:outline-none"
+                              className="w-full rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-xs text-ink cursor-pointer focus:border-brand-500 focus:outline-none"
                             >
                               <option value="">All Departments</option>
                               {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
                           </div>
                         )}
+
+                        {/* Sort By Dropdown */}
+                        <div className={isAdmin ? 'sm:col-span-3' : 'sm:col-span-4'}>
+                          <select
+                            aria-label="Sort issues"
+                            value={sortBy}
+                            onChange={e => setSortBy(e.target.value)}
+                            className="w-full rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-xs text-ink font-medium cursor-pointer focus:border-brand-500 focus:outline-none"
+                          >
+                            <option value="priority_desc">Sort: Priority (High to Low)</option>
+                            <option value="priority_asc">Sort: Priority (Low to High)</option>
+                            <option value="time_desc">Sort: Time (Newest First)</option>
+                            <option value="time_asc">Sort: Time (Oldest First)</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
@@ -637,8 +689,32 @@ export default function OfficerDashboard() {
                                 <th scope="col" className="px-4 py-3">Issue & Title</th>
                                 <th scope="col" className="px-4 py-3">Department</th>
                                 <th scope="col" className="px-4 py-3">Status</th>
-                                <th scope="col" className="px-4 py-3">Priority</th>
-                                <th scope="col" className="px-4 py-3">Reported</th>
+                                <th
+                                  scope="col"
+                                  onClick={() => setSortBy(prev => prev === 'priority_desc' ? 'priority_asc' : 'priority_desc')}
+                                  className="px-4 py-3 cursor-pointer select-none hover:text-brand-600 transition-colors group/th"
+                                  title="Click to sort by Priority"
+                                >
+                                  <span className="inline-flex items-center gap-1">
+                                    Priority
+                                    <span className={`text-[10px] ${sortBy.startsWith('priority') ? 'text-brand-600 font-bold' : 'text-slate-300 group-hover/th:text-slate-400'}`}>
+                                      {sortBy === 'priority_desc' ? '▼' : sortBy === 'priority_asc' ? '▲' : '⇅'}
+                                    </span>
+                                  </span>
+                                </th>
+                                <th
+                                  scope="col"
+                                  onClick={() => setSortBy(prev => prev === 'time_desc' ? 'time_asc' : 'time_desc')}
+                                  className="px-4 py-3 cursor-pointer select-none hover:text-brand-600 transition-colors group/th"
+                                  title="Click to sort by Reported Time"
+                                >
+                                  <span className="inline-flex items-center gap-1">
+                                    Reported
+                                    <span className={`text-[10px] ${sortBy.startsWith('time') ? 'text-brand-600 font-bold' : 'text-slate-300 group-hover/th:text-slate-400'}`}>
+                                      {sortBy === 'time_desc' ? '▼' : sortBy === 'time_asc' ? '▲' : '⇅'}
+                                    </span>
+                                  </span>
+                                </th>
                                 <th scope="col" className="px-4 py-3 text-right">Action</th>
                               </tr>
                             </thead>
@@ -725,8 +801,11 @@ export default function OfficerDashboard() {
                                       <td className="whitespace-nowrap px-4 py-3 text-ink-muted">
                                         {age(issue.createdAt)}
                                         {overdue && (
-                                          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1.5 py-0.2 text-[10px] font-bold text-red-700">
-                                            Overdue
+                                          <span
+                                            title={`Category: ${issue.category || 'General'} • SLA Target: ${issue.sla?.targetDays || 7} days • ${issue.sla?.breachDays || 1}d overdue`}
+                                            className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700"
+                                          >
+                                            Overdue ({issue.sla?.targetDays || 7}d SLA)
                                           </span>
                                         )}
                                       </td>
@@ -744,7 +823,7 @@ export default function OfficerDashboard() {
 
                                     {/* Sub-rows: Similar reports grouped under this original issue */}
                                     {isExpanded && (() => {
-                                      const limit = expandedLimits[issue._id] || 1;
+                                      const limit = expandedLimits[issue._id] || 3;
                                       const visibleDups = dups.slice(0, limit);
                                       const remaining = dups.length - limit;
 
@@ -815,7 +894,7 @@ export default function OfficerDashboard() {
                                             );
                                           })}
 
-                                          {dups.length > 1 && (
+                                          {dups.length > 3 && (
                                             <tr className="border-l-4 border-brand-400 bg-canvas/80 text-xs">
                                               <td colSpan={7} className="pl-8 pr-4 py-2">
                                                 <div className="flex items-center justify-between text-xs">
@@ -827,7 +906,7 @@ export default function OfficerDashboard() {
                                                       type="button"
                                                       onClick={e => {
                                                         e.stopPropagation();
-                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: (prev[issue._id] || 1) + 5 }));
+                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: (prev[issue._id] || 3) + 5 }));
                                                       }}
                                                       className="font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer text-xs"
                                                     >
@@ -838,7 +917,7 @@ export default function OfficerDashboard() {
                                                       type="button"
                                                       onClick={e => {
                                                         e.stopPropagation();
-                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: 1 }));
+                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: 3 }));
                                                       }}
                                                       className="font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer text-xs"
                                                     >

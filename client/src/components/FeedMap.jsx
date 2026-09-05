@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import StatusPill from './StatusPill';
+import { ASSAM_BOUNDS } from '../assam';
 
 // ── Department / Category SVG path definitions ──
 const DEPT_ICONS = {
@@ -130,7 +131,10 @@ function FitBounds({ points }) {
   const map = useMap();
   const key = points.join('|');
   useEffect(() => {
-    if (points.length === 0) return;
+    if (points.length === 0) {
+      map.fitBounds(L.latLngBounds(ASSAM_BOUNDS));
+      return;
+    }
     map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 15 });
   }, [map, key]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;

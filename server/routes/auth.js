@@ -2,7 +2,9 @@ const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+const Otp = require('../models/Otp');
 const { auth } = require('../middleware/auth');
+const { sendOtpEmail } = require('../lib/mailer');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -124,30 +126,51 @@ router.post('/google', async (req, res, next) => {
 });
 
 // ── POST /api/auth/register ──
-// Citizens self-register. Officers/admins are seeded or promoted manually.
+// Citizens self-register after verifying their email via 6-digit OTP.
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, otp } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ error: 'name, email, and password are required' });
+      return res.status(400).json({ error: 'Name, email, and password are required' });
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    const exists = await User.findOne({ email: email.toLowerCase() });
+    const cleanEmail = email.toLowerCase().trim();
+
+    const exists = await User.findOne({ email: cleanEmail });
     if (exists) {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
+    // Verify 6-digit OTP for signup
+    if (!otp) {
+      return res.status(400).json({ error: '6-digit email verification code (OTP) is required' });
+    }
+
+    const cleanOtp = String(otp).trim();
+    const validOtp = await Otp.findOne({
+      email: cleanEmail,
+      otp: cleanOtp,
+      purpose: 'signup',
+    });
+
+    if (!validOtp) {
+      return res.status(400).json({ error: 'Invalid or expired verification code. Please request a new code.' });
+    }
+
     const passwordHash = await User.hashPassword(password);
     const user = await User.create({
-      name,
-      email: email.toLowerCase(),
+      name: name.trim(),
+      email: cleanEmail,
       passwordHash,
       role: 'citizen',
     });
+
+    // Delete used signup OTP
+    await Otp.deleteMany({ email: cleanEmail, purpose: 'signup' });
 
     res.status(201).json({ token: signToken(user), user: user.toPublic() });
   } catch (err) {
@@ -235,6 +258,160 @@ router.patch('/me', auth(true), async (req, res, next) => {
 
     await user.save();
     res.json({ user: user.toProfile(), message: 'Profile updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/auth/forgot-password ──
+// Citizen or staff requests a 6-digit OTP to reset forgotten password
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const email = String(req.body.email ?? '').trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Return 404 so user knows if the account doesn't exist
+      return res.status(404).json({ error: 'No account found with this email address' });
+    }
+
+    // Generate secure random 6-digit numeric OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Clear any previous forgot-password OTP for this email
+    await Otp.deleteMany({ email, purpose: 'forgot-password' });
+
+    // Store new OTP with 10-minute auto-expiry
+    await Otp.create({
+      email,
+      otp,
+      purpose: 'forgot-password',
+    });
+
+    // Send styled civic email via Nodemailer
+    await sendOtpEmail({
+      to: user.email,
+      name: user.name || 'Citizen',
+      otp,
+      purpose: 'forgot-password',
+    });
+
+    res.json({
+      success: true,
+      message: `A 6-digit verification code has been sent to ${user.email}. It is valid for 10 minutes.`,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/auth/reset-password ──
+// Citizen or staff verifies the 6-digit OTP and provides a new password
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const email = String(req.body.email ?? '').trim().toLowerCase();
+    const otp = String(req.body.otp ?? '').trim();
+    const newPassword = String(req.body.newPassword ?? '');
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: 'Email, OTP, and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    // Verify OTP record
+    const otpRecord = await Otp.findOne({
+      email,
+      otp,
+      purpose: 'forgot-password',
+    });
+
+    if (!otpRecord) {
+      return res.status(400).json({ error: 'Invalid or expired verification code. Please request a new one.' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    // Hash and update password
+    user.passwordHash = await User.hashPassword(newPassword);
+    await user.save();
+
+    // Delete used OTP
+    await Otp.deleteMany({ email, purpose: 'forgot-password' });
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully! You can now log in with your new password.',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/auth/send-otp ──
+// General OTP generator (e.g. for signup email verification)
+router.post('/send-otp', async (req, res, next) => {
+  try {
+    const email = String(req.body.email ?? '').trim().toLowerCase();
+    const purpose = req.body.purpose === 'signup' ? 'signup' : 'forgot-password';
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+
+    if (purpose === 'signup') {
+      const exists = await User.findOne({ email });
+      if (exists) {
+        return res.status(409).json({ error: 'An account with this email already exists' });
+      }
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await Otp.deleteMany({ email, purpose });
+    await Otp.create({ email, otp, purpose });
+
+    await sendOtpEmail({
+      to: email,
+      name: req.body.name || 'Citizen',
+      otp,
+      purpose,
+    });
+
+    res.json({
+      success: true,
+      message: `Verification code sent to ${email}`,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/auth/verify-otp ──
+// Validates whether an OTP is correct for a given email & purpose
+router.post('/verify-otp', async (req, res, next) => {
+  try {
+    const email = String(req.body.email ?? '').trim().toLowerCase();
+    const otp = String(req.body.otp ?? '').trim();
+    const purpose = req.body.purpose || 'forgot-password';
+
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and OTP are required' });
+    }
+
+    const valid = await Otp.findOne({ email, otp, purpose });
+    if (!valid) {
+      return res.status(400).json({ error: 'Invalid or expired verification code' });
+    }
+
+    res.json({ success: true, message: 'Code verified successfully' });
   } catch (err) {
     next(err);
   }

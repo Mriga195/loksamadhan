@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '../AuthContext';
 import { apiFetch } from '../api';
 import Avatar from './Avatar';
 import Icon from './Icon';
@@ -21,12 +22,20 @@ const REGIONS = [
   'Guwahati',
   'Dibrugarh',
   'Nagaon',
+  'Silchar',
+  'Tinsukia',
+  'Bongaigaon',
+  'Golaghat',
+  'Barpeta',
+  'Dhubri',
 ];
 
 export default function OfficeUsersManager({ currentUser }) {
+  const { updateUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
@@ -36,6 +45,19 @@ export default function OfficeUsersManager({ currentUser }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null); // null = create, user obj = edit
   const [deleteModalUser, setDeleteModalUser] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isCustomRegion, setIsCustomRegion] = useState(false);
+
+  // Dynamic unique list of all regions (preset list + any regions from existing users)
+  const allRegionOptions = useMemo(() => {
+    const set = new Set(REGIONS);
+    users.forEach(u => {
+      if (u.region && typeof u.region === 'string' && u.region.trim()) {
+        set.add(u.region.trim());
+      }
+    });
+    return Array.from(set);
+  }, [users]);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -69,6 +91,8 @@ export default function OfficeUsersManager({ currentUser }) {
   // Open modal for Create
   const handleOpenCreate = () => {
     setEditingUser(null);
+    setShowPassword(false);
+    setIsCustomRegion(false);
     setFormData({
       name: '',
       email: '',
@@ -84,13 +108,16 @@ export default function OfficeUsersManager({ currentUser }) {
   // Open modal for Edit
   const handleOpenEdit = (user) => {
     setEditingUser(user);
+    setShowPassword(false);
+    const existingRegion = user.region || 'Tezpur';
+    setIsCustomRegion(!allRegionOptions.includes(existingRegion) && !!existingRegion);
     setFormData({
       name: user.name || '',
       email: user.email || '',
       password: '',
       role: user.role || 'officer',
       department: user.department || DEPARTMENTS[0],
-      region: user.region || 'Tezpur',
+      region: existingRegion,
     });
     setFormError(null);
     setModalOpen(true);
@@ -105,15 +132,25 @@ export default function OfficeUsersManager({ currentUser }) {
     try {
       if (editingUser) {
         // Edit existing user
+        const isAdmin = editingUser.role === 'admin';
         const payload = {
-          name: formData.name,
-          email: formData.email,
-          role: formData.role,
-          department: formData.role === 'officer' ? formData.department : (formData.department || 'General Administration'),
-          region: formData.role === 'officer' ? (formData.region?.trim() || null) : null,
+          name: formData.name.trim(),
         };
-        if (formData.password) {
-          payload.password = formData.password;
+
+        if (isAdmin) {
+          // For admin: only name and password can be changed
+          if (formData.password && formData.password.trim()) {
+            payload.password = formData.password.trim();
+          }
+        } else {
+          // For officer: email, role, department, region, and password can be changed
+          payload.email = formData.email.trim();
+          payload.role = formData.role;
+          payload.department = formData.role === 'officer' ? formData.department : null;
+          payload.region = formData.role === 'officer' ? (formData.region?.trim() || null) : null;
+          if (formData.password && formData.password.trim()) {
+            payload.password = formData.password.trim();
+          }
         }
 
         const res = await apiFetch(`/api/admin/users/${editingUser._id}`, {
@@ -121,18 +158,26 @@ export default function OfficeUsersManager({ currentUser }) {
           body: JSON.stringify(payload),
         });
 
+        // If the logged-in user changed their own name/profile, sync immediately with global auth context
+        const isSelf = String(editingUser._id) === String(currentUser?._id);
+        if (isSelf && updateUser && res.user) {
+          updateUser(res.user);
+        }
+
         // Update list
-        setUsers(prev => prev.map(u => (u._id === editingUser._id ? { ...u, ...res.user, workStats: u.workStats } : u)));
+        setUsers(prev => prev.map(u => (u._id === editingUser._id ? { ...u, ...res.user, workStats: res.user.role === 'admin' ? null : u.workStats } : u)));
         setModalOpen(false);
-        fetchUsers(); // refresh workstats if role/dept changed
+        setSuccessMsg(res.message || 'Office user updated successfully');
+        setTimeout(() => setSuccessMsg(null), 4000);
+        fetchUsers(); // refresh list
       } else {
         // Create new user
         const payload = {
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          password: formData.password.trim(),
           role: formData.role,
-          department: formData.role === 'officer' ? formData.department : (formData.department || 'General Administration'),
+          department: formData.role === 'officer' ? formData.department : null,
           region: formData.role === 'officer' ? (formData.region?.trim() || null) : null,
         };
 
@@ -145,6 +190,8 @@ export default function OfficeUsersManager({ currentUser }) {
           setUsers(prev => [res.user, ...prev]);
         }
         setModalOpen(false);
+        setSuccessMsg(res.message || 'New office user created successfully');
+        setTimeout(() => setSuccessMsg(null), 4000);
         fetchUsers();
       }
     } catch (err) {
@@ -188,8 +235,9 @@ export default function OfficeUsersManager({ currentUser }) {
     const totalStaff = users.length;
     const officers = users.filter(u => u.role === 'officer').length;
     const admins = users.filter(u => u.role === 'admin').length;
-    const totalWorkRatios = users.reduce((acc, u) => acc + (u.workStats?.workRatio || 0), 0);
-    const avgWorkRatio = totalStaff > 0 ? Math.round(totalWorkRatios / totalStaff) : 0;
+    const officerUsers = users.filter(u => u.role === 'officer' && u.workStats);
+    const totalWorkRatios = officerUsers.reduce((acc, u) => acc + (u.workStats?.workRatio || 0), 0);
+    const avgWorkRatio = officerUsers.length > 0 ? Math.round(totalWorkRatios / officerUsers.length) : 0;
 
     return { totalStaff, officers, admins, avgWorkRatio };
   }, [users]);
@@ -211,6 +259,23 @@ export default function OfficeUsersManager({ currentUser }) {
           Create Office User
         </button>
       </div>
+
+      {/* Success Notification */}
+      {successMsg && (
+        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="flex items-center gap-2">
+            <Icon name="check" className="size-5 text-emerald-600" />
+            <span>{successMsg}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccessMsg(null)}
+            className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+          >
+            <Icon name="close" className="size-4" />
+          </button>
+        </div>
+      )}
 
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -310,7 +375,7 @@ export default function OfficeUsersManager({ currentUser }) {
           className="rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
         >
           <option value="">All Regions</option>
-          {REGIONS.map(r => (
+          {allRegionOptions.map(r => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
@@ -420,30 +485,40 @@ export default function OfficeUsersManager({ currentUser }) {
                       </td>
 
                       <td className="px-4 py-3 min-w-[180px]">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-xs font-medium">
-                            <span className="text-ink-muted">Work Ratio</span>
-                            <span className={`rounded border px-1.5 py-0.5 font-bold ${ratioBgClass}`}>
-                              {ratio}%
-                            </span>
+                        {u.role === 'admin' ? (
+                          <span className="text-xs text-ink-muted">—</span>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs font-medium">
+                              <span className="text-ink-muted">Work Ratio</span>
+                              <span className={`rounded border px-1.5 py-0.5 font-bold ${ratioBgClass}`}>
+                                {ratio}%
+                              </span>
+                            </div>
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-line">
+                              <div
+                                className={`h-full transition-all duration-500 ${ratioColorClass}`}
+                                style={{ width: `${Math.min(100, Math.max(0, ratio))}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="h-2 w-full overflow-hidden rounded-full bg-line">
-                            <div
-                              className={`h-full transition-all duration-500 ${ratioColorClass}`}
-                              style={{ width: `${Math.min(100, Math.max(0, ratio))}%` }}
-                            />
-                          </div>
-                        </div>
+                        )}
                       </td>
 
                       <td className="px-4 py-3 whitespace-nowrap text-xs text-ink-muted">
-                        <p className="font-medium text-ink">
-                          <span className="text-emerald-600 font-bold">{stats.resolvedByCount ?? 0}</span> resolved /{' '}
-                          <span className="font-semibold">{stats.actionedCount ?? 0}</span> actioned
-                        </p>
-                        <p className="text-[11px] text-ink-muted mt-0.5">
-                          Dept Total: {stats.deptTotal ?? 0} ({stats.deptResolved ?? 0} resolved)
-                        </p>
+                        {u.role === 'admin' ? (
+                          <span className="text-xs text-ink-muted">—</span>
+                        ) : (
+                          <>
+                            <p className="font-medium text-ink">
+                              <span className="text-emerald-600 font-bold">{stats.resolvedByCount ?? 0}</span> resolved /{' '}
+                              <span className="font-semibold">{stats.actionedCount ?? 0}</span> actioned
+                            </p>
+                            <p className="text-[11px] text-ink-muted mt-0.5">
+                              Dept Total: {stats.deptTotal ?? 0} ({stats.deptResolved ?? 0} resolved)
+                            </p>
+                          </>
+                        )}
                       </td>
 
                       <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -485,7 +560,7 @@ export default function OfficeUsersManager({ currentUser }) {
           <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-line pb-4">
               <h3 className="text-lg font-bold text-ink">
-                {editingUser ? 'Edit Office User' : 'Create Office User'}
+                {editingUser ? (editingUser.role === 'admin' ? 'Edit Admin' : 'Edit Office User') : 'Create Office User'}
               </h3>
               <button
                 type="button"
@@ -518,90 +593,164 @@ export default function OfficeUsersManager({ currentUser }) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
-                  Email Address <span className="text-rejected-600">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted">
+                    Email Address {editingUser?.role === 'admin' ? <span className="text-ink-muted text-[10px] font-normal normal-case">(cannot be changed)</span> : <span className="text-rejected-600">*</span>}
+                  </label>
+                  {editingUser?.role === 'admin' && (
+                    <span className="text-[10px] text-ink-muted font-medium">Read-only</span>
+                  )}
+                </div>
                 <input
                   type="email"
+                  disabled={editingUser?.role === 'admin'}
                   required
                   placeholder="e.g. officer@loksamadhan.gov.in"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
+                  className={`w-full rounded-lg border border-line px-3 py-2 text-sm focus:outline-none ${
+                    editingUser?.role === 'admin'
+                      ? 'bg-canvas/70 text-ink-muted cursor-not-allowed select-none'
+                      : 'bg-surface focus:border-brand-600'
+                  }`}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
-                  Password {editingUser ? <span className="text-ink-muted text-[10px] lowercase">(leave blank to keep unchanged)</span> : <span className="text-rejected-600">*</span>}
-                </label>
-                <input
-                  type="password"
-                  required={!editingUser}
-                  minLength={6}
-                  placeholder={editingUser ? '••••••••' : 'At least 6 characters'}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
-                    Role <span className="text-rejected-600">*</span>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted">
+                    Password {editingUser ? <span className="text-ink-muted text-[10px] font-normal normal-case">(leave blank to keep unchanged)</span> : <span className="text-rejected-600">*</span>}
                   </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
-                  >
-                    <option value="officer">Officer</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                  {editingUser && formData.password && (
+                    <span className={`text-[10px] font-medium ${formData.password.length < 6 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {formData.password.length < 6 ? 'Min 6 characters' : 'New password ready'}
+                    </span>
+                  )}
                 </div>
-
-                {formData.role === 'officer' && (
-                  <div>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
-                      Department <span className="text-rejected-600">*</span>
-                    </label>
-                    <select
-                      value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                      className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
-                    >
-                      {DEPARTMENTS.map(d => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required={!editingUser}
+                    minLength={formData.password ? 6 : undefined}
+                    placeholder={editingUser ? 'Enter new password to change' : 'At least 6 characters'}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-10 text-sm focus:border-brand-600 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer p-1"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <Icon name={showPassword ? 'eyeOff' : 'eye'} className="size-4" />
+                  </button>
+                </div>
+                {editingUser && (
+                  <p className="mt-1 text-[11px] text-ink-muted">
+                    {editingUser.role === 'admin'
+                      ? 'Admins can update their name and password anytime. Leave blank to keep current password.'
+                      : 'Leave blank to keep current password.'}
+                  </p>
                 )}
               </div>
 
-              {formData.role === 'officer' && (
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
-                    Assigned Region / District <span className="text-rejected-600">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    list="office-regions-list"
-                    required
-                    placeholder="e.g. Tezpur, Jorhat, Jorhat West, Sivasagar..."
-                    value={formData.region}
-                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
-                  />
-                  <datalist id="office-regions-list">
-                    {REGIONS.map(r => (
-                      <option key={r} value={r} />
-                    ))}
-                  </datalist>
-                  <p className="mt-1 text-[11px] text-ink-muted">
-                    New civic issues filed in this region/district will be auto-assigned to this officer.
-                  </p>
+              {editingUser?.role === 'admin' ? (
+                <div className="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50/60 p-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="rounded-md bg-purple-100 p-1.5 text-purple-700">
+                      <Icon name="shield" className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-purple-950">Role: Administrator</p>
+                      <p className="text-[10px] text-purple-700">Admins can only change their name and password</p>
+                    </div>
+                  </div>
+                  <span className="rounded bg-purple-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-800">
+                    Admin
+                  </span>
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
+                        Role <span className="text-rejected-600">*</span>
+                      </label>
+                      <select
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
+                      >
+                        <option value="officer">Officer</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+
+                    {formData.role === 'officer' && (
+                      <div>
+                        <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
+                          Department <span className="text-rejected-600">*</span>
+                        </label>
+                        <select
+                          value={formData.department}
+                          onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
+                        >
+                          {DEPARTMENTS.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {formData.role === 'officer' && (
+                    <div>
+                      <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
+                        Assigned Region / District <span className="text-rejected-600">*</span>
+                      </label>
+                      <select
+                        required
+                        value={isCustomRegion ? '__custom__' : (formData.region || '')}
+                        onChange={(e) => {
+                          if (e.target.value === '__custom__') {
+                            setIsCustomRegion(true);
+                            setFormData(prev => ({ ...prev, region: '' }));
+                          } else {
+                            setIsCustomRegion(false);
+                            setFormData(prev => ({ ...prev, region: e.target.value }));
+                          }
+                        }}
+                        className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-600 focus:outline-none cursor-pointer"
+                      >
+                        <option value="" disabled>Select assigned region / district...</option>
+                        {allRegionOptions.map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                        <option value="__custom__">+ Other (Enter Custom District / Zone)...</option>
+                      </select>
+
+                      {isCustomRegion && (
+                        <div className="mt-2">
+                          <input
+                            type="text"
+                            required
+                            placeholder="Type custom region / district name (e.g. Silchar, Golaghat...)"
+                            value={formData.region}
+                            onChange={(e) => setFormData(prev => ({ ...prev, region: e.target.value }))}
+                            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
+                            autoFocus
+                          />
+                        </div>
+                      )}
+
+                      <p className="mt-1 text-[11px] text-ink-muted">
+                        New civic issues filed in this region/district will be auto-assigned to this officer.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-line">

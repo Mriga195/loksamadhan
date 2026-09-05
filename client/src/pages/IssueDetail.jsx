@@ -47,12 +47,12 @@ export default function IssueDetail() {
   const [error, setError] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [supporting, setSupporting] = useState(false);
-  const [visibleDuplicates, setVisibleDuplicates] = useState(1);
+  const [visibleDuplicates, setVisibleDuplicates] = useState(3);
 
   useSeo(issue?.title, issue?.description?.slice(0, 160));
 
   useEffect(() => {
-    setVisibleDuplicates(1);
+    setVisibleDuplicates(3);
   }, [id]);
 
   // Citizen satisfaction action state
@@ -707,7 +707,7 @@ export default function IssueDetail() {
                   </li>
                 ))}
               </ul>
-              {issue.linkedDuplicates.length > 1 && (
+              {issue.linkedDuplicates.length > 3 && (
                 <div className="mt-3 pt-2 border-t border-line flex items-center justify-between text-xs text-ink-muted">
                   <span>
                     Showing {Math.min(visibleDuplicates, issue.linkedDuplicates.length)} of {issue.linkedDuplicates.length}
@@ -723,7 +723,7 @@ export default function IssueDetail() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setVisibleDuplicates(1)}
+                      onClick={() => setVisibleDuplicates(3)}
                       className="inline-flex cursor-pointer items-center gap-1 font-semibold text-brand-600 hover:text-brand-700 hover:underline"
                     >
                       Show less

@@ -9,6 +9,7 @@ import StatusTimeline from './StatusTimeline';
 import SafeImage from './SafeImage';
 import ConfirmDialog from './ConfirmDialog';
 import AttachDuplicateModal from './AttachDuplicateModal';
+import SlaBadge from './SlaBadge';
 
 export const shortId = issue =>
   `LS-${new Date(issue.createdAt).getFullYear()}-${String(issue._id).slice(-6).toUpperCase()}`;
@@ -32,6 +33,7 @@ const PRIORITY_COLORS = {
 
 // ── Officer-Specific Actions based on issue state ──
 function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
+  const { user } = useAuth();
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
 
@@ -52,7 +54,33 @@ function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
   }
 
   const status = issue.status;
-  const isAssignedToMe = true; // drawer only shows to officer who has access
+  const isAssignedToMe = Boolean(
+    issue.assignedOfficer &&
+    String(issue.assignedOfficer?._id || issue.assignedOfficer) === String(user?._id)
+  );
+
+  // If issue is NOT assigned to this officer, this is read-only (Department Queue view)
+  if (!isAssignedToMe) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-600 space-y-1">
+        <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+          <Icon name="shield" className="size-3.5 text-slate-500" />
+          <span>Department Queue (Read-Only)</span>
+        </div>
+        <p className="text-[11px] leading-relaxed text-slate-600">
+          {issue.assignedOfficer?.name ? (
+            <>
+              Assigned to <strong>{issue.assignedOfficer.name}</strong>
+              {issue.assignedOfficer.region ? ` (${issue.assignedOfficer.region})` : ''}.
+              Only the allotted officer can start work or report resolution.
+            </>
+          ) : (
+            <>This issue is currently unassigned. Only the allotted officer or administrator can take action.</>
+          )}
+        </p>
+      </div>
+    );
+  }
 
   // What actions are relevant for this officer right now?
   if (status === 'Closed') {
@@ -441,7 +469,11 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const isOfficer = user?.role === 'officer';
-  const canManage = isAdmin || isOfficer;
+  const isAssignedToMe = Boolean(
+    issue?.assignedOfficer &&
+    String(issue.assignedOfficer?._id || issue.assignedOfficer) === String(user?._id)
+  );
+  const canManage = isAdmin || (isOfficer && isAssignedToMe);
   const [showAllSimilar, setShowAllSimilar] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState(null); // { id, title }
   const [isDetaching, setIsDetaching] = useState(false);
@@ -508,6 +540,7 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
               <Icon name="external" className="size-3.5" />
             </Link>
             <StatusPill status={issue.status} size="sm" />
+            <SlaBadge sla={issue.sla} showMet />
             {issue.priority && (
               <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold capitalize ${PRIORITY_COLORS[issue.priority] || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                 {issue.priority === 'high' && <span className="size-1.5 rounded-full bg-red-500" />}
@@ -596,7 +629,7 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
 
         {/* Similar Reports from other citizens */}
         {linkedDuplicates.length > 0 && (() => {
-          const limit = 1;
+          const limit = 3;
           const visible = showAllSimilar ? linkedDuplicates : linkedDuplicates.slice(0, limit);
           const hasMore = linkedDuplicates.length > limit;
 

@@ -28,14 +28,16 @@ const DEFAULT_TARGET = 14;
 const dueSoonDays = targetDays => Math.max(1, Math.ceil(targetDays / 3));
 
 /**
- * When the issue was last marked fixed, or null.
+ * When the issue was last marked fixed or submitted for verification, or null.
  * `.pop()`, not `[0]`: a reopened-and-refixed issue is judged on the resolution that stuck.
  */
 function resolvedAt(issue) {
   const entry = (issue.statusHistory || [])
-    .filter(h => h.status === 'Resolved' || h.status === 'Closed')
+    .filter(h => h.status === 'Resolved' || h.status === 'Closed' || h.status === 'Pending Verification')
     .pop();
-  return entry ? new Date(entry.at).getTime() : null;
+  if (entry) return new Date(entry.at).getTime();
+  if (issue.resolution?.submittedAt) return new Date(issue.resolution.submittedAt).getTime();
+  return null;
 }
 
 /**
@@ -49,8 +51,7 @@ function slaFor(issue, now = Date.now()) {
   const dueAt = created + targetDays * DAY;
   const fixedAt = resolvedAt(issue);
 
-  // An issue reopened after being resolved is open again, and the clock is running again —
-  // resolvedAt returns the latest entry, so a reopen leaves the current status non-resolved.
+  // Settled issues (Resolved or Closed) are evaluated based on when resolution was achieved
   const settled = fixedAt !== null && (issue.status === 'Resolved' || issue.status === 'Closed');
 
   if (settled) {
@@ -60,6 +61,19 @@ function slaFor(issue, now = Date.now()) {
       daysLeft: null,
       state: fixedAt <= dueAt ? 'met' : 'missed',
       breachDays: fixedAt > dueAt ? Math.ceil((fixedAt - dueAt) / DAY) : 0,
+    };
+  }
+
+  // Pending Verification: officer completed the work and submitted resolution proof.
+  // The operational SLA clock stops at submittedAt rather than penalizing the officer for admin review delay.
+  if (issue.status === 'Pending Verification' && fixedAt !== null) {
+    const onTime = fixedAt <= dueAt;
+    return {
+      targetDays,
+      dueAt: new Date(dueAt),
+      daysLeft: onTime ? Math.max(0, Math.ceil((dueAt - fixedAt) / DAY)) : null,
+      state: onTime ? 'on-track' : 'missed',
+      breachDays: onTime ? 0 : Math.ceil((fixedAt - dueAt) / DAY),
     };
   }
 

@@ -390,8 +390,8 @@ async function seed() {
       submittedAt: daysAgo(1),
     },
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen1._id, at: daysAgo(4) },
-      { status: 'Acknowledged', note: 'Prioritized as urgent road hazard', by: admin._id, at: daysAgo(3) },
+      { status: 'Submitted', note: 'Reported by citizen', by: citizen1._id, at: daysAgo(3) },
+      { status: 'Acknowledged', note: 'Prioritized as urgent road hazard', by: admin._id, at: daysAgo(2, 12) },
       { status: 'In Progress', note: 'Procured cast iron replacement lid from central depot', by: officerDrainage._id, at: daysAgo(2) },
       {
         status: 'Pending Verification',
@@ -401,7 +401,7 @@ async function seed() {
         at: daysAgo(1),
       },
     ],
-    createdAt: daysAgo(4),
+    createdAt: daysAgo(3),
   });
 
   // [STATUS: RESOLVED]
@@ -655,11 +655,11 @@ async function seed() {
       'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen2._id, at: daysAgo(3) },
-      { status: 'Acknowledged', note: 'Surveyed by engineering division', by: officerRoads._id, at: daysAgo(2) },
-      { status: 'In Progress', note: 'Road grader and leveling equipment deployed on site', by: officerRoads._id, at: daysAgo(1) },
+      { status: 'Submitted', note: 'Reported by citizen', by: citizen2._id, at: daysAgo(9) },
+      { status: 'Acknowledged', note: 'Surveyed by engineering division', by: officerRoads._id, at: daysAgo(6) },
+      { status: 'In Progress', note: 'Road grader and leveling equipment deployed on site', by: officerRoads._id, at: daysAgo(3) },
     ],
-    createdAt: daysAgo(3),
+    createdAt: daysAgo(9),
   });
 
   // ── JORHAT REGIONAL DEMO ISSUE ──
@@ -682,7 +682,7 @@ async function seed() {
     ],
     statusHistory: [
       { status: 'Submitted', note: 'Reported by citizen in Jorhat', by: citizen1._id, at: daysAgo(2) },
-      { status: 'Acknowledged', note: 'Auto-assigned to Roads & Infrastructure (Jorhat Region). Officer assigned via regional load-balancing.', by: citizen1._id, at: daysAgo(2) },
+      { status: 'Acknowledged', note: 'Assigned to Roads & Infrastructure (Jorhat Division). A local field officer has been allotted to take action.', by: citizen1._id, at: daysAgo(2) },
       { status: 'In Progress', note: 'Jorhat Municipal engineering division initiated desilting.', by: officerRoadsJorhat._id, at: daysAgo(1) },
     ],
     createdAt: daysAgo(2),
@@ -708,7 +708,7 @@ async function seed() {
     ],
     statusHistory: [
       { status: 'Submitted', note: 'Reported by citizen in Sivasagar', by: citizen3._id, at: daysAgo(1) },
-      { status: 'Acknowledged', note: 'Auto-assigned to Water Supply & Sewage (Sivasagar Region). Officer assigned via regional load-balancing.', by: citizen3._id, at: daysAgo(1) },
+      { status: 'Acknowledged', note: 'Assigned to Water Supply & Sewage (Sivasagar Division). A local field officer has been allotted to take action.', by: citizen3._id, at: daysAgo(1) },
     ],
     createdAt: daysAgo(1),
   });

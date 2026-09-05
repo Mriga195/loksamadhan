@@ -6,7 +6,8 @@ const User = require('../models/User');
 const { auth, requireRole } = require('../middleware/auth');
 const { upload, uploadErrors, uploadToCloud, photoPath } = require('../lib/upload');
 const { publicIssue, publicIssueList } = require('../lib/serialize');
-const { CATEGORIES, DEPARTMENTS, STATUSES, PRIORITIES } = require('../constants');
+const { CATEGORIES, DEPARTMENTS, STATUSES, PRIORITIES, inAssam } = require('../constants');
+const { sendIssueCreatedEmail, sendIssueStatusUpdateEmail } = require('../lib/mailer');
 
 const router = express.Router();
 const officer = requireRole('officer', 'admin');
@@ -186,6 +187,30 @@ async function duplicateCounts(issues) {
 }
 
 /**
+ * Asynchronously notify the citizen who reported the issue of a status change
+ */
+async function notifyReporterStatusUpdate(issue, newStatus, note = '', evidenceUrl = null) {
+  try {
+    let reporter = issue.reporter;
+    if (!reporter || !reporter.email) {
+      reporter = await User.findById(issue.reporter).select('name email');
+    }
+    if (reporter && reporter.email) {
+      await sendIssueStatusUpdateEmail({
+        to: reporter.email,
+        citizenName: reporter.name || 'Citizen',
+        issue,
+        newStatus,
+        note: note || '',
+        evidenceUrl: evidenceUrl || null,
+      });
+    }
+  } catch (err) {
+    console.error('[LokSamadhan Mailer] Error notifying reporter of status update:', err.message);
+  }
+}
+
+/**
  * Synchronize status, department, officer, and resolution/feedback details
  * to all duplicates linked to this issue cluster.
  */
@@ -214,6 +239,25 @@ async function syncDuplicatesStatus(issue, status, note, byUserId, evidence = nu
       $push: { statusHistory: historyEntry },
     }
   );
+
+  // Notify reporters of linked duplicate reports
+  try {
+    const duplicates = await Issue.find({ duplicateOf: rootId }).populate('reporter', 'name email');
+    for (const dup of duplicates) {
+      if (dup.reporter && dup.reporter.email) {
+        sendIssueStatusUpdateEmail({
+          to: dup.reporter.email,
+          citizenName: dup.reporter.name || 'Citizen',
+          issue: dup,
+          newStatus: status,
+          note: note ? `${note} (Synced with master report)` : `Status updated to ${status}.`,
+          evidenceUrl: evidence,
+        }).catch((err) => console.error('[LokSamadhan Mailer] Error emailing duplicate reporter:', err.message));
+      }
+    }
+  } catch (syncErr) {
+    console.error('[LokSamadhan Mailer] Failed to email duplicate reporters:', syncErr.message);
+  }
 }
 
 /* ---------------------------------------------------------------- A3. GET /api/issues */
@@ -426,36 +470,33 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
   let address = String(req.body.address ?? '').trim();
   let area = String(req.body.area ?? '').trim();
 
-  if (title.length < 5 || title.length > 120) return bad(res, 'Title must be 5–120 characters.');
-  if (description.length < 10 || description.length > 2000) return bad(res, 'Description must be 10–2000 characters.');
+  if (title.length < 5 || title.length > 50) return bad(res, 'Title must be 5–50 characters.');
+  if (description.length < 10 || description.length > 300) return bad(res, 'Description must be 10–300 characters.');
   if (!CATEGORIES.includes(category)) return bad(res, 'Unknown category.');
 
   const lng = Number(req.body.lng);
   const lat = Number(req.body.lat);
   if (!validLngLat(lng, lat)) return bad(res, 'Valid lng and lat are required.');
+  if (!inAssam(lng, lat)) return bad(res, 'LokSamadhan only accepts reports located inside Assam.');
+
+  // The bbox is a rectangle and also covers slices of Bhutan, Arunachal, Meghalaya, Nagaland and
+  // Bengal, so ask the geocoder which state the pin is actually in. A failed lookup cannot prove
+  // the pin is outside Assam, so the bbox check above stands alone in that case.
+  const geo = await reverseAddress(lng, lat);
+  if (geo && geo.address && geo.address.state && !/assam/i.test(geo.address.state)) {
+    return bad(res, 'LokSamadhan only accepts reports located inside Assam.');
+  }
 
   // Fallback: If address not provided by client, resolve location according to pin
   if (!address) {
-    try {
-      const geoRes = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        { headers: { 'User-Agent': 'LokSamadhanCivicApp/1.0', 'Accept-Language': 'en' }, signal: AbortSignal.timeout(3000) }
-      );
-      if (geoRes.ok) {
-        const geoData = await geoRes.json();
-        const addr = geoData.address || {};
-        const street = addr.road || addr.street || addr.footway || '';
-        const neighbourhood = addr.suburb || addr.neighbourhood || addr.residential || '';
-        const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
-        const state = addr.state || '';
-        const parts = [street, neighbourhood, city, state].filter(Boolean);
-        address = parts.join(', ') || geoData.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        if (!area) area = neighbourhood || city || 'General';
-      }
-    } catch {
-      if (!address) address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      if (!area) area = 'General';
-    }
+    const addr = geo?.address || {};
+    const street = addr.road || addr.street || addr.footway || '';
+    const neighbourhood = addr.suburb || addr.neighbourhood || addr.residential || '';
+    const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
+    const state = addr.state || '';
+    const parts = [street, neighbourhood, city, state].filter(Boolean);
+    address = parts.join(', ') || geo?.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    if (!area) area = neighbourhood || city || 'General';
   }
 
   if (!area) {
@@ -545,7 +586,7 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
     if (autoStatus === 'Acknowledged') {
       historyEntries.push({
         status: 'Acknowledged',
-        note: `Auto-assigned to ${department} (${issueRegion} Region). Officer assigned via regional load-balancing.`,
+        note: `Assigned to ${department} (${issueRegion} Division). A local field officer has been allotted to take action.`,
         evidence: null,
         by: req.user.id,
         at: new Date(now.getTime() + 1),
@@ -553,7 +594,7 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
     } else {
       historyEntries.push({
         status: 'Submitted',
-        note: `No designated officer stationed in ${issueRegion} Region for ${department || 'this category'}. Routed to Admin Triage Pool.`,
+        note: `Report received and queued for review by the municipal triage team for ${department || 'this category'}.`,
         evidence: null,
         by: req.user.id,
         at: new Date(now.getTime() + 1),
@@ -577,6 +618,16 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
   });
 
   await issue.populate('assignedOfficer', 'name role department region');
+
+  // Dispatch official acknowledgement receipt with reference ID (e.g. LS-2026-61AB11)
+  if (req.user && req.user.email) {
+    sendIssueCreatedEmail({
+      to: req.user.email,
+      citizenName: req.user.name || 'Citizen',
+      issue,
+    }).catch(err => console.error('[LokSamadhan Mailer] Error sending receipt email:', err.message));
+  }
+
   res.status(201).json(publicIssue(issue, req.user.id));
 }));
 
@@ -620,7 +671,7 @@ router.post('/:id/support', auth(true), ah(async (req, res) => {
 }));
 
 /* ----------------------------------------------- B2. PATCH /api/issues/:id/assign */
-router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
+router.patch('/:id/assign', auth(true), adminOnly, ah(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
   const { department, region, officerId } = req.body;
   // Priority is now auto-determined; accept override from client if provided, else auto-calculate
@@ -675,8 +726,8 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
   }
 
   const noteText = assignedOfficerName
-    ? `Triaged to ${department} (${issue.region || 'General'} Region, priority: ${issue.priority}) — assigned to ${assignedOfficerName}`
-    : `Triaged to ${department} (${issue.region || 'General'} Region, priority: ${issue.priority}) — unassigned (no officer stationed in this region)`;
+    ? `Assigned to ${department} (${issue.region || 'General'} Division) — allotted to field officer ${assignedOfficerName}.`
+    : `Assigned to ${department} (${issue.region || 'General'} Division) — awaiting field officer dispatch.`;
 
   issue.statusHistory.push({
     status: issue.status,
@@ -691,6 +742,7 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
 
   // Sync department and assigned officer to any linked duplicates
   await syncDuplicatesStatus(issue, issue.status, noteText, req.user.id);
+  notifyReporterStatusUpdate(issue, issue.status, noteText);
 
   res.json(publicIssue(issue, req.user.id));
 }));
@@ -717,6 +769,14 @@ router.post('/:id/report-resolution', auth(true), officer, upload.array('evidenc
 
   const issue = await Issue.findById(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+  // An officer can only report resolution on issues assigned to them (cannot take action on other issues in the dept queue)
+  if (req.user.role === 'officer') {
+    const isAssigned = String(issue.assignedOfficer) === String(req.user.id);
+    if (!isAssigned) {
+      return res.status(403).json({ error: 'Forbidden: You can only report resolution on issues assigned to you.' });
+    }
+  }
 
   issue.resolution = {
     note,
@@ -762,6 +822,13 @@ router.post('/:id/report-resolution', auth(true), officer, upload.array('evidenc
     'Pending Verification',
     `Resolution submitted by officer: ${note}`,
     req.user.id,
+    allEvidence[0] || null
+  );
+
+  notifyReporterStatusUpdate(
+    issue,
+    'Pending Verification',
+    `Resolution submitted by officer: ${note}`,
     allEvidence[0] || null
   );
 
@@ -812,11 +879,19 @@ router.post('/:id/verify-resolution', auth(true), adminOnly, ah(async (req, res)
   await issue.save();
   await issue.populate('assignedOfficer', 'name role department region');
 
+  const verifyNote = adminNotes?.trim() || (action === 'approve' ? 'Admin approved resolution proof.' : 'Admin rejected resolution proof.');
   await syncDuplicatesStatus(
     issue,
     issue.status,
-    adminNotes?.trim() || (action === 'approve' ? 'Admin approved resolution proof.' : 'Admin rejected resolution proof.'),
+    verifyNote,
     req.user.id,
+    issue.resolution?.evidence?.[0] || null
+  );
+
+  notifyReporterStatusUpdate(
+    issue,
+    issue.status,
+    verifyNote,
     issue.resolution?.evidence?.[0] || null
   );
 
@@ -874,12 +949,15 @@ router.post('/:id/citizen-feedback', auth(true), ah(async (req, res) => {
   await issue.save();
   await issue.populate('assignedOfficer', 'name role department region');
 
+  const feedbackNote = notes?.trim() || (satisfied ? 'Citizen confirmed satisfied with solution.' : 'Citizen reported dissatisfaction with solution.');
   await syncDuplicatesStatus(
     issue,
     issue.status,
-    notes?.trim() || (satisfied ? 'Citizen confirmed satisfied with solution.' : 'Citizen reported dissatisfaction with solution.'),
+    feedbackNote,
     req.user.id
   );
+
+  notifyReporterStatusUpdate(issue, issue.status, feedbackNote);
 
   res.json(publicIssue(issue, req.user.id));
 }));
@@ -923,6 +1001,8 @@ router.post('/:id/reopen', auth(true), adminOnly, ah(async (req, res) => {
     req.user.id
   );
 
+  notifyReporterStatusUpdate(issue, issue.status, note || defaultNote);
+
   res.json(publicIssue(issue, req.user.id));
 }));
 
@@ -945,6 +1025,14 @@ router.patch('/:id/status', auth(true), officer, upload.single('evidence'), uplo
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).json({ error: 'Issue not found.' });
 
+    // An officer can only change status on issues assigned to them
+    if (req.user.role === 'officer') {
+      const isAssigned = String(issue.assignedOfficer) === String(req.user.id);
+      if (!isAssigned) {
+        return res.status(403).json({ error: 'Forbidden: You can only change the status of issues assigned to you.' });
+      }
+    }
+
     // Append only. History is never overwritten and past entries are never edited — that is
     // what makes the public timeline trustworthy. `by` is stored and stripped by serialize.js.
     issue.status = status;
@@ -954,6 +1042,7 @@ router.patch('/:id/status', auth(true), officer, upload.single('evidence'), uplo
     await issue.save();
 
     await syncDuplicatesStatus(issue, status, note, req.user.id, evidence);
+    notifyReporterStatusUpdate(issue, status, note, evidence);
 
     res.json(publicIssue(issue, req.user.id));
   }));
@@ -965,6 +1054,14 @@ router.patch('/:id/duplicate', auth(true), officer, ah(async (req, res) => {
 
   const issue = await Issue.findById(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+  // An officer can only link/detach duplicates for issues assigned to them
+  if (req.user.role === 'officer') {
+    const isAssigned = String(issue.assignedOfficer) === String(req.user.id);
+    if (!isAssigned) {
+      return res.status(403).json({ error: 'Forbidden: You can only link or detach issues assigned to you.' });
+    }
+  }
 
   if (duplicateOfId === null || duplicateOfId === undefined || duplicateOfId === '') {
     issue.duplicateOf = null;            // unlink restores a standalone issue; nothing is lost
@@ -1028,6 +1125,19 @@ router.patch('/:id/duplicate', auth(true), officer, ah(async (req, res) => {
 }));
 
 /* --------------------------------------------------------------------------- helpers */
+// Returns Nominatim's reverse-geocode payload, or null if the lookup failed.
+async function reverseAddress(lng, lat) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+      { headers: { 'User-Agent': 'LokSamadhanCivicApp/1.0', 'Accept-Language': 'en' }, signal: AbortSignal.timeout(3000) }
+    );
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 function validLngLat(lng, lat) {
   return Number.isFinite(lng) && Number.isFinite(lat)
     && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;

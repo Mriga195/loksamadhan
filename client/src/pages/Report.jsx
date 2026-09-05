@@ -55,7 +55,7 @@ const EN = {
   step4Label: 'Photos', step4Hint: 'Add up to 3 photos to help us identify the issue better.',
   cancel: 'Cancel', submit: 'Submit report', submitting: 'Submitting\u2026',
   errCategory: 'Please select a category', errLocation: 'Please select a location on the map',
-  errTitle: 'Title must be at least 5 characters', errDesc: 'Description must be at least 10 characters',
+  errTitle: 'Title must be 5\u201350 characters', errDesc: 'Description must be 10\u2013300 characters',
 };
 
 const Report = () => {
@@ -145,8 +145,8 @@ const Report = () => {
     e.preventDefault(); setError(null);
     if (!category) { setError(t.errCategory); return; }
     if (!location || location.length !== 2) { setError(t.errLocation); return; }
-    if (!title.trim() || title.trim().length < 5) { setError(t.errTitle); return; }
-    if (!description.trim() || description.trim().length < 10) { setError(t.errDesc); return; }
+    if (!title.trim() || title.trim().length < 5 || title.trim().length > 50) { setError(t.errTitle); return; }
+    if (!description.trim() || description.trim().length < 10 || description.trim().length > 300) { setError(t.errDesc); return; }
     if (!user) {
       const ds = { category, address, location, pinAddress, pinArea, title, description, photos };
       try { navigate('/login', { state: { from: '/report', draft: ds } }); }
@@ -169,10 +169,10 @@ const Report = () => {
       } else if (pinAddress) {
         finalAddress = pinAddress;
       } else {
-        finalAddress = 'Tezpur, Assam';
+        finalAddress = `${location[1].toFixed(5)}, ${location[0].toFixed(5)}, Assam`;
       }
 
-      const finalArea = pinArea || (landmark ? landmark : 'Tezpur');
+      const finalArea = pinArea || landmark || finalAddress;
 
       fd.append('address', finalAddress);
       fd.append('area', finalArea);
@@ -254,11 +254,41 @@ const Report = () => {
         </Step>
 
         <Step n={3} icon="clipboard" label={t.step3Label} required hint={t.step3Hint}
-          done={title.trim().length >= 5 && description.trim().length >= 10}>
-          <input type="text" value={title} onChange={e => setTitle(e.target.value)}
-            placeholder={t.titlePlaceholder} required minLength={5} className={field} />
-          <textarea value={description} onChange={e => setDescription(e.target.value)}
-            placeholder={t.descPlaceholder} rows={4} required minLength={10} className={`${field} mt-4 py-3`} />
+          done={title.trim().length >= 5 && title.trim().length <= 50 && description.trim().length >= 10 && description.trim().length <= 300}>
+          <div>
+            <input
+              type="text"
+              value={title}
+              maxLength={50}
+              onChange={e => setTitle(e.target.value.slice(0, 50))}
+              placeholder={t.titlePlaceholder}
+              required
+              minLength={5}
+              className={field}
+            />
+            <div className="mt-1 flex items-center justify-end text-xs text-ink-muted">
+              <span className={title.length >= 50 ? 'font-semibold text-amber-600' : ''}>
+                {title.length}/50
+              </span>
+            </div>
+          </div>
+          <div className="mt-3">
+            <textarea
+              value={description}
+              maxLength={300}
+              onChange={e => setDescription(e.target.value.slice(0, 300))}
+              placeholder={t.descPlaceholder}
+              rows={4}
+              required
+              minLength={10}
+              className={`${field} py-3`}
+            />
+            <div className="mt-1 flex items-center justify-end text-xs text-ink-muted">
+              <span className={description.length >= 300 ? 'font-semibold text-amber-600' : ''}>
+                {description.length}/300
+              </span>
+            </div>
+          </div>
         </Step>
 
         <Step n={4} icon="camera" label={t.step4Label} optional hint={t.step4Hint} done={photos.length > 0}>

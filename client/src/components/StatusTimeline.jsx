@@ -5,8 +5,49 @@ import SafeImage from './SafeImage';
 // The centrepiece of the detail page. Oldest entry at the top, so it reads as a story that
 // arrives somewhere rather than a log that starts with the ending.
 //
-// There is no `by` field in the response - serialize.js strips officer identity on purpose
-// (hard rule 3). Do not design a "changed by" line for data that will never arrive.
+// Convert technical/internal municipal system notes into friendly, clear progress messages for citizens
+export function formatTimelineNote(rawNote) {
+  if (!rawNote || typeof rawNote !== 'string') return '';
+  let text = rawNote.trim();
+
+  // Replace robotic auto-assignment notes
+  if (/regional load-balancing/i.test(text)) {
+    text = text.replace(
+      /Auto-assigned to (.+?)\s*\((.+?)\s*Region\)\.\s*Officer assigned via regional load-balancing\.?/i,
+      'Assigned to $1 ($2 Division). A local field officer has been allotted to take action.'
+    );
+    text = text.replace(
+      /Officer assigned via regional load-balancing\.?/i,
+      'A local field officer has been allotted to take action.'
+    );
+  }
+
+  // Replace triage pool / unassigned jargon
+  if (/Admin Triage Pool/i.test(text) || /no officer stationed in this region/i.test(text)) {
+    text = text.replace(
+      /No designated officer stationed in (.+?)\s*Region for (.+?)\.\s*Routed to Admin Triage Pool\.?/i,
+      'Report received and queued for review by the municipal triage team for $2.'
+    );
+    text = text.replace(/— unassigned \(no officer stationed in this region\)/i, '— awaiting field officer dispatch');
+  }
+
+  // Replace "Triaged to" jargon
+  if (/^Triaged to /i.test(text)) {
+    text = text.replace(/^Triaged to /i, 'Assigned to ');
+    text = text.replace(/, priority:\s*\w+\)/i, ')');
+    text = text.replace(/— assigned to /i, '— allotted to field officer ');
+  }
+
+  // Clean up "Linked as similar report to ... Handled under original report by assigned officer."
+  if (/Handled under original report by assigned officer/i.test(text)) {
+    text = text.replace(
+      /Linked as similar report to (#LS-[\w-]+)\.\s*Handled under original report by assigned officer\.?/i,
+      'Grouped under primary report $1 for consolidated resolution.'
+    );
+  }
+
+  return text;
+}
 
 export default function StatusTimeline({ history = [] }) {
   if (history.length === 0) return null;
@@ -57,7 +98,7 @@ export default function StatusTimeline({ history = [] }) {
 
               {entry.note && (
                 <p className={`mt-1.5 ${resolved ? 'text-base text-ink' : 'text-sm text-ink-muted'}`}>
-                  {entry.note}
+                  {formatTimelineNote(entry.note)}
                 </p>
               )}
 
