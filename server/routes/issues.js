@@ -57,12 +57,13 @@ async function leastLoadedOfficer(department) {
   if (!officers.length) return null;
   if (officers.length === 1) return officers[0];
 
-  // Count active (non-closed, non-resolved) issues per officer
+  // Count active (non-closed, non-resolved) issues per officer (root issues only!)
   const counts = await Issue.aggregate([
     {
       $match: {
         assignedOfficer: { $in: officers.map(o => o._id) },
         status: { $nin: ['Closed', 'Resolved'] },
+        duplicateOf: null, // Duplicates do not inflate officer workload
       },
     },
     { $group: { _id: '$assignedOfficer', count: { $sum: 1 } } },
@@ -246,10 +247,12 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
   // ── Smart Duplicate Detection: auto-group if same category within 1 km ──
   // Only link to a root issue that is still open (not Closed/Resolved)
   let duplicateOf = null;
+  let parentIssue = null;
   if (req.body.duplicateOfId) {
     const parent = await resolveParent(req.body.duplicateOfId);
     if (parent.error) return bad(res, parent.error);
     duplicateOf = parent.id;
+    parentIssue = await Issue.findById(parent.id);
   } else {
     // Search for an existing open issue of same category within 1km radius
     const nearby = await Issue.findOne({
@@ -259,38 +262,72 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
       location: {
         $geoWithin: { $centerSphere: [[lng, lat], 1000 / 6378100] },
       },
-    }).sort({ createdAt: -1 }).lean();
+    }).sort({ createdAt: -1 });
 
-    if (nearby) duplicateOf = nearby._id;
-  }
-
-  // ── Auto-determine department from category ──
-  const department = CATEGORY_DEPT_MAP[category] || null;
-
-  // ── Auto-assign to least-loaded officer in that department ──
-  let assignedOfficer = null;
-  let autoStatus = 'Submitted';
-  if (department) {
-    const officer = await leastLoadedOfficer(department);
-    if (officer) {
-      assignedOfficer = officer._id;
-      autoStatus = 'Acknowledged';
+    if (nearby) {
+      duplicateOf = nearby._id;
+      parentIssue = nearby;
     }
   }
 
-  // ── Auto-priority based on category urgency (no supporters yet) ──
-  const priority = autoPriority(category, 0);
+  // ── Auto-determine department from category ──
+  let department = CATEGORY_DEPT_MAP[category] || null;
+  let assignedOfficer = null;
+  let autoStatus = 'Submitted';
+  let priority = autoPriority(category, 0);
 
   const now = new Date();
   const historyEntries = [{ status: 'Submitted', note: 'Issue submitted by citizen', evidence: null, by: req.user.id, at: now }];
-  if (autoStatus === 'Acknowledged') {
+
+  if (parentIssue) {
+    // ── DUPLICATE: Do NOT assign a new officer ──
+    // Inherit the original issue's assigned officer, department, and status
+    department = parentIssue.department || department;
+    assignedOfficer = parentIssue.assignedOfficer || null;
+    autoStatus = parentIssue.status || 'Acknowledged';
+    priority = parentIssue.priority || priority;
+
+    const parentYear = new Date(parentIssue.createdAt).getFullYear();
+    const parentHex = String(parentIssue._id).slice(-6).toUpperCase();
     historyEntries.push({
-      status: 'Acknowledged',
-      note: `Auto-assigned to ${department} based on category. Officer assigned via load-balancing.`,
+      status: autoStatus,
+      note: `Linked as duplicate to #LS-${parentYear}-${parentHex}. Handled under original report by assigned officer.`,
       evidence: null,
       by: req.user.id,
       at: new Date(now.getTime() + 1),
     });
+
+    // Auto-boost parent supporters and re-evaluate priority!
+    const reporterStr = String(req.user.id);
+    const parentReporterStr = String(parentIssue.reporter);
+    const isAlreadySupporter =
+      reporterStr === parentReporterStr ||
+      parentIssue.supporters.some(s => String(s) === reporterStr);
+
+    if (!isAlreadySupporter) {
+      parentIssue.supporters.push(req.user.id);
+      parentIssue.priority = autoPriority(parentIssue.category, parentIssue.supporters.length);
+      await parentIssue.save();
+    }
+  } else {
+    // ── ROOT ISSUE: Auto-assign to least-loaded officer in that department ──
+    if (department) {
+      const officer = await leastLoadedOfficer(department);
+      if (officer) {
+        assignedOfficer = officer._id;
+        autoStatus = 'Acknowledged';
+      }
+    }
+
+    if (autoStatus === 'Acknowledged') {
+      historyEntries.push({
+        status: 'Acknowledged',
+        note: `Auto-assigned to ${department} based on category. Officer assigned via load-balancing.`,
+        evidence: null,
+        by: req.user.id,
+        at: new Date(now.getTime() + 1),
+      });
+    }
   }
 
   const issue = await Issue.create({
@@ -408,6 +445,17 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
 
   await issue.save();
   await issue.populate('assignedOfficer', 'name role department');
+
+  // Sync department and assigned officer to any linked duplicates
+  await Issue.updateMany(
+    { duplicateOf: issue._id },
+    {
+      $set: {
+        department: issue.department,
+        assignedOfficer: issue.assignedOfficer,
+      },
+    }
+  );
 
   res.json(publicIssue(issue, req.user.id));
 }));
