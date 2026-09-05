@@ -10,9 +10,21 @@ import Icon from '../components/Icon';
 
 // Each department's translatable text is kept in EN_DEPTS.
 // The id, icon, and category fields are never translated — they're sent to the server as-is.
+
+// Pastel-first themes: soft tints per department so every tab feels distinct but harmonious
+const THEMES = {
+  'water-supply':    { tabBg: '#dbeafe', tabText: '#2563eb', iconBg: '#eff6ff', accent: '#3b82f6', accentDark: '#2563eb', textAccent: '#3b82f6', factBg: '#eff6ff', factText: '#1d4ed8', svgFill: '#bfdbfe', panelBg: '#f8fbff', divider: '#bfdbfe' },
+  'solid-waste':     { tabBg: '#d1fae5', tabText: '#059669', iconBg: '#f0fdf4', accent: '#10b981', accentDark: '#059669', textAccent: '#059669', factBg: '#f0fdf4', factText: '#065f46', svgFill: '#a7f3d0', panelBg: '#f7fdf9', divider: '#a7f3d0' },
+  'roads':           { tabBg: '#fce7f3', tabText: '#9d174d', iconBg: '#fdf2f8', accent: '#ec4899', accentDark: '#db2777', textAccent: '#9d174d', factBg: '#fdf2f8', factText: '#831843', svgFill: '#f9a8d4', panelBg: '#fdf8fb', divider: '#f9a8d4' },
+  'street-lighting': { tabBg: '#ecfccb', tabText: '#3f6212', iconBg: '#f7fee7', accent: '#84cc16', accentDark: '#65a30d', textAccent: '#4d7c0f', factBg: '#f7fee7', factText: '#365314', svgFill: '#bef264', panelBg: '#f9fdf0', divider: '#bef264' },
+  'drainage':        { tabBg: '#ccfbf1', tabText: '#0f766e', iconBg: '#f0fdfa', accent: '#14b8a6', accentDark: '#0f766e', textAccent: '#0f766e', factBg: '#f0fdfa', factText: '#134e4a', svgFill: '#99f6e4', panelBg: '#f5fdfb', divider: '#99f6e4' },
+  'parks':           { tabBg: '#d1fae5', tabText: '#059669', iconBg: '#f0fdf4', accent: '#10b981', accentDark: '#059669', textAccent: '#059669', factBg: '#f0fdf4', factText: '#065f46', svgFill: '#a7f3d0', panelBg: '#f7fdf9', divider: '#a7f3d0' },
+};
+
 const EN_DEPTS = [
   {
     id: 'water-supply',
+    icon: 'droplet',
     image: '/dept/water-supply.webp',
     name: 'Water Supply',
     summary: 'Treats and distributes drinking water, and maintains the pipeline network.',
@@ -25,6 +37,7 @@ const EN_DEPTS = [
   },
   {
     id: 'solid-waste',
+    icon: 'trash',
     image: '/dept/solid-waste.webp',
     name: 'Solid Waste Management',
     summary: 'Collects, transports, and disposes of household and street waste.',
@@ -37,6 +50,7 @@ const EN_DEPTS = [
   },
   {
     id: 'roads',
+    icon: 'wrench',
     image: '/dept/roads.webp',
     name: 'Roads & Infrastructure',
     summary: 'Builds and repairs roads, footpaths, and public infrastructure.',
@@ -49,6 +63,7 @@ const EN_DEPTS = [
   },
   {
     id: 'street-lighting',
+    icon: 'bulb',
     image: '/dept/street-lighting.webp',
     name: 'Street Lighting',
     summary: 'Installs and maintains street lights for public safety.',
@@ -61,6 +76,7 @@ const EN_DEPTS = [
   },
   {
     id: 'drainage',
+    icon: 'droplet',
     image: '/dept/drainage.webp',
     name: 'Drainage & Sewerage',
     summary: 'Maintains storm-water drains and sewage lines to prevent flooding and overflow.',
@@ -72,11 +88,11 @@ const EN_DEPTS = [
     fact: 'Clearing storm-water drains before monsoon is one of the most effective ways cities prevent urban flooding.',
   },
   {
-    id: 'parks', icon: 'tree', category: null,
-    name: 'Parks & Gardens',
+    id: 'parks',
     icon: 'tree',
     image: '/dept/parks.webp',
     category: null,
+    name: 'Parks & Gardens',
     summary: 'Maintains public parks, gardens, and green spaces.',
     functions: [
       'Upkeep of parks, gardens, and street trees',
@@ -93,6 +109,7 @@ const EN_UI = {
   reportIssue: 'Report an issue',
   viewIssues: 'View issues',
   didYouKnow: 'Did you know?',
+  learnMore: 'Learn more',
 };
 
 export default function Departments() {
@@ -104,6 +121,7 @@ export default function Departments() {
   const activeId = params.get('dept') || EN_DEPTS[0].id;
   const active = depts.find((d) => d.id === activeId) || depts[0];
   const activeEN = EN_DEPTS.find((d) => d.id === activeId) || EN_DEPTS[0];
+  const theme = THEMES[activeId] || THEMES['water-supply'];
 
   useEffect(() => {
     if (lang === 'en') { setDepts(EN_DEPTS); setUi(EN_UI); return; }
@@ -132,82 +150,148 @@ export default function Departments() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
+      {/* Page header */}
       <h1 className="text-3xl font-extrabold">{ui.pageTitle}</h1>
       <div className="mt-2 h-1 w-10 rounded-full bg-brand-600" />
       <p className="mt-4 max-w-2xl text-sm text-ink-muted">{ui.pageDesc}</p>
 
+      {/* Department tabs */}
       <div role="tablist" aria-label="Departments" className="mt-6 flex flex-wrap gap-3">
-        {depts.map((dept) => (
-          <button key={dept.id} type="button" role="tab"
-            aria-selected={dept.id === active.id} onClick={() => selectTab(dept.id)}
-            className={
-              'flex min-h-[64px] items-center gap-3 rounded-2xl px-4 text-left text-sm shadow-sm transition-colors duration-200 ' +
-              (dept.id === active.id ? 'bg-brand-600 text-white' : 'bg-surface text-ink hover:bg-brand-50')
-            }>
-            <span className={
-              'flex size-9 shrink-0 items-center justify-center rounded-full ' +
-              (dept.id === active.id ? 'bg-white/20' : 'bg-brand-50 text-brand-600')
-            }>
-              <Icon name={dept.icon} className="size-[18px]" />
-            </span>
-            <span className="font-medium leading-tight">{dept.name}</span>
-          </button>
-        ))}
+        {depts.map((dept) => {
+          const t = THEMES[dept.id] || THEMES['water-supply'];
+          const isActive = dept.id === active.id;
+          return (
+            <button
+              key={dept.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => selectTab(dept.id)}
+              style={isActive
+                ? { backgroundColor: t.tabBg, color: t.tabText, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }
+                : {}}
+              className={
+                'flex min-h-[56px] items-center gap-3 rounded-2xl px-4 text-left text-sm transition-all duration-200 ' +
+                (isActive
+                  ? 'ring-1'
+                  : 'bg-surface text-ink shadow-sm hover:shadow-md')
+              }
+            >
+              <span
+                className="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200"
+                style={isActive
+                  ? { backgroundColor: 'rgba(255,255,255,0.6)', color: t.tabText }
+                  : { backgroundColor: t.iconBg, color: t.accent }}
+              >
+                <Icon name={dept.icon} className="size-[18px]" />
+              </span>
+              <span className="font-medium leading-tight">{dept.name}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div role="tabpanel" className="flex flex-col gap-6 rounded-2xl border border-line bg-surface p-6 sm:flex-row">
-          <div className="flex min-h-[220px] flex-1 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-50 to-sky-50 sm:max-w-xs">
+      {/* Main panel */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_1fr]">
+        {/* Left: image + details */}
+        <div
+          role="tabpanel"
+          className="flex flex-col gap-0 overflow-hidden rounded-2xl border border-line shadow-sm sm:flex-row"
+          style={{ backgroundColor: theme.panelBg }}
+        >
+          {/* Image */}
+          <div
+            className="flex min-h-[200px] flex-shrink-0 items-center justify-center overflow-hidden sm:w-56"
+            style={{ background: `linear-gradient(135deg, ${theme.tabBg}80, ${theme.iconBg})` }}
+          >
             {active.image
               ? <img src={active.image} alt="" aria-hidden="true" className="size-full object-cover" />
-              : <Icon name={active.icon} className="size-24 text-brand-200" />}
+              : <Icon name={active.icon} className="size-24" style={{ color: theme.svgFill }} />}
           </div>
 
-          <div className="flex-1">
+          {/* Details */}
+          <div className="flex flex-1 flex-col p-6">
+            {/* Title row */}
             <div className="flex items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">
+              <span
+                className="flex size-10 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: theme.tabBg, color: theme.tabText }}
+              >
                 <Icon name={active.icon} className="size-5" />
               </span>
-              <h2 className="text-lg font-semibold">{active.name}</h2>
+              <div>
+                <h2 className="text-lg font-semibold leading-tight">{active.name}</h2>
+                <p className="text-sm" style={{ color: theme.textAccent }}>{active.summary}</p>
+              </div>
             </div>
-            <p className="mt-3 text-sm text-ink-muted">{active.summary}</p>
 
-            <ul className="mt-4 divide-y divide-line border-y border-line text-sm">
+            {/* Divider */}
+            <div className="mt-4 h-px" style={{ backgroundColor: theme.divider }} />
+
+            {/* Functions list */}
+            <ul className="mt-4 flex flex-col gap-2.5 text-sm">
               {active.functions.map((fn, i) => (
-                <li key={i} className="flex gap-2 py-2.5">
-                  <Icon name="check" className="mt-0.5 size-4 shrink-0 text-brand-600" />
-                  {fn}
+                <li key={i} className="flex items-start gap-2.5">
+                  <span
+                    className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: theme.tabBg, color: theme.tabText }}
+                  >
+                    <Icon name="tick" className="size-3" />
+                  </span>
+                  <span className="text-ink">{fn}</span>
                 </li>
               ))}
             </ul>
 
-            <div className="mt-5 flex flex-wrap gap-3">
+            {/* Actions */}
+            <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                to={active.category ? `/report?category=${activeEN.category}` : '/report'}
-                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700">
-                <Icon name="plus" className="size-[18px]" />
-                {ui.reportIssue}
+                to={active.category !== undefined && active.category !== null
+                  ? `/report?category=${activeEN.category}`
+                  : '/report'}
+                className="inline-flex min-h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors duration-150"
+                style={{ backgroundColor: theme.tabBg, color: theme.tabText }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = theme.divider; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = theme.tabBg; }}
+              >
+                <Icon name={active.icon} className="size-4" />
+                {ui.learnMore}
                 <Icon name="right" className="size-4" />
               </Link>
               {active.category && (
                 <Link
                   to={`/feed?category=${activeEN.category}`}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-line bg-canvas px-4 text-sm font-medium hover:border-slate-300">
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-line bg-canvas px-4 text-sm font-medium hover:border-slate-300 transition-colors duration-150"
+                >
                   <Icon name="home" className="size-[18px]" />
-                  {ui.viewIssues} {active.name}
+                  {ui.viewIssues}
                 </Link>
               )}
             </div>
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-brand-50 p-6">
-          <span className="flex size-10 items-center justify-center rounded-full bg-white/70 text-brand-600">
+        {/* Right: Did you know? */}
+        <div
+          className="relative overflow-hidden rounded-2xl p-6 shadow-sm border border-line"
+          style={{ backgroundColor: theme.factBg }}
+        >
+          <span
+            className="flex size-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: theme.tabBg, color: theme.tabText, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+          >
             <Icon name="bulb" className="size-5" />
           </span>
-          <h3 className="mt-4 font-semibold text-brand-700">{ui.didYouKnow}</h3>
-          <p className="mt-2 text-sm text-ink-muted">{active.fact}</p>
-          <Icon name={active.icon} className="pointer-events-none absolute -bottom-4 -right-4 size-24 text-brand-100" />
+          <h3 className="mt-4 font-semibold" style={{ color: theme.factText }}>{ui.didYouKnow}</h3>
+          <p className="mt-2 text-sm text-ink-muted leading-relaxed">{active.fact}</p>
+
+          {/* Decorative background illustration */}
+          <div
+            className="pointer-events-none absolute bottom-0 right-0 translate-x-4 translate-y-4"
+            aria-hidden="true"
+          >
+            <Icon name={active.icon} className="size-32 opacity-20" style={{ color: theme.accent }} />
+          </div>
         </div>
       </div>
     </div>
