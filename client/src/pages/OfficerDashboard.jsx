@@ -24,9 +24,14 @@ const DEPARTMENTS = [
 ];
 
 // "Late" is decided once, on the server, from the per-category targets in lib/sla.js and
-// shipped on every issue. This used to be a flat 7 days computed here, which meant a 3-day
-// water breach did not surface in this queue for another four days.
-const isOverdue = issue => issue.sla?.state === 'overdue';
+// shipped on every issue. An issue that is already resolved, closed, or submitted for verification
+// is not an active SLA breach in the triage queue.
+const isOverdue = issue =>
+  issue.sla?.state === 'overdue' &&
+  issue.status !== 'Resolved' &&
+  issue.status !== 'Closed' &&
+  issue.status !== 'Pending Verification';
+
 
 const PER_PAGE = 10;
 
@@ -516,7 +521,7 @@ export default function OfficerDashboard() {
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
                       <span className="relative inline-flex size-2 rounded-full bg-rose-600" />
                     </span>
-                    {counts.overdue} issue{counts.overdue === 1 ? '' : 's'} past 7-day SLA target!
+                    {counts.overdue} issue{counts.overdue === 1 ? '' : 's'} past SLA target deadline!
                   </div>
                 )}
               </div>
@@ -785,8 +790,11 @@ export default function OfficerDashboard() {
                                       <td className="whitespace-nowrap px-4 py-3 text-ink-muted">
                                         {age(issue.createdAt)}
                                         {overdue && (
-                                          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1.5 py-0.2 text-[10px] font-bold text-red-700">
-                                            Overdue
+                                          <span
+                                            title={`Category: ${issue.category || 'General'} • SLA Target: ${issue.sla?.targetDays || 7} days • ${issue.sla?.breachDays || 1}d overdue`}
+                                            className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700"
+                                          >
+                                            Overdue ({issue.sla?.targetDays || 7}d SLA)
                                           </span>
                                         )}
                                       </td>
