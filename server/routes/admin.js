@@ -27,6 +27,14 @@ router.get('/users', async (req, res, next) => {
       const deptTotal = deptIssues.length;
       const deptResolved = deptIssues.filter(i => i.status === 'Resolved').length;
 
+      // Admin users have full system access and do not have assigned departmental queues or workload ratios
+      if (user.role === 'admin') {
+        return {
+          ...uObj,
+          workStats: null,
+        };
+      }
+
       // Calculate officer action metrics
       allIssues.forEach(issue => {
         const historyEntries = issue.statusHistory || [];
@@ -146,6 +154,32 @@ router.patch('/users/:id', async (req, res, next) => {
 
     const { name, email, password, role, department, region } = req.body;
 
+    // ── Admin user: ONLY name and password can be updated ──
+    if (user.role === 'admin') {
+      if (name !== undefined) {
+        const trimmedName = String(name).trim();
+        if (trimmedName.length < 2) {
+          return res.status(400).json({ error: 'Name must be at least 2 characters' });
+        }
+        user.name = trimmedName;
+      }
+
+      if (password && String(password).trim()) {
+        const pwd = String(password).trim();
+        if (pwd.length < 6) {
+          return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+        user.passwordHash = await User.hashPassword(pwd);
+      }
+
+      user.department = null;
+      user.region = null;
+
+      await user.save();
+      return res.json({ user: user.toProfile(), message: 'Admin details updated successfully' });
+    }
+
+    // ── Officer user updates ──
     if (name !== undefined) {
       const trimmedName = String(name).trim();
       if (trimmedName.length < 2) {
@@ -185,11 +219,12 @@ router.patch('/users/:id', async (req, res, next) => {
       user.region = String(region || '').trim() || null;
     }
 
-    if (password) {
-      if (password.length < 6) {
+    if (password && String(password).trim()) {
+      const pwd = String(password).trim();
+      if (pwd.length < 6) {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
       }
-      user.passwordHash = await User.hashPassword(password);
+      user.passwordHash = await User.hashPassword(pwd);
     }
 
     await user.save();
