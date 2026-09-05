@@ -9,7 +9,6 @@ import StatusTimeline from './StatusTimeline';
 import SafeImage from './SafeImage';
 import ConfirmDialog from './ConfirmDialog';
 import AttachDuplicateModal from './AttachDuplicateModal';
-import SlaBadge from './SlaBadge';
 
 export const shortId = issue =>
   `LS-${new Date(issue.createdAt).getFullYear()}-${String(issue._id).slice(-6).toUpperCase()}`;
@@ -540,7 +539,6 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
               <Icon name="external" className="size-3.5" />
             </Link>
             <StatusPill status={issue.status} size="sm" />
-            <SlaBadge sla={issue.sla} showMet />
             {issue.priority && (
               <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold capitalize ${PRIORITY_COLORS[issue.priority] || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                 {issue.priority === 'high' && <span className="size-1.5 rounded-full bg-red-500" />}

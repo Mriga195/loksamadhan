@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import StatusPill from './StatusPill';
-import SlaBadge from './SlaBadge';
 
 // One row in the public feed. There is no reporter in the API response — no name, no avatar,
 // no "posted by". The serializer strips it on purpose (hard rule 3), so nothing here implies
@@ -99,11 +98,7 @@ export default function IssueCard({ issue, index }) {
             <h3 className="line-clamp-2 text-base font-semibold leading-snug sm:truncate sm:text-lg">
               {issue.title}
             </h3>
-            <span className="flex shrink-0 flex-col items-end gap-1">
-              <StatusPill status={issue.status} />
-              {/* Status says where it is; this says whether that is acceptable by now. */}
-              <SlaBadge sla={issue.sla} />
-            </span>
+            <StatusPill status={issue.status} className="shrink-0" />
           </div>
 
           {/* Two pills rather than a run-on line: the address is the long half and wraps on

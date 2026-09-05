@@ -5,7 +5,6 @@ import { useAuth } from '../AuthContext';
 import FeedMap from '../components/FeedMap';
 import Icon from '../components/Icon';
 import StatusPill from '../components/StatusPill';
-import SlaBadge from '../components/SlaBadge';
 import StatusTimeline from '../components/StatusTimeline';
 import ErrorState from '../components/ErrorState';
 import Spinner, { Skeleton } from '../components/Spinner';
@@ -491,9 +490,6 @@ export default function IssueDetail() {
               <span className="rounded-full bg-canvas px-2.5 py-1 text-sm text-ink-muted">
                 {issue.category}
               </span>
-              {/* showMet here but not in the feed: "fixed on time" is worth saying once on the
-                  report itself, and is wallpaper on every resolved card in a list. */}
-              <SlaBadge sla={issue.sla} showMet />
               {/* Priority badge with color coding */}
               {issue.priority === 'high' && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 border border-red-200 px-2.5 py-0.5 text-xs font-bold text-red-700">
