@@ -29,6 +29,12 @@ async function toGroqImageContent(photoUrlOrPath) {
     const fullPath = path.join(__dirname, '..', cleanPath);
     if (fs.existsSync(fullPath)) {
       const buffer = fs.readFileSync(fullPath);
+      // Groq rejects oversized base64 payloads. Uploads are capped at 5 MB and base64 inflates by
+      // a third, so anything past this would come back as a 400 after a long upload.
+      if (buffer.length > 3.5 * 1024 * 1024) {
+        console.warn('[AI Vision] Local image too large to inline for AI analysis:', cleanPath);
+        return null;
+      }
       const ext = path.extname(fullPath).toLowerCase().replace('.', '') || 'jpeg';
       const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
       const base64 = buffer.toString('base64');
@@ -41,10 +47,9 @@ async function toGroqImageContent(photoUrlOrPath) {
     console.warn('[AI Vision] Failed to read local image for AI analysis:', err.message);
   }
 
-  return {
-    type: 'image_url',
-    image_url: { url: photoUrlOrPath },
-  };
+  // A relative path the API cannot fetch is worse than nothing: the caller refuses to run rather
+  // than ask the model to judge a repair from a single image.
+  return null;
 }
 
 /**
@@ -63,7 +68,7 @@ function callGroqChat(apiKey, bodyObj) {
         'Content-Length': Buffer.byteLength(payload),
       },
       family: 4,
-      timeout: 25000,
+      timeout: 15000,
     }, (res) => {
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
@@ -82,7 +87,7 @@ function callGroqChat(apiKey, bodyObj) {
 
     req.on('timeout', () => {
       req.destroy();
-      reject(new Error('Groq Vision API connection timed out after 25s'));
+      reject(new Error('Groq Vision API connection timed out after 15s'));
     });
 
     req.on('error', (err) => {
@@ -119,6 +124,18 @@ async function verifyResolutionProof({ beforePhoto, afterPhoto, category, title,
     try {
       const beforeContent = await toGroqImageContent(beforePhoto);
       const afterContent = await toGroqImageContent(afterPhoto);
+
+      // Never send just one image: the model would happily score a comparison it never made.
+      if (!beforeContent || !afterContent) {
+        return {
+          verified: false,
+          matchScore: null,
+          confidence: 'Low',
+          summary: 'One of the evidence images could not be read for automated comparison. Manual inspection required.',
+          verifiedAt: new Date(),
+          provider: 'heuristic',
+        };
+      }
 
       const promptText = `You are an AI Civic Infrastructure Inspector evaluating municipal work for an Indian civic portal (LokSamadhan).
 You are comparing two images:
@@ -163,7 +180,8 @@ Respond ONLY with a JSON object in this exact format, with no markdown fences, n
           if (res.ok) {
             const rawContent = res.data.choices?.[0]?.message?.content?.trim();
             if (rawContent) {
-              const parsed = JSON.parse(rawContent);
+              // response_format asks for bare JSON, but a fenced block still shows up sometimes.
+              const parsed = JSON.parse(rawContent.replace(/^```(?:json)?\s*|\s*```$/g, ''));
               const score = typeof parsed.matchScore === 'number'
                 ? Math.min(100, Math.max(0, Math.round(parsed.matchScore)))
                 : (parsed.verified ? 85 : 10);
@@ -179,7 +197,9 @@ Respond ONLY with a JSON object in this exact format, with no markdown fences, n
             }
           } else {
             console.warn(`[AI Vision] Model ${model} returned HTTP ${res.status}:`, res.error?.substring(0, 200));
-            // If 429 rate limit or model unavailable, try next model in the list
+            // A bad key, a rejected payload or a quota that is out will fail identically on the
+            // next model — only a rate limit or an unavailable model is worth retrying.
+            if ([400, 401, 403, 413].includes(res.status)) break;
           }
         } catch (innerErr) {
           console.warn(`[AI Vision] Request failed for model ${model}:`, innerErr.message);
