@@ -67,8 +67,13 @@ export default function IssueDetail() {
 
   const isMine = Boolean(
     issue?.isReporter ||
-    (user && issue?.reporter?._id && String(issue.reporter._id) === String(user._id))
+    (user && (
+      (issue?.reporter?._id && String(issue.reporter._id) === String(user._id)) ||
+      (issue?.reporter && String(issue.reporter) === String(user._id))
+    ))
   );
+  const isStaff = user?.role === 'officer' || user?.role === 'admin';
+  const canSupport = !isMine && !isStaff;
 
   async function support() {
     if (!user) return navigate('/login', { state: { from: `/issues/${id}` } });
@@ -557,33 +562,35 @@ export default function IssueDetail() {
             <StatusTimeline history={issue.statusHistory} />
           </section>
 
-          <section className={`p-5 ${card}`}>
-            <h2 className="font-semibold">Affected by this too?</h2>
-            <p className="mt-1 text-sm text-ink-muted">
-              {issue.supporterCount === 0
-                ? 'Nobody else has reported this yet.'
-                : `${issue.supporterCount} ${issue.supporterCount === 1 ? 'person has' : 'people have'} said this affects them.`}
-            </p>
-
-            {error && issue && (
-              <p role="alert" className="mt-3 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
-                {error}
+          {canSupport && (
+            <section className={`p-5 ${card}`}>
+              <h2 className="font-semibold">Affected by this too?</h2>
+              <p className="mt-1 text-sm text-ink-muted">
+                {issue.supporterCount === 0
+                  ? 'Nobody else has reported this yet.'
+                  : `${issue.supporterCount} ${issue.supporterCount === 1 ? 'person has' : 'people have'} said this affects them.`}
               </p>
-            )}
 
-            <button
-              type="button"
-              onClick={support}
-              disabled={issue.hasSupported || supporting}
-              className="mt-4 inline-flex min-h-11 w-full cursor-pointer items-center justify-center
-                gap-2 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-colors
-                duration-200 hover:bg-brand-700 disabled:cursor-default disabled:bg-resolved-600
-                disabled:opacity-100"
-            >
-              {supporting && <Spinner label="Saving" />}
-              {issue.hasSupported ? 'You reported this too' : 'I have this problem too'}
-            </button>
-          </section>
+              {error && issue && (
+                <p role="alert" className="mt-3 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={support}
+                disabled={issue.hasSupported || supporting}
+                className="mt-4 inline-flex min-h-11 w-full cursor-pointer items-center justify-center
+                  gap-2 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-colors
+                  duration-200 hover:bg-brand-700 disabled:cursor-default disabled:bg-resolved-600
+                  disabled:opacity-100"
+              >
+                {supporting && <Spinner label="Saving" />}
+                {issue.hasSupported ? 'You reported this too' : 'I have this problem too'}
+              </button>
+            </section>
+          )}
         </aside>
       </div>
     </main>
