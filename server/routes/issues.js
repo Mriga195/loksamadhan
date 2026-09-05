@@ -729,6 +729,23 @@ router.post('/:id/report-resolution', auth(true), officer, upload.array('evidenc
   };
 
   issue.status = 'Pending Verification';
+
+  // Automatically run AI verification between Before (citizen) and After (officer) photos
+  if (issue.photos?.[0] && allEvidence[0]) {
+    try {
+      const { verifyResolutionProof } = require('../lib/aiVision');
+      issue.aiVerification = await verifyResolutionProof({
+        beforePhoto: issue.photos[0],
+        afterPhoto: allEvidence[0],
+        category: issue.category,
+        title: issue.title,
+        resolutionNote: note,
+      });
+    } catch (aiErr) {
+      console.warn('Auto AI verification on resolution skipped:', aiErr.message);
+    }
+  }
+
   issue.statusHistory.push({
     status: 'Pending Verification',
     note: `Resolution submitted by officer: ${note}`,

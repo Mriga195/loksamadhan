@@ -15,6 +15,7 @@ import ShareIssue from '../components/ShareIssue';
 import { shortId } from '../components/IssueDrawer';
 import ConfirmDialog from '../components/ConfirmDialog';
 import AttachDuplicateModal from '../components/AttachDuplicateModal';
+import BeforeAfterSlider from '../components/BeforeAfterSlider';
 import NotFound from './NotFound';
 import { useSeo } from '../seo';
 
@@ -65,6 +66,7 @@ export default function IssueDetail() {
   const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [showAdminRejectInput, setShowAdminRejectInput] = useState(false);
   const [showAttachModal, setShowAttachModal] = useState(false);
+  const [isVerifyingAI, setIsVerifyingAI] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -196,6 +198,25 @@ export default function IssueDetail() {
       setActionError(e.message);
     } finally {
       setAdminActionLoading(false);
+    }
+  }
+
+  // AI Resolution Verification trigger
+  async function handleRunAIVerification() {
+    if (!issue?._id || isVerifyingAI) return;
+    setIsVerifyingAI(true);
+    setActionError(null);
+    try {
+      const res = await apiFetch(`/api/ai/issues/${issue._id}/verify-resolution?force=true`, {
+        method: 'POST',
+      });
+      if (res?.aiVerification) {
+        setIssue(prev => ({ ...prev, aiVerification: res.aiVerification }));
+      }
+    } catch (e) {
+      setActionError(e.message || 'AI resolution verification failed.');
+    } finally {
+      setIsVerifyingAI(false);
     }
   }
 
@@ -582,16 +603,18 @@ export default function IssueDetail() {
 
           {/* ── BEFORE & AFTER RESOLUTION PHOTOS SECTION ── */}
           {resolutionPhotos.length > 0 && (
-            <section className={`p-5 ${card} border-purple-200 bg-purple-50/20`}>
-              <div className="flex items-center justify-between">
+            <section className={`p-5 ${card} border-purple-200/90 bg-purple-50/15 shadow-sm space-y-5`}>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
                 <div>
                   <h2 className="font-bold text-ink flex items-center gap-2">
-                    <span className="rounded-md bg-purple-600 px-2 py-0.5 text-xs text-white">After Fix</span>
-                    Officer Resolution Proof ({resolutionPhotos.length})
+                    <span className="rounded-md bg-purple-600 px-2.5 py-0.5 text-xs font-bold text-white">
+                      Resolution Verification
+                    </span>
+                    Proof of Work
                   </h2>
-                  {issue.resolution?.note && (
-                    <p className="mt-1 text-sm text-ink-muted italic">"{issue.resolution.note}"</p>
-                  )}
+                  <p className="mt-1 text-xs text-ink-muted">
+                    Visual comparison between the reported defect and official municipal repair.
+                  </p>
                 </div>
                 {issue.resolution?.verifiedBy && (
                   <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800">
@@ -600,17 +623,36 @@ export default function IssueDetail() {
                 )}
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {resolutionPhotos.map((src, idx) => (
-                  <a key={idx} href={src} target="_blank" rel="noreferrer"
-                    className="group relative block aspect-square overflow-hidden rounded-xl border border-line bg-slate-50">
-                    <SafeImage src={src} alt="Resolution proof" className="size-full object-cover transition-transform duration-200 group-hover:scale-105" fallbackText="Proof photo" />
-                    <span aria-hidden="true"
-                      className="absolute bottom-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-surface/90 text-ink-muted shadow-sm">
-                      <Icon name="zoom" className="size-4" />
-                    </span>
-                  </a>
-                ))}
+              {/* Interactive Split Comparison Slider (when both Before & After photos exist) */}
+              {photos.length > 0 && (
+                <BeforeAfterSlider
+                  beforeSrc={photos[0]}
+                  afterSrc={resolutionPhotos[0]}
+                  aiVerification={issue.aiVerification}
+                  onRunVerification={handleRunAIVerification}
+                  isVerifying={isVerifyingAI}
+                  resolutionNote={issue.resolution?.note}
+                  verifiedBy={issue.resolution?.verifiedBy}
+                />
+              )}
+
+              {/* Full Evidence Gallery */}
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-3">
+                  All Resolution Evidence Photos ({resolutionPhotos.length})
+                </h3>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {resolutionPhotos.map((src, idx) => (
+                    <a key={idx} href={src} target="_blank" rel="noreferrer"
+                      className="group relative block aspect-square overflow-hidden rounded-xl border border-line bg-slate-50">
+                      <SafeImage src={src} alt="Resolution proof" className="size-full object-cover transition-transform duration-200 group-hover:scale-105" fallbackText="Proof photo" />
+                      <span aria-hidden="true"
+                        className="absolute bottom-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-surface/90 text-ink-muted shadow-sm">
+                        <Icon name="zoom" className="size-4" />
+                      </span>
+                    </a>
+                  ))}
+                </div>
               </div>
             </section>
           )}
