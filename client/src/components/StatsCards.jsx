@@ -27,7 +27,7 @@ function statusAt(issue, t) {
 // Last time it was marked Resolved, or null. `.pop()` on the filtered list: a re-opened and
 // re-resolved issue counts from its latest resolution, which is the one that stuck.
 function resolvedAt(issue) {
-  const entry = (issue.statusHistory || []).filter(h => h.status === 'Resolved').pop();
+  const entry = (issue.statusHistory || []).filter(h => h.status === 'Resolved' || h.status === 'Closed').pop();
   return entry ? new Date(entry.at).getTime() : null;
 }
 
@@ -180,7 +180,7 @@ export default function StatsCards({ issues }) {
 
     const open = series(t => issues.filter(i => {
       const s = statusAt(i, t);
-      return s && s !== 'Resolved';
+      return s && s !== 'Resolved' && s !== 'Closed';
     }).length);
 
     const progress = series(t => issues.filter(i => statusAt(i, t) === 'In Progress').length);
