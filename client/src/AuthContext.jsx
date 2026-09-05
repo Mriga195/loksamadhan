@@ -47,10 +47,13 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const loginWithGoogle = async (credential) => {
+  const loginWithGoogle = async (authPayload) => {
+    const body = typeof authPayload === 'string'
+      ? { credential: authPayload }
+      : authPayload;
     const data = await apiFetch('/api/auth/google', {
       method: 'POST',
-      body: JSON.stringify({ credential }),
+      body: JSON.stringify(body),
     });
     localStorage.setItem('token', data.token);
     setToken(data.token);

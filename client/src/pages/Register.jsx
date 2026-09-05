@@ -80,7 +80,7 @@ export default function Register() {
       )}
 
       <div className="mt-6">
-        <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signup_with" onError={(err) => setError(err.message)} />
+        <GoogleAuthButton onSuccess={handleGoogleSuccess} label="Sign up with Google" onError={(err) => setError(err.message)} />
       </div>
 
       <div className="relative my-6 text-center">

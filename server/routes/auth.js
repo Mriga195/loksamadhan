@@ -45,9 +45,9 @@ async function verifyGoogleToken(credential) {
 // Citizens can sign up or log in with a Google credential ID token.
 router.post('/google', async (req, res, next) => {
   try {
-    const { credential } = req.body;
-    if (!credential) {
-      return res.status(400).json({ error: 'Google credential token is required' });
+    const { credential, accessToken } = req.body;
+    if (!credential && !accessToken) {
+      return res.status(400).json({ error: 'Google credential or accessToken is required' });
     }
 
     if (!process.env.GOOGLE_CLIENT_ID) {
@@ -58,7 +58,18 @@ router.post('/google', async (req, res, next) => {
 
     let payload;
     try {
-      payload = await verifyGoogleToken(credential);
+      if (accessToken) {
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!userInfoRes.ok) {
+          const errData = await userInfoRes.json().catch(() => ({}));
+          throw new Error(errData.error_description || errData.error || 'Failed to fetch Google profile');
+        }
+        payload = await userInfoRes.json();
+      } else {
+        payload = await verifyGoogleToken(credential);
+      }
     } catch (verifyErr) {
       console.error('Google OAuth verification error:', verifyErr);
       return res.status(401).json({
