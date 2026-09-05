@@ -37,9 +37,9 @@ function supporterBadge(count) {
 }
 
 const PRIORITY_COLORS = {
-  high:   { cls: 'bg-red-50 text-red-700 border-red-200',     icon: '🔴' },
-  medium: { cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: '🟡' },
-  low:    { cls: 'bg-slate-100 text-slate-600 border-slate-200', icon: '🟢' },
+  high:   { cls: 'bg-red-50 text-red-700 border-red-200' },
+  medium: { cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  low:    { cls: 'bg-slate-100 text-slate-600 border-slate-200' },
 };
 
 // `index` is the card's position in the feed, shown as the badge that ties the row to its pin

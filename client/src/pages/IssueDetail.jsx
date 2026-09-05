@@ -442,7 +442,7 @@ export default function IssueDetail() {
                   issue.supporterCount >= 5 ? 'bg-orange-100 text-orange-700 border-orange-200' :
                   'bg-brand-50 text-brand-700 border-brand-200'
                 }`}>
-                  👍 {issue.supporterCount} supporter{issue.supporterCount === 1 ? '' : 's'}
+                  {issue.supporterCount} supporter{issue.supporterCount === 1 ? '' : 's'}
                 </span>
               )}
               {issue.assignedOfficer && (

@@ -92,7 +92,7 @@ function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
           onClick={markInProgress}
           className="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-700 transition-colors disabled:opacity-50"
         >
-          {actionLoading ? 'Updating…' : '▶ Mark as In Progress (Start Working)'}
+          {actionLoading ? 'Updating…' : 'Mark as In Progress (Start Working)'}
         </button>
       )}
 
@@ -102,13 +102,13 @@ function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
           onClick={() => onUpdateStatus(issue)}
           className="w-full rounded-xl bg-brand-600 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-700 transition-colors cursor-pointer"
         >
-          📸 Report Resolution &amp; Upload Proof
+          Report Resolution &amp; Upload Proof
         </button>
       )}
 
       {status === 'Unsatisfied' && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
-          <span className="font-bold">⚠ Citizen Unsatisfied</span> — Admin will reopen. Prepare for additional work.
+          <span className="font-bold">Citizen Unsatisfied</span> — Admin will reopen. Prepare for additional work.
           {issue.citizenFeedback?.notes && (
             <p className="mt-1 italic">Feedback: "{issue.citizenFeedback.notes}"</p>
           )}
@@ -279,7 +279,7 @@ function AdminActions({ issue, onSaved, onUpdateStatus }) {
           onClick={() => onUpdateStatus(issue)}
           className="w-full rounded-xl border border-line bg-canvas py-2 text-xs font-medium text-ink hover:bg-surface transition-colors cursor-pointer"
         >
-          ⚙️ Change Status / Add Note
+          Change Status / Add Note
         </button>
       )}
     </div>
@@ -347,7 +347,7 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
             {/* Supporter count badge */}
             {(issue.supporterCount > 0) && (
               <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 border border-brand-200 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
-                👍 {issue.supporterCount} supporter{issue.supporterCount === 1 ? '' : 's'}
+                {issue.supporterCount} supporter{issue.supporterCount === 1 ? '' : 's'}
               </span>
             )}
             {/* Assigned Officer Pill */}
@@ -411,7 +411,7 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
             <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                  <span>👥</span> Similar Citizen Reports ({linkedDuplicates.length})
+                  <Icon name="users" className="size-3.5 text-amber-700" /> Similar Citizen Reports ({linkedDuplicates.length})
                 </h3>
                 <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
                   Nearby within 1km
@@ -499,8 +499,8 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Actions</h3>
         {issue.duplicateOf ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-1.5">
-            <div className="font-bold flex items-center gap-1.5 text-amber-900">
-              <span>🔗</span> Similar Report
+            <div className="font-bold text-amber-900 flex items-center gap-1.5">
+              <Icon name="external" className="size-3 text-amber-700" /> Similar Report
             </div>
             <p className="text-[11px] text-amber-800 leading-relaxed">
               This report is similar to original issue #{String(issue.duplicateOf).slice(-6).toUpperCase()}. All investigation, officer resolution, and verification are managed on the original report.
@@ -510,7 +510,7 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
               onClick={() => onSelectIssue?.(issue.duplicateOf)}
               className="inline-flex items-center gap-1.5 font-semibold text-brand-600 hover:underline text-xs mt-1 cursor-pointer"
             >
-              <span>👉</span> View Original Report in Dashboard
+              View Original Report in Dashboard &rarr;
             </button>
           </div>
         ) : (

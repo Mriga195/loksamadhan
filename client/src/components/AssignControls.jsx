@@ -117,13 +117,13 @@ export default function AssignControls({ issue, onSaved }) {
       {/* Auto-allotment feedback */}
       {deptOfficers.length === 1 && (
         <p className="text-[11px] font-medium text-brand-700 bg-brand-50 px-2 py-0.5 rounded flex items-center gap-1 border border-brand-200">
-          ⚡ Auto-allots to <strong>{deptOfficers[0].name}</strong> (sole officer)
+          Auto-allots to <strong>{deptOfficers[0].name}</strong> (sole officer)
         </p>
       )}
 
       {deptOfficers.length > 1 && !officerId && (
         <p className="text-[11px] text-ink-muted">
-          ⚖️ {deptOfficers.length} officers in dept — system will auto pick least-loaded officer.
+          {deptOfficers.length} officers in dept — system will auto pick least-loaded officer.
         </p>
       )}
 
