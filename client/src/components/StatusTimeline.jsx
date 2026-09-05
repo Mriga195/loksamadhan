@@ -21,19 +21,28 @@ export default function StatusTimeline({ history = [] }) {
         const current = i === lastIndex;
         // The resolution note is the payoff - it is the visible proof that the resolution rule
         // works. It gets a green rail and full-weight text instead of being one more grey row.
-        const resolved = entry.status === 'Resolved';
+        const resolved = entry.status === 'Resolved' || entry.status === 'Closed';
+        const pendingVerification = entry.status === 'Pending Verification';
+        const unsatisfied = entry.status === 'Unsatisfied';
 
         return (
           <li key={`${entry.at}-${i}`} className="relative flex gap-3 pb-5 last:pb-0">
             {/* Rail. Hidden on the last row so the line stops at the current state. */}
             {!current && (
               <span aria-hidden="true"
-                className={`absolute left-[7px] top-4 h-full w-0.5 ${resolved ? 'bg-resolved-600/30' : 'bg-line'}`} />
+                className={`absolute left-[7px] top-4 h-full w-0.5 ${
+                  resolved ? 'bg-emerald-500/40' :
+                  pendingVerification ? 'bg-purple-500/40' :
+                  unsatisfied ? 'bg-rose-500/40' : 'bg-line'
+                }`} />
             )}
             <span aria-hidden="true"
               className={`relative mt-1.5 size-3.5 shrink-0 rounded-full border-2 ${
-                resolved ? 'border-resolved-600 bg-resolved-600'
-                  : current ? 'border-brand-600 bg-brand-600' : 'border-line bg-surface'}`} />
+                resolved ? 'border-emerald-600 bg-emerald-600' :
+                pendingVerification ? 'border-purple-600 bg-purple-600' :
+                unsatisfied ? 'border-rose-600 bg-rose-600' :
+                current ? 'border-brand-600 bg-brand-600' : 'border-line bg-surface'
+              }`} />
 
             <div className={`min-w-0 flex-1 ${current ? '' : 'opacity-80'}`}>
               <div className="flex flex-wrap items-center gap-2">

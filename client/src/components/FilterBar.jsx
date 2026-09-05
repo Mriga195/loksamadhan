@@ -15,7 +15,9 @@ const STATUSES = [
   ['Submitted', 'Pending', 'bg-submitted-600'],
   ['Acknowledged', 'Acknowledged', 'bg-acknowledged-600'],
   ['In Progress', 'In Progress', 'bg-progress-600'],
+  ['Pending Verification', 'Verification', 'bg-purple-600'],
   ['Resolved', 'Resolved', 'bg-resolved-600'],
+  ['Closed', 'Closed', 'bg-emerald-600'],
 ];
 
 const control = 'min-h-11 rounded-lg border border-line bg-surface px-3 text-sm text-ink';

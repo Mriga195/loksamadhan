@@ -6,7 +6,10 @@ const STYLE = {
   Pending: 'bg-submitted-50 text-submitted-600 border border-slate-200',
   Acknowledged: 'bg-acknowledged-50 text-acknowledged-600 border border-amber-200',
   'In Progress': 'bg-progress-50 text-progress-600 border border-blue-200',
+  'Pending Verification': 'bg-purple-50 text-purple-700 border border-purple-200',
   Resolved: 'bg-resolved-50 text-resolved-600 border border-emerald-200',
+  Closed: 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold',
+  Unsatisfied: 'bg-rose-50 text-rose-700 border border-rose-200',
   Rejected: 'bg-rejected-50 text-rejected-600 border border-red-200',
 };
 

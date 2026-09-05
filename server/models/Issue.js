@@ -28,8 +28,27 @@ const issueSchema = new mongoose.Schema(
     reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 
     department: { type: String, default: null },
+    assignedOfficer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     priority: { type: String, enum: [...PRIORITIES, null], default: null },
     status: { type: String, enum: STATUSES, default: 'Submitted' },
+
+    // Officer resolution details
+    resolution: {
+      note: { type: String, default: '' },
+      evidence: [{ type: String }],
+      submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      submittedAt: { type: Date, default: null },
+      verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      verifiedAt: { type: Date, default: null },
+      adminNotes: { type: String, default: '' },
+    },
+
+    // Citizen satisfaction & final closure feedback
+    citizenFeedback: {
+      satisfied: { type: Boolean, default: null },
+      notes: { type: String, default: '' },
+      submittedAt: { type: Date, default: null },
+    },
 
     // Duplicate linking — Hard Rule #1: linked, never deleted
     duplicateOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Issue', default: null },
@@ -74,8 +93,13 @@ issueSchema.methods.toPublic = function () {
     area: this.area,
     photos: this.photos,
     department: this.department,
+    assignedOfficer: this.assignedOfficer
+      ? (this.assignedOfficer.name ? { _id: this.assignedOfficer._id, name: this.assignedOfficer.name } : this.assignedOfficer)
+      : null,
     priority: this.priority,
     status: this.status,
+    resolution: this.resolution || null,
+    citizenFeedback: this.citizenFeedback || null,
     duplicateOf: this.duplicateOf,
     supporterCount: this.supporters ? this.supporters.length : 0,
     statusHistory: (this.statusHistory || []).map((h) => ({

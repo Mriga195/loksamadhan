@@ -35,7 +35,14 @@ function publicIssue(issue, viewerId = null, extra = {}) {
     photos: issue.photos || [],            // ['/uploads/abc.jpg']
     status: issue.status,
     department: issue.department || null,
+    assignedOfficer: issue.assignedOfficer
+      ? (issue.assignedOfficer.name
+          ? { _id: issue.assignedOfficer._id, name: issue.assignedOfficer.name }
+          : { _id: issue.assignedOfficer, name: null })
+      : null,
     priority: issue.priority || null,
+    resolution: issue.resolution || null,
+    citizenFeedback: issue.citizenFeedback || null,
     duplicateOf: issue.duplicateOf || null,
     duplicateCount: extra.duplicateCount ?? 0,
     supporterCount: supporters.length,

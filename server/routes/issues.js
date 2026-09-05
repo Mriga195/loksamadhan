@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 
 const Issue = require('../models/Issue');
+const User = require('../models/User');
 const { auth, requireRole } = require('../middleware/auth');
 const { upload, uploadErrors, uploadToCloud, photoPath } = require('../lib/upload');
 const { publicIssue, publicIssueList } = require('../lib/serialize');
@@ -9,6 +10,7 @@ const { CATEGORIES, DEPARTMENTS, STATUSES, PRIORITIES } = require('../constants'
 
 const router = express.Router();
 const officer = requireRole('officer', 'admin');
+const adminOnly = requireRole('admin');
 
 // Express 4 does not catch rejected promises; without this an await that throws hangs the request.
 const ah = fn => (req, res, next) => fn(req, res, next).catch(next);
@@ -118,12 +120,20 @@ router.get('/mine', auth(true), ah(async (req, res) => {
   res.json({ items, total: items.length, summary });
 }));
 
+/* --------------------------------- GET /api/issues/dept-officers */
+router.get('/dept-officers', auth(true), ah(async (req, res) => {
+  const { department } = req.query;
+  if (!department) return bad(res, 'Department query parameter is required.');
+  const officers = await User.find({ role: 'officer', department }).select('_id name email department').lean();
+  res.json({ officers });
+}));
+
 /* ------------------------------------------------------------ A4. GET /api/issues/:id */
 router.get('/:id', auth(false), ah(async (req, res) => {
   // Before Mongo: a non-ObjectId throws a CastError and 500s the detail page.
   if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
 
-  const issue = await Issue.findById(req.params.id);
+  const issue = await Issue.findById(req.params.id).populate('assignedOfficer', 'name role department');
   if (!issue) return res.status(404).json({ error: 'Issue not found.' });
 
   const children = await Issue.find({ duplicateOf: issue._id })
@@ -220,7 +230,7 @@ router.post('/:id/support', auth(true), ah(async (req, res) => {
 /* ----------------------------------------------- B2. PATCH /api/issues/:id/assign */
 router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
-  const { department, priority } = req.body;
+  const { department, priority, officerId } = req.body;
   if (!DEPARTMENTS.includes(department)) return bad(res, 'Unknown department.');
   if (!PRIORITIES.includes(priority)) return bad(res, 'Unknown priority.');
 
@@ -229,16 +239,213 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
 
   issue.department = department;
   issue.priority = priority;
-  // The public timeline must show movement — that is the whole product thesis.
+
+  // Auto-allotment logic: if only one officer exists in the department, auto-allot
+  const deptOfficers = await User.find({ role: 'officer', department });
+  let assignedOfficerName = null;
+
+  if (deptOfficers.length === 1) {
+    issue.assignedOfficer = deptOfficers[0]._id;
+    assignedOfficerName = deptOfficers[0].name;
+  } else if (officerId && deptOfficers.some(o => String(o._id) === String(officerId))) {
+    const chosen = deptOfficers.find(o => String(o._id) === String(officerId));
+    issue.assignedOfficer = chosen._id;
+    assignedOfficerName = chosen.name;
+  } else if (officerId === null || officerId === '') {
+    issue.assignedOfficer = null;
+  }
+
+  // Advance status from Submitted to Acknowledged upon triage/assignment
+  if (issue.status === 'Submitted') {
+    issue.status = 'Acknowledged';
+  }
+
+  const noteText = assignedOfficerName
+    ? `Assigned to ${department} (priority: ${priority}) — Auto-allotted to Officer ${assignedOfficerName}`
+    : `Assigned to ${department} (priority: ${priority})`;
+
   issue.statusHistory.push({
     status: issue.status,
-    note: `Assigned to ${department} (priority: ${priority})`,
+    note: noteText,
     evidence: null,
     by: req.user.id,
     at: new Date(),
   });
-  await issue.save();
 
+  await issue.save();
+  await issue.populate('assignedOfficer', 'name role department');
+
+  res.json(publicIssue(issue, req.user.id));
+}));
+
+/* ---------------------------------- B2a. POST /api/issues/:id/report-resolution */
+// Officer finishes work and reports back with resolution proof images and notes
+router.post('/:id/report-resolution', auth(true), officer, upload.array('evidence', 5), uploadErrors, uploadToCloud, ah(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
+
+  const note = String(req.body.note ?? '').trim();
+  const uploadedPhotos = (req.files || []).map(photoPath);
+  let existingEvidence = [];
+  if (req.body.evidence) {
+    existingEvidence = Array.isArray(req.body.evidence) ? req.body.evidence : [req.body.evidence];
+  }
+  const allEvidence = [...uploadedPhotos, ...existingEvidence];
+
+  if (!note || note.length < 5) {
+    return bad(res, 'A resolution note describing what was done is required (min 5 characters).');
+  }
+  if (allEvidence.length === 0) {
+    return bad(res, 'At least one resolution proof image is required.');
+  }
+
+  const issue = await Issue.findById(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+  issue.resolution = {
+    note,
+    evidence: allEvidence,
+    submittedBy: req.user.id,
+    submittedAt: new Date(),
+    verifiedBy: null,
+    verifiedAt: null,
+    adminNotes: '',
+  };
+
+  issue.status = 'Pending Verification';
+  issue.statusHistory.push({
+    status: 'Pending Verification',
+    note: `Resolution submitted by officer: ${note}`,
+    evidence: allEvidence[0] || null,
+    by: req.user.id,
+    at: new Date(),
+  });
+
+  await issue.save();
+  await issue.populate('assignedOfficer', 'name role department');
+  res.json(publicIssue(issue, req.user.id));
+}));
+
+/* ---------------------------------- B2b. POST /api/issues/:id/verify-resolution */
+// Admin verifies resolution proof images and approves (Resolved) or rejects (In Progress)
+router.post('/:id/verify-resolution', auth(true), adminOnly, ah(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
+  const { action, adminNotes } = req.body;
+  if (!['approve', 'reject'].includes(action)) {
+    return bad(res, 'Action must be approve or reject.');
+  }
+
+  const issue = await Issue.findById(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+  if (action === 'approve') {
+    if (!issue.resolution) issue.resolution = {};
+    issue.resolution.verifiedBy = req.user.id;
+    issue.resolution.verifiedAt = new Date();
+    issue.resolution.adminNotes = String(adminNotes || '').trim();
+
+    issue.status = 'Resolved';
+    issue.statusHistory.push({
+      status: 'Resolved',
+      note: adminNotes?.trim()
+        ? `Admin verified resolution images: ${adminNotes.trim()}. Awaiting citizen satisfaction.`
+        : 'Admin verified resolution images. Awaiting citizen confirmation.',
+      evidence: issue.resolution.evidence?.[0] || null,
+      by: req.user.id,
+      at: new Date(),
+    });
+  } else {
+    issue.status = 'In Progress';
+    issue.statusHistory.push({
+      status: 'In Progress',
+      note: adminNotes?.trim()
+        ? `Resolution rejected by Admin: ${adminNotes.trim()}`
+        : 'Resolution rejected by Admin. Proof insufficient, further work required.',
+      evidence: null,
+      by: req.user.id,
+      at: new Date(),
+    });
+  }
+
+  await issue.save();
+  await issue.populate('assignedOfficer', 'name role department');
+  res.json(publicIssue(issue, req.user.id));
+}));
+
+/* ---------------------------------- B2c. POST /api/issues/:id/citizen-feedback */
+// Final closure only happens if citizen is satisfied; otherwise marked unsatisfied
+router.post('/:id/citizen-feedback', auth(true), ah(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
+  const { satisfied, notes } = req.body;
+  if (typeof satisfied !== 'boolean') {
+    return bad(res, 'satisfied must be a boolean (true or false).');
+  }
+
+  const issue = await Issue.findById(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+  const viewerId = String(req.user.id || req.user._id);
+  const reporterId = String(issue.reporter);
+  if (viewerId !== reporterId && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Only the citizen who reported this issue can accept or dispute the resolution.' });
+  }
+
+  issue.citizenFeedback = {
+    satisfied,
+    notes: String(notes || '').trim(),
+    submittedAt: new Date(),
+  };
+
+  if (satisfied) {
+    issue.status = 'Closed';
+    issue.statusHistory.push({
+      status: 'Closed',
+      note: notes?.trim()
+        ? `Citizen confirmed satisfied: "${notes.trim()}". Issue officially closed.`
+        : 'Citizen confirmed satisfied with the solution. Issue officially closed.',
+      evidence: null,
+      by: req.user.id,
+      at: new Date(),
+    });
+  } else {
+    issue.status = 'Unsatisfied';
+    issue.statusHistory.push({
+      status: 'Unsatisfied',
+      note: notes?.trim()
+        ? `Citizen marked unsatisfied: "${notes.trim()}"`
+        : 'Citizen reported dissatisfaction with the solution.',
+      evidence: null,
+      by: req.user.id,
+      at: new Date(),
+    });
+  }
+
+  await issue.save();
+  await issue.populate('assignedOfficer', 'name role department');
+  res.json(publicIssue(issue, req.user.id));
+}));
+
+/* ---------------------------------- B2d. POST /api/issues/:id/reopen */
+// Admin reopens an unsatisfied issue back to In Progress
+router.post('/:id/reopen', auth(true), adminOnly, ah(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
+  const note = String(req.body.note || '').trim();
+
+  const issue = await Issue.findById(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+  issue.status = 'In Progress';
+  issue.statusHistory.push({
+    status: 'In Progress',
+    note: note
+      ? `Reopened by Admin: ${note}`
+      : 'Issue reopened by Admin following citizen dissatisfaction.',
+    evidence: null,
+    by: req.user.id,
+    at: new Date(),
+  });
+
+  await issue.save();
+  await issue.populate('assignedOfficer', 'name role department');
   res.json(publicIssue(issue, req.user.id));
 }));
 
