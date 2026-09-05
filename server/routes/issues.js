@@ -759,6 +759,19 @@ router.patch('/:id/duplicate', auth(true), officer, ah(async (req, res) => {
 
   if (duplicateOfId === null || duplicateOfId === undefined || duplicateOfId === '') {
     issue.duplicateOf = null;            // unlink restores a standalone issue; nothing is lost
+    issue.statusHistory.push({
+      status: issue.status,
+      note: `Detached from similar report by ${req.user?.name || 'officer'}. Restored as a standalone report.`,
+      evidence: null,
+      by: req.user.id,
+      at: new Date(),
+    });
+    if (!issue.assignedOfficer && issue.department) {
+      const officerDoc = await leastLoadedOfficer(issue.department);
+      if (officerDoc) {
+        issue.assignedOfficer = officerDoc._id;
+      }
+    }
   } else {
     if (String(duplicateOfId) === String(issue._id)) return bad(res, 'An issue cannot duplicate itself.');
     const parent = await resolveParent(duplicateOfId);
@@ -771,6 +784,7 @@ router.patch('/:id/duplicate', auth(true), officer, ah(async (req, res) => {
   // Nothing is ever deleted. Both issues stay in the database and both stay queryable via
   // GET /api/issues?duplicates=include. A judge will check this.
   await issue.save();
+  await issue.populate('assignedOfficer', 'name role department');
   res.json(publicIssue(issue, req.user.id));
 }));
 

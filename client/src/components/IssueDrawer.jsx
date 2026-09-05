@@ -7,6 +7,7 @@ import Icon from './Icon';
 import StatusPill from './StatusPill';
 import StatusTimeline from './StatusTimeline';
 import SafeImage from './SafeImage';
+import ConfirmDialog from './ConfirmDialog';
 
 export const shortId = issue =>
   `LS-${new Date(issue.createdAt).getFullYear()}-${String(issue._id).slice(-6).toUpperCase()}`;
@@ -287,15 +288,43 @@ function AdminActions({ issue, onSaved, onUpdateStatus }) {
   );
 }
 
-export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onSaved, onUpdateStatus, onSelectIssue }) {
+export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onSaved, onUpdateStatus, onSelectIssue, onRefresh }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const isOfficer = user?.role === 'officer';
+  const canManage = isAdmin || isOfficer;
   const [showAllSimilar, setShowAllSimilar] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null); // { id, title }
+  const [isDetaching, setIsDetaching] = useState(false);
+  const [detachMsg, setDetachMsg] = useState(null);
 
   useEffect(() => {
     setShowAllSimilar(false);
+    setDetachMsg(null);
+    setConfirmTarget(null);
   }, [issue?._id]);
+
+  const executeDetach = async () => {
+    if (!confirmTarget?.id) return;
+    const targetIssueId = confirmTarget.id;
+    setIsDetaching(true);
+    setDetachMsg(null);
+    try {
+      const updated = await apiFetch(`/api/issues/${targetIssueId}/duplicate`, {
+        method: 'PATCH',
+        body: JSON.stringify({ duplicateOfId: null }),
+      });
+      onSaved?.(updated);
+      onRefresh?.();
+      setConfirmTarget(null);
+      setDetachMsg('Issue successfully detached and restored as standalone report.');
+      setTimeout(() => setDetachMsg(null), 4000);
+    } catch (err) {
+      alert(err.message || 'Failed to detach issue');
+    } finally {
+      setIsDetaching(false);
+    }
+  };
 
   useEffect(() => {
     const onKey = e => e.key === 'Escape' && onClose();
@@ -421,6 +450,11 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
               <p className="text-xs text-amber-800">
                 {linkedDuplicates.length} additional {linkedDuplicates.length === 1 ? 'citizen reported' : 'citizens reported'} this same problem:
               </p>
+              {detachMsg && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs text-emerald-800 font-medium">
+                  {detachMsg}
+                </div>
+              )}
               <div className="space-y-2">
                 {visible.map(dup => (
                   <div
@@ -428,7 +462,7 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
                     onClick={() => onSelectIssue?.(dup._id)}
                     className="rounded-lg border border-line bg-surface p-2.5 text-xs space-y-1 hover:border-brand-300 cursor-pointer transition-colors"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="font-semibold text-ink truncate max-w-[200px]">#{shortId(dup)} — {dup.title}</span>
                       <span className="text-[10px] text-ink-muted shrink-0">{age(dup.createdAt)}</span>
                     </div>
@@ -443,6 +477,25 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
                             <SafeImage src={src} alt="Evidence preview" className="size-full object-cover hover:scale-105 transition-transform" fallbackText="" iconClassName="size-4" />
                           </a>
                         ))}
+                      </div>
+                    )}
+                    {canManage && (
+                      <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-100">
+                        <span className="text-[10px] text-ink-muted">Linked report</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmTarget({ id: dup._id, title: dup.title });
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-600 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
+                          title="Detach this similar report so it becomes an independent standalone report"
+                        >
+                          <svg className="size-3 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                          <span>Detach issue</span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -507,13 +560,25 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
             <p className="text-[11px] text-amber-800 leading-relaxed">
               This report is similar to original issue #{String(issue.duplicateOf).slice(-6).toUpperCase()}. All investigation, officer resolution, and verification are managed on the original report.
             </p>
-            <button
-              type="button"
-              onClick={() => onSelectIssue?.(issue.duplicateOf)}
-              className="inline-flex items-center gap-1.5 font-semibold text-brand-600 hover:underline text-xs mt-1 cursor-pointer"
-            >
-              View Original Report in Dashboard &rarr;
-            </button>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-amber-200/60 mt-2">
+              <button
+                type="button"
+                onClick={() => onSelectIssue?.(issue.duplicateOf)}
+                className="inline-flex items-center gap-1 font-semibold text-brand-600 hover:underline text-xs cursor-pointer"
+              >
+                View Original Report &rarr;
+              </button>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmTarget({ id: issue._id, title: issue.title })}
+                  className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-rose-600 border border-rose-200 hover:bg-rose-50 transition-colors cursor-pointer shadow-xs"
+                  title="Detach from original to manage this as a standalone report"
+                >
+                  Detach from original
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <>
@@ -526,6 +591,29 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
           </>
         )}
       </footer>
+
+      {/* Custom Confirmation Dialog for Detaching */}
+      <ConfirmDialog
+        isOpen={Boolean(confirmTarget)}
+        title="Detach similar issue?"
+        message={
+          <>
+            Are you sure you want to detach{' '}
+            <strong className="font-semibold text-slate-900">
+              {confirmTarget?.title ? `"${confirmTarget.title}"` : 'this issue'}
+            </strong>
+            ?
+            <br />
+            It will become an independent, standalone report with its own lifecycle, officer assignment, and status.
+          </>
+        }
+        confirmText="Detach report"
+        cancelText="Cancel"
+        tone="danger"
+        isPending={isDetaching}
+        onConfirm={executeDetach}
+        onClose={() => !isDetaching && setConfirmTarget(null)}
+      />
     </aside>
   );
 }

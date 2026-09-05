@@ -10,6 +10,7 @@ import ErrorState from '../components/ErrorState';
 import Spinner, { Skeleton } from '../components/Spinner';
 import { timeAgo } from '../components/IssueCard';
 import SafeImage from '../components/SafeImage';
+import ConfirmDialog from '../components/ConfirmDialog';
 import NotFound from './NotFound';
 import { useSeo } from '../seo';
 
@@ -169,6 +170,28 @@ export default function IssueDetail() {
     }
   }
 
+  const [confirmDetachTarget, setConfirmDetachTarget] = useState(null); // { id, title }
+  const [isDetaching, setIsDetaching] = useState(false);
+
+  async function executeDetach() {
+    if (!confirmDetachTarget?.id) return;
+    const targetIssueId = confirmDetachTarget.id;
+    setIsDetaching(true);
+    setActionError(null);
+    try {
+      await apiFetch(`/api/issues/${targetIssueId}/duplicate`, {
+        method: 'PATCH',
+        body: JSON.stringify({ duplicateOfId: null }),
+      });
+      setConfirmDetachTarget(null);
+      await load();
+    } catch (e) {
+      setActionError(e.message || 'Failed to detach issue');
+    } finally {
+      setIsDetaching(false);
+    }
+  }
+
   if (notFound) {
     return <NotFound title="That report does not exist" hint="The link may be wrong, or the report may have been removed." />;
   }
@@ -208,9 +231,21 @@ export default function IssueDetail() {
           <p className="mt-1 text-sm text-ink-muted">
             It is being tracked under the original, which is currently <StatusPill status={issue.parent.status} /> .
           </p>
-          <Link to={`/issues/${issue.parent._id}`} className="mt-2 inline-block text-sm font-medium text-brand-600 hover:underline">
-            View the original report &rarr;
-          </Link>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <Link to={`/issues/${issue.parent._id}`} className="text-sm font-medium text-brand-600 hover:underline">
+              View the original report &rarr;
+            </Link>
+            {isStaff && (
+              <button
+                type="button"
+                onClick={() => setConfirmDetachTarget({ id: issue._id, title: issue.title })}
+                className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 shadow-xs transition-colors cursor-pointer"
+                title="Detach from original to manage this as a standalone report"
+              >
+                Detach from original
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -574,14 +609,28 @@ export default function IssueDetail() {
               </h2>
               <ul className="mt-2 divide-y divide-line">
                 {issue.linkedDuplicates.slice(0, visibleDuplicates).map(d => (
-                  <li key={d._id}>
-                    <Link to={`/issues/${d._id}`}
-                      className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm hover:text-brand-600">
-                      <span className="truncate">{d.title}</span>
-                      <time dateTime={d.createdAt} className="shrink-0 text-xs text-ink-muted">
-                        {timeAgo(d.createdAt)}
-                      </time>
-                    </Link>
+                  <li key={d._id} className="py-2.5">
+                    <div className="flex min-h-9 items-center justify-between gap-3 text-sm">
+                      <Link to={`/issues/${d._id}`}
+                        className="truncate font-medium hover:text-brand-600">
+                        {d.title}
+                      </Link>
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <time dateTime={d.createdAt} className="text-xs text-ink-muted">
+                          {timeAgo(d.createdAt)}
+                        </time>
+                        {isStaff && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDetachTarget({ id: d._id, title: d.title })}
+                            className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
+                            title="Detach this report so it becomes an independent standalone report"
+                          >
+                            Detach
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -654,6 +703,29 @@ export default function IssueDetail() {
           )}
         </aside>
       </div>
+
+      {/* Custom Confirmation Dialog for Detaching */}
+      <ConfirmDialog
+        isOpen={Boolean(confirmDetachTarget)}
+        title="Detach similar issue?"
+        message={
+          <>
+            Are you sure you want to detach{' '}
+            <strong className="font-semibold text-slate-900">
+              {confirmDetachTarget?.title ? `"${confirmDetachTarget.title}"` : 'this issue'}
+            </strong>
+            ?
+            <br />
+            It will become an independent, standalone report with its own lifecycle, officer assignment, and status.
+          </>
+        }
+        confirmText="Detach report"
+        cancelText="Cancel"
+        tone="danger"
+        isPending={isDetaching}
+        onConfirm={executeDetach}
+        onClose={() => !isDetaching && setConfirmDetachTarget(null)}
+      />
     </main>
   );
 }

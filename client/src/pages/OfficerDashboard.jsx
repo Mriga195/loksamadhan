@@ -10,6 +10,7 @@ import StatusModal from '../components/StatusModal';
 import StatusPill from '../components/StatusPill';
 import OfficeUsersManager from '../components/OfficeUsersManager';
 import AnalyticsView from '../components/AnalyticsView';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { Skeleton } from '../components/Spinner';
 import { useSeo } from '../seo';
 
@@ -189,6 +190,28 @@ export default function OfficerDashboard() {
 
   const replace = updated =>
     setIssues(list => list.map(i => (i._id === updated._id ? { ...i, ...updated } : i)));
+
+  const [confirmDetachTarget, setConfirmDetachTarget] = useState(null); // { id, title }
+  const [isDetaching, setIsDetaching] = useState(false);
+
+  const executeDetach = async () => {
+    if (!confirmDetachTarget?.id) return;
+    const targetIssueId = confirmDetachTarget.id;
+    setIsDetaching(true);
+    try {
+      const updated = await apiFetch(`/api/issues/${targetIssueId}/duplicate`, {
+        method: 'PATCH',
+        body: JSON.stringify({ duplicateOfId: null }),
+      });
+      replace(updated);
+      load();
+      setConfirmDetachTarget(null);
+    } catch (err) {
+      alert(err.message || 'Failed to detach issue');
+    } finally {
+      setIsDetaching(false);
+    }
+  };
 
   const selected = issues.find(i => i._id === selectedId) || null;
 
@@ -758,13 +781,24 @@ export default function OfficerDashboard() {
                                                 <td className="px-4 py-2.5 text-ink-muted text-xs">
                                                   {age(dup.createdAt)}
                                                 </td>
-                                                <td className="px-4 py-2.5 text-right">
+                                                <td className="px-4 py-2.5 text-right whitespace-nowrap space-x-1.5">
                                                   <button
                                                     type="button"
                                                     onClick={e => { e.stopPropagation(); setSelectedId(dup._id); }}
                                                     className="rounded border border-line bg-surface px-2 py-0.5 text-[10px] font-medium text-brand-600 hover:bg-brand-50"
                                                   >
                                                     Inspect
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={e => {
+                                                      e.stopPropagation();
+                                                      setConfirmDetachTarget({ id: dup._id, title: dup.title });
+                                                    }}
+                                                    className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-600 hover:bg-rose-100 cursor-pointer"
+                                                    title="Detach this similar report into an independent report"
+                                                  >
+                                                    Detach
                                                   </button>
                                                 </td>
                                               </tr>
@@ -867,6 +901,7 @@ export default function OfficerDashboard() {
           onSaved={replace}
           onUpdateStatus={setEditing}
           onSelectIssue={setSelectedId}
+          onRefresh={load}
         />
       )}
 
@@ -878,6 +913,29 @@ export default function OfficerDashboard() {
           onSaved={replace}
         />
       )}
+
+      {/* ── Custom Detach Confirmation Modal ── */}
+      <ConfirmDialog
+        isOpen={Boolean(confirmDetachTarget)}
+        title="Detach similar issue?"
+        message={
+          <>
+            Are you sure you want to detach{' '}
+            <strong className="font-semibold text-slate-900">
+              {confirmDetachTarget?.title ? `"${confirmDetachTarget.title}"` : 'this issue'}
+            </strong>
+            ?
+            <br />
+            It will become an independent, standalone report in the dashboard queue with its own lifecycle, officer assignment, and status.
+          </>
+        }
+        confirmText="Detach report"
+        cancelText="Cancel"
+        tone="danger"
+        isPending={isDetaching}
+        onConfirm={executeDetach}
+        onClose={() => !isDetaching && setConfirmDetachTarget(null)}
+      />
     </div>
   );
 }
