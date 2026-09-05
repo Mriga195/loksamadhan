@@ -250,7 +250,7 @@ async function seed() {
     status: 'Acknowledged',
     duplicateOf: waterRoot._id,
     photos: [
-      'https://images.unsplash.com/photo-1574482620811-1aa16fed3ce8?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
     ],
     statusHistory: [
       { status: 'Submitted', note: 'Reported by citizen', by: citizen2._id, at: daysAgo(1) },
@@ -282,7 +282,7 @@ async function seed() {
     priority: 'high',
     status: 'Pending Verification',
     photos: [
-      'https://images.unsplash.com/photo-1541888946425-d0fbb1861593?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1584467735815-f778f274e296?w=800&auto=format&fit=crop&q=80',
     ],
     resolution: {
       note: 'Installed new heavy-duty reinforced ductile iron manhole frame and cover with anti-theft locking hinge.',
@@ -379,7 +379,7 @@ async function seed() {
     resolution: {
       note: 'Placed temporary plastic barricades to block unauthorized crossing.',
       evidence: [
-        'https://images.unsplash.com/photo-1508873696983-2df57046475a?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1578885136359-16c8bd4d3a8e?w=800&auto=format&fit=crop&q=80',
       ],
       submittedBy: officerRoads._id,
       submittedAt: daysAgo(3),
@@ -398,7 +398,7 @@ async function seed() {
       {
         status: 'Resolved',
         note: 'Temporary barricades placed at median break.',
-        evidence: 'https://images.unsplash.com/photo-1508873696983-2df57046475a?w=800&auto=format&fit=crop&q=80',
+        evidence: 'https://images.unsplash.com/photo-1578885136359-16c8bd4d3a8e?w=800&auto=format&fit=crop&q=80',
         by: officerRoads._id,
         at: daysAgo(2),
       },
@@ -523,7 +523,7 @@ async function seed() {
     priority: 'high',
     status: 'Acknowledged',
     photos: [
-      'https://images.unsplash.com/photo-1541888946425-d0fbb1861593?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1584467735815-f778f274e296?w=800&auto=format&fit=crop&q=80',
     ],
     statusHistory: [
       { status: 'Submitted', note: 'Reported by citizen', by: citizen1._id, at: daysAgo(2) },

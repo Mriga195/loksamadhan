@@ -12,10 +12,13 @@ import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import OfficerDashboard from './pages/OfficerDashboard';
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
+    errorElement: <ErrorBoundary />,
     children: [
       { index: true, element: <Home /> },
       { path: 'feed', element: <Feed /> },
@@ -30,7 +33,7 @@ const router = createBrowserRouter([
   },
   // The dashboard is deliberately NOT a child of <App />: it renders its own shell (top bar +
   // sidebar), and nesting it would stack that under the public site nav.
-  { path: '/dashboard', element: <OfficerDashboard /> },
+  { path: '/dashboard', element: <OfficerDashboard />, errorElement: <ErrorBoundary /> },
 ]);
 
 export default router;

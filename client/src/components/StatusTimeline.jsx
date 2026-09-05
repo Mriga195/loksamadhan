@@ -1,5 +1,6 @@
 import StatusPill from './StatusPill';
 import { timeAgo } from './IssueCard';
+import SafeImage from './SafeImage';
 
 // The centrepiece of the detail page. Oldest entry at the top, so it reads as a story that
 // arrives somewhere rather than a log that starts with the ending.
@@ -62,9 +63,9 @@ export default function StatusTimeline({ history = [] }) {
 
               {entry.evidence && (
                 <a href={entry.evidence} target="_blank" rel="noreferrer"
-                  className="mt-2 inline-block overflow-hidden rounded-lg border border-line">
-                  <img src={entry.evidence} alt={`Evidence for status: ${entry.status}`}
-                    loading="lazy" className="h-28 w-auto object-cover" />
+                  className="mt-2 inline-block overflow-hidden rounded-lg border border-line bg-slate-50">
+                  <SafeImage src={entry.evidence} alt={`Evidence for status: ${entry.status}`}
+                    className="h-28 w-auto min-w-[120px] object-cover" fallbackText="Evidence photo" />
                 </a>
               )}
             </div>
