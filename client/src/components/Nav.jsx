@@ -26,10 +26,11 @@ import Logo from './Logo';
 // cannot scroll sideways.
 
 const item = ({ isActive }) =>
-  'flex min-h-11 items-center gap-2 rounded-full px-4 text-sm transition-colors duration-200 ' +
+  'flex min-h-11 items-center gap-2 rounded-full px-2 text-sm transition-colors duration-200 sm:px-4 ' +
   (isActive ? 'bg-brand-50 font-medium text-brand-600' : 'text-ink hover:bg-canvas');
 
-const cta = 'inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-600 px-5 text-sm' +
+const cta = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand-600'
+  + ' px-3 text-sm sm:px-5' +
   ' font-medium text-white transition-colors duration-200 hover:bg-brand-700';
 
 const outline = 'inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-surface px-4 text-sm' +
@@ -49,32 +50,34 @@ export default function Nav() {
     <header className="sticky top-0 z-30 px-4 pt-4">
       <nav
         aria-label="Main"
-        className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 rounded-2xl
-          border border-line bg-surface px-4 py-2.5 shadow-[0_2px_12px_rgba(15,23,42,0.06)]"
+        className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-1 gap-y-2 rounded-2xl
+          border border-line bg-surface px-3 py-2 shadow-[0_2px_12px_rgba(15,23,42,0.06)]
+          sm:gap-x-2 sm:px-4 sm:py-2.5"
       >
-        <Link to="/" className="mr-2 inline-flex min-h-11 items-center gap-2 text-lg font-bold">
-          <Logo />
+        <Link to="/" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold
+          sm:mr-2 sm:gap-2 sm:text-lg">
+          <Logo className="size-8 sm:size-9" />
           <span className="text-brand-600">Lok</span>Samadhan
         </Link>
 
         <NavLink to="/feed" className={item}>
           <Icon name="home" className="size-[18px]" />
-          Feed
+          <span className="max-sm:sr-only">Feed</span>
         </NavLink>
 
         <NavLink to="/departments" className={item}>
           <Icon name="building" className="size-[18px]" />
-          Departments
+          <span className="max-sm:sr-only">Departments</span>
         </NavLink>
 
         {isStaff && !loading && (
           <NavLink to="/dashboard" className={item}>
             <Icon name="dashboard" className="size-[18px]" />
-            Dashboard
+            <span className="max-sm:sr-only">Dashboard</span>
           </NavLink>
         )}
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
           {/* While the token is being validated, render nothing here rather than flashing
               "Log in" at a user who is already signed in. The space is held by the row itself. */}
           {loading ? null : user ? (
@@ -82,12 +85,12 @@ export default function Nav() {
               {!isStaff && (
                 <Link to="/report" className={cta}>
                   <Icon name="plus" className="size-[18px]" />
-                  Report an Issue
+                  <span className="max-sm:sr-only">Report an Issue</span>
                 </Link>
               )}
 
-              <Link to="/profile" className="ml-1 flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-canvas" title="My Profile">
-                <Avatar name={user.name} />
+              <Link to="/profile" className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-canvas sm:ml-1" title="My Profile">
+                <Avatar name={user.name} className="size-8 text-sm sm:size-9" />
                 <span className="hidden text-sm sm:block">
                   <span className="block font-medium leading-tight">{user.name}</span>
                   <span className="block text-xs capitalize text-ink-muted">{user.role}</span>

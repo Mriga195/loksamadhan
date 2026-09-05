@@ -147,7 +147,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
         </MapContainer>
       </div>
 
-      <div className="flex items-center justify-between gap-3 text-xs text-ink-muted">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-ink-muted">
         <span>
           {geoStatus === 'locating' && 'Locating your position...'}
           {geoStatus === 'fallback' && 'Geolocation unavailable. Centered to Tezpur, Assam (drag pin or click map to adjust).'}

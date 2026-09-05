@@ -305,16 +305,16 @@ const Report = () => {
           </span>
         </aside>
 
-        <div className="flex items-center justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={() => navigate('/feed')}
-            className="min-h-13 cursor-pointer rounded-lg border border-line bg-surface px-6
-              text-base font-medium text-ink shadow-sm transition-colors hover:bg-canvas"
+            className="min-h-13 w-full cursor-pointer rounded-lg border border-line bg-surface px-6
+              text-base font-medium text-ink shadow-sm transition-colors hover:bg-canvas sm:w-auto"
           >
             Cancel
           </button>
-          <button type="submit" disabled={submitting} className={primaryBtn}>
+          <button type="submit" disabled={submitting} className={`${primaryBtn} w-full sm:w-auto`}>
             {submitting ? <Spinner label="Submitting" /> : <Icon name="send" className="size-5" />}
             {submitting ? 'Submitting…' : 'Submit report'}
           </button>
@@ -327,8 +327,8 @@ const Report = () => {
 // One card per step: number, icon and guidance in the label column, controls in the wide one.
 function Step({ n, icon, label, required, optional, hint, children }) {
   return (
-    <section className="rounded-card border border-line bg-surface p-6 shadow-sm">
-      <div className="grid gap-5 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
+    <section className="rounded-card border border-line bg-surface p-5 shadow-sm sm:p-6">
+      <div className="grid gap-5 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
         <div className="flex gap-3">
           <span aria-hidden="true"
             className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-600

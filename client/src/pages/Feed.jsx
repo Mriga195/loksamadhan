@@ -105,8 +105,8 @@ export default function Feed() {
                 {issues.map((i, idx) => <IssueCard key={i._id} issue={i} index={idx + 1} />)}
               </div>
 
-              <div className="mt-5 flex items-center justify-between rounded-xl border
-                border-line bg-surface px-5 py-3 text-sm text-ink-muted">
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl
+                border border-line bg-surface px-5 py-3 text-sm text-ink-muted">
                 <span>Showing 1&ndash;{issues.length} of {total} issues</span>
 
                 {/* A button, not infinite scroll: less code, and it does not break the back

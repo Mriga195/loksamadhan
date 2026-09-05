@@ -68,7 +68,7 @@ export default function Home() {
       <section className="relative isolate overflow-hidden bg-gradient-to-b from-brand-50 via-brand-50/50 to-canvas">
         <CityScene className="absolute inset-x-0 bottom-0 -z-10 h-[300px] w-full" />
 
-        <div className="mx-auto max-w-3xl px-4 pt-20 text-center">
+        <div className="mx-auto max-w-3xl px-4 pt-14 text-center sm:pt-20">
           <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-[2.5rem]">
             Report a civic issue.<br className="hidden sm:block" />{' '}
             Watch it get fixed — <span className="text-brand-600">in public.</span>
@@ -78,25 +78,25 @@ export default function Home() {
             see it on the map, and follow every status change your municipality makes.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
             <Link to="/report"
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-6
-                text-sm font-medium text-white shadow-sm transition-colors duration-200
-                hover:bg-brand-700">
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg
+                bg-brand-600 px-6 text-sm font-medium text-white shadow-sm transition-colors
+                duration-200 hover:bg-brand-700 sm:w-auto">
               <Icon name="plus" className="size-5" />
               Report an Issue
             </Link>
             <Link to="/feed"
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line
-                bg-surface px-6 text-sm font-medium shadow-sm transition-colors duration-200
-                hover:bg-canvas">
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg
+                border border-line bg-surface px-6 text-sm font-medium shadow-sm
+                transition-colors duration-200 hover:bg-canvas sm:w-auto">
               <Icon name="clipboard" className="size-5" />
               View public feed
             </Link>
           </div>
         </div>
 
-        <div className="mx-auto max-w-7xl px-4 pb-20 pt-14">
+        <div className="mx-auto max-w-7xl px-4 pb-14 pt-10 sm:pb-20 sm:pt-14">
           {counts && (
             <dl className="grid grid-cols-2 gap-y-6 rounded-2xl border border-line bg-surface
               p-6 shadow-[0_10px_40px_rgba(15,23,42,0.08)] sm:grid-cols-5 sm:gap-0
