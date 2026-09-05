@@ -22,6 +22,12 @@ const REGIONS = [
   'Guwahati',
   'Dibrugarh',
   'Nagaon',
+  'Silchar',
+  'Tinsukia',
+  'Bongaigaon',
+  'Golaghat',
+  'Barpeta',
+  'Dhubri',
 ];
 
 export default function OfficeUsersManager({ currentUser }) {
@@ -40,6 +46,18 @@ export default function OfficeUsersManager({ currentUser }) {
   const [editingUser, setEditingUser] = useState(null); // null = create, user obj = edit
   const [deleteModalUser, setDeleteModalUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isCustomRegion, setIsCustomRegion] = useState(false);
+
+  // Dynamic unique list of all regions (preset list + any regions from existing users)
+  const allRegionOptions = useMemo(() => {
+    const set = new Set(REGIONS);
+    users.forEach(u => {
+      if (u.region && typeof u.region === 'string' && u.region.trim()) {
+        set.add(u.region.trim());
+      }
+    });
+    return Array.from(set);
+  }, [users]);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -74,6 +92,7 @@ export default function OfficeUsersManager({ currentUser }) {
   const handleOpenCreate = () => {
     setEditingUser(null);
     setShowPassword(false);
+    setIsCustomRegion(false);
     setFormData({
       name: '',
       email: '',
@@ -90,13 +109,15 @@ export default function OfficeUsersManager({ currentUser }) {
   const handleOpenEdit = (user) => {
     setEditingUser(user);
     setShowPassword(false);
+    const existingRegion = user.region || 'Tezpur';
+    setIsCustomRegion(!allRegionOptions.includes(existingRegion) && !!existingRegion);
     setFormData({
       name: user.name || '',
       email: user.email || '',
       password: '',
       role: user.role || 'officer',
       department: user.department || DEPARTMENTS[0],
-      region: user.region || 'Tezpur',
+      region: existingRegion,
     });
     setFormError(null);
     setModalOpen(true);
@@ -354,7 +375,7 @@ export default function OfficeUsersManager({ currentUser }) {
           className="rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
         >
           <option value="">All Regions</option>
-          {REGIONS.map(r => (
+          {allRegionOptions.map(r => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
@@ -689,20 +710,41 @@ export default function OfficeUsersManager({ currentUser }) {
                       <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
                         Assigned Region / District <span className="text-rejected-600">*</span>
                       </label>
-                      <input
-                        type="text"
-                        list="office-regions-list"
+                      <select
                         required
-                        placeholder="e.g. Tezpur, Jorhat, Jorhat West, Sivasagar..."
-                        value={formData.region}
-                        onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                        className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
-                      />
-                      <datalist id="office-regions-list">
-                        {REGIONS.map(r => (
-                          <option key={r} value={r} />
+                        value={isCustomRegion ? '__custom__' : (formData.region || '')}
+                        onChange={(e) => {
+                          if (e.target.value === '__custom__') {
+                            setIsCustomRegion(true);
+                            setFormData(prev => ({ ...prev, region: '' }));
+                          } else {
+                            setIsCustomRegion(false);
+                            setFormData(prev => ({ ...prev, region: e.target.value }));
+                          }
+                        }}
+                        className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-600 focus:outline-none cursor-pointer"
+                      >
+                        <option value="" disabled>Select assigned region / district...</option>
+                        {allRegionOptions.map(r => (
+                          <option key={r} value={r}>{r}</option>
                         ))}
-                      </datalist>
+                        <option value="__custom__">+ Other (Enter Custom District / Zone)...</option>
+                      </select>
+
+                      {isCustomRegion && (
+                        <div className="mt-2">
+                          <input
+                            type="text"
+                            required
+                            placeholder="Type custom region / district name (e.g. Silchar, Golaghat...)"
+                            value={formData.region}
+                            onChange={(e) => setFormData(prev => ({ ...prev, region: e.target.value }))}
+                            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
+                            autoFocus
+                          />
+                        </div>
+                      )}
+
                       <p className="mt-1 text-[11px] text-ink-muted">
                         New civic issues filed in this region/district will be auto-assigned to this officer.
                       </p>
