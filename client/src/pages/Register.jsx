@@ -38,12 +38,26 @@ const EN = {
 };
 
 export default function Register() {
-  const { register, loginWithGoogle } = useAuth();
+  const { user, loading: authLoading, register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { lang, translate } = useLang();
   const [t, setT] = useState(EN);
   const [points, setPoints] = useState(POINTS_EN);
+
+  const rawFrom = location.state?.from;
+  const from = (rawFrom && rawFrom !== '/login' && rawFrom !== '/register') ? rawFrom : null;
+  const draft = location.state?.draft;
+
+  // Automatically redirect away if already logged in or session restored
+  useEffect(() => {
+    if (!authLoading && user) {
+      const target = from
+        ? from
+        : (user.role === 'officer' || user.role === 'admin') ? '/dashboard' : '/';
+      navigate(target, { replace: true, state: draft ? { draft } : undefined });
+    }
+  }, [user, authLoading, from, navigate, draft]);
 
   useEffect(() => {
     if (lang === 'en') { setT(EN); setPoints(POINTS_EN); return; }
@@ -57,9 +71,6 @@ export default function Register() {
     });
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const from = location.state?.from || '/';
-  const draft = location.state?.draft;
-
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
@@ -72,8 +83,11 @@ export default function Register() {
     setError(null);
     setPending(true);
     try {
-      await register(form.name.trim(), form.email.trim(), form.password);
-      navigate(from, { replace: true, state: draft ? { draft } : undefined });
+      const registeredUser = await register(form.name.trim(), form.email.trim(), form.password);
+      const target = from
+        ? from
+        : (registeredUser.role === 'officer' || registeredUser.role === 'admin') ? '/dashboard' : '/';
+      navigate(target, { replace: true, state: draft ? { draft } : undefined });
     } catch (err) {
       setError(err.message);
       setPending(false);
@@ -83,11 +97,23 @@ export default function Register() {
   async function handleGoogleSuccess(credential) {
     setError(null);
     try {
-      await loginWithGoogle(credential);
-      navigate(from, { replace: true, state: draft ? { draft } : undefined });
+      const loggedUser = await loginWithGoogle(credential);
+      const target = from
+        ? from
+        : (loggedUser.role === 'officer' || loggedUser.role === 'admin') ? '/dashboard' : '/';
+      navigate(target, { replace: true, state: draft ? { draft } : undefined });
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  // If already authenticated or verifying existing token, don't show the register form
+  if (authLoading || user) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Spinner label="Loading session…" />
+      </div>
+    );
   }
 
   return (

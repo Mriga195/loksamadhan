@@ -40,12 +40,25 @@ const EN = {
 };
 
 export default function Login() {
-  const { login, loginWithGoogle } = useAuth();
+  const { user, loading: authLoading, login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { lang, translate } = useLang();
   const [t, setT] = useState(EN);
   const [points, setPoints] = useState(POINTS_EN);
+
+  const rawFrom = location.state?.from;
+  const from = (rawFrom && rawFrom !== '/login' && rawFrom !== '/register') ? rawFrom : null;
+
+  // Automatically redirect away if already logged in or session restored
+  useEffect(() => {
+    if (!authLoading && user) {
+      const target = from
+        ? from
+        : (user.role === 'officer' || user.role === 'admin') ? '/dashboard' : '/';
+      navigate(target, { replace: true, state: location.state?.draft ? { draft: location.state.draft } : undefined });
+    }
+  }, [user, authLoading, from, navigate, location.state]);
 
   useEffect(() => {
     if (lang === 'en') { setT(EN); setPoints(POINTS_EN); return; }
@@ -64,16 +77,15 @@ export default function Login() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
 
-  const from = location.state?.from || '/';
-
   async function submit(e) {
     e.preventDefault();
     setError(null);
     setPending(true);
     try {
-      const user = await login(email, password);
-      const target = from !== '/' ? from
-        : (user.role === 'officer' || user.role === 'admin') ? '/dashboard' : '/';
+      const loggedUser = await login(email, password);
+      const target = from
+        ? from
+        : (loggedUser.role === 'officer' || loggedUser.role === 'admin') ? '/dashboard' : '/';
       navigate(target, { replace: true, state: location.state?.draft ? { draft: location.state.draft } : undefined });
     } catch (err) {
       setError(err.message);
@@ -84,13 +96,23 @@ export default function Login() {
   async function handleGoogleSuccess(credential) {
     setError(null);
     try {
-      const user = await loginWithGoogle(credential);
-      const target = from !== '/' ? from
-        : (user.role === 'officer' || user.role === 'admin') ? '/dashboard' : '/';
+      const loggedUser = await loginWithGoogle(credential);
+      const target = from
+        ? from
+        : (loggedUser.role === 'officer' || loggedUser.role === 'admin') ? '/dashboard' : '/';
       navigate(target, { replace: true, state: location.state?.draft ? { draft: location.state.draft } : undefined });
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  // If already authenticated or verifying existing token, don't show the login form
+  if (authLoading || user) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Spinner label="Loading session…" />
+      </div>
+    );
   }
 
   return (
