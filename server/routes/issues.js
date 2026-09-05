@@ -774,11 +774,41 @@ router.patch('/:id/duplicate', auth(true), officer, ah(async (req, res) => {
     }
   } else {
     if (String(duplicateOfId) === String(issue._id)) return bad(res, 'An issue cannot duplicate itself.');
+    
+    // An issue with children cannot be linked to another issue (would create nested duplicate chains)
+    const childCount = await Issue.countDocuments({ duplicateOf: issue._id });
+    if (childCount > 0) {
+      return bad(res, 'This issue already has other reports linked to it. Detach them first before linking this issue.');
+    }
+
     const parent = await resolveParent(duplicateOfId);
     if (parent.error) return bad(res, parent.error);
-    // A child of this issue becoming its parent would make a cycle the detail page recurses on.
     if (String(parent.id) === String(issue._id)) return bad(res, 'An issue cannot duplicate itself.');
-    issue.duplicateOf = parent.id;
+
+    const parentDoc = await Issue.findById(parent.id);
+    issue.duplicateOf = parentDoc._id;
+    if (parentDoc.department) issue.department = parentDoc.department;
+    if (parentDoc.assignedOfficer) issue.assignedOfficer = parentDoc.assignedOfficer;
+    if (parentDoc.status) issue.status = parentDoc.status;
+
+    const parentYear = new Date(parentDoc.createdAt).getFullYear();
+    const parentHex = String(parentDoc._id).slice(-6).toUpperCase();
+    issue.statusHistory.push({
+      status: issue.status,
+      note: `Manually linked as similar report to #LS-${parentYear}-${parentHex} by ${req.user?.name || 'admin'}.`,
+      evidence: null,
+      by: req.user.id,
+      at: new Date(),
+    });
+
+    // Auto-boost parent supporters if not already present
+    const reporterStr = String(issue.reporter);
+    const parentReporterStr = String(parentDoc.reporter);
+    if (reporterStr !== parentReporterStr && !parentDoc.supporters.some(s => String(s) === reporterStr)) {
+      parentDoc.supporters.push(issue.reporter);
+      parentDoc.priority = autoPriority(parentDoc.category, parentDoc.supporters.length);
+      await parentDoc.save();
+    }
   }
 
   // Nothing is ever deleted. Both issues stay in the database and both stay queryable via
@@ -801,7 +831,7 @@ async function resolveParent(id) {
   const parent = await Issue.findById(id).select('_id status duplicateOf').lean();
   if (!parent) return { error: 'The issue it duplicates does not exist.' };
   if (parent.duplicateOf) return { error: 'That issue is already a duplicate. Link to the original instead.' };
-  if (parent.status === 'Resolved') return { error: 'Cannot link to a resolved issue.' };
+  if (parent.status === 'Resolved' || parent.status === 'Closed') return { error: 'Cannot link to a resolved or closed issue.' };
   return { id: parent._id };
 }
 

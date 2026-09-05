@@ -8,6 +8,7 @@ import StatusPill from './StatusPill';
 import StatusTimeline from './StatusTimeline';
 import SafeImage from './SafeImage';
 import ConfirmDialog from './ConfirmDialog';
+import AttachDuplicateModal from './AttachDuplicateModal';
 
 export const shortId = issue =>
   `LS-${new Date(issue.createdAt).getFullYear()}-${String(issue._id).slice(-6).toUpperCase()}`;
@@ -121,7 +122,7 @@ function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
 }
 
 // ── Admin-Specific Actions based on issue state ──
-function AdminActions({ issue, onSaved, onUpdateStatus }) {
+function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [adminNote, setAdminNote] = useState('');
@@ -284,6 +285,18 @@ function AdminActions({ issue, onSaved, onUpdateStatus }) {
           Change Status / Add Note
         </button>
       )}
+
+      {!issue.duplicateOf && status !== 'Resolved' && status !== 'Closed' && (
+        <button
+          type="button"
+          onClick={onOpenAttachModal}
+          className="w-full rounded-xl border border-brand-200 bg-brand-50/70 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+          title="Manually link this report as a duplicate of an existing root report"
+        >
+          <Icon name="link" className="size-3.5 text-brand-600" />
+          Attach as Similar / Duplicate Report
+        </button>
+      )}
     </div>
   );
 }
@@ -297,11 +310,13 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
   const [confirmTarget, setConfirmTarget] = useState(null); // { id, title }
   const [isDetaching, setIsDetaching] = useState(false);
   const [detachMsg, setDetachMsg] = useState(null);
+  const [showAttachModal, setShowAttachModal] = useState(false);
 
   useEffect(() => {
     setShowAllSimilar(false);
     setDetachMsg(null);
     setConfirmTarget(null);
+    setShowAttachModal(false);
   }, [issue?._id]);
 
   const executeDetach = async () => {
@@ -583,7 +598,12 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
         ) : (
           <>
             {isAdmin && (
-              <AdminActions issue={issue} onSaved={onSaved} onUpdateStatus={onUpdateStatus} />
+              <AdminActions
+                issue={issue}
+                onSaved={onSaved}
+                onUpdateStatus={onUpdateStatus}
+                onOpenAttachModal={() => setShowAttachModal(true)}
+              />
             )}
             {isOfficer && (
               <OfficerActions issue={issue} onSaved={onSaved} onClose={onClose} onUpdateStatus={onUpdateStatus} />
@@ -614,6 +634,22 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
         onConfirm={executeDetach}
         onClose={() => !isDetaching && setConfirmTarget(null)}
       />
+
+      {/* Admin Manual Duplicate Linking Modal */}
+      {isAdmin && (
+        <AttachDuplicateModal
+          issue={issue}
+          isOpen={showAttachModal}
+          onClose={() => setShowAttachModal(false)}
+          onAttached={(updated) => {
+            setShowAttachModal(false);
+            onSaved?.(updated);
+            onRefresh?.();
+            setDetachMsg('Issue successfully attached and linked as similar report.');
+            setTimeout(() => setDetachMsg(null), 4000);
+          }}
+        />
+      )}
     </aside>
   );
 }
