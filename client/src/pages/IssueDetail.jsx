@@ -11,6 +11,7 @@ import Spinner, { Skeleton } from '../components/Spinner';
 import { timeAgo } from '../components/IssueCard';
 import SafeImage from '../components/SafeImage';
 import ConfirmDialog from '../components/ConfirmDialog';
+import AttachDuplicateModal from '../components/AttachDuplicateModal';
 import NotFound from './NotFound';
 import { useSeo } from '../seo';
 
@@ -57,6 +58,7 @@ export default function IssueDetail() {
   const [adminNote, setAdminNote] = useState('');
   const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [showAdminRejectInput, setShowAdminRejectInput] = useState(false);
+  const [showAttachModal, setShowAttachModal] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -494,6 +496,17 @@ export default function IssueDetail() {
                   Submitted by you
                 </span>
               )}
+              {isAdmin && !issue.duplicateOf && issue.status !== 'Resolved' && issue.status !== 'Closed' && (
+                <button
+                  type="button"
+                  onClick={() => setShowAttachModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors cursor-pointer"
+                  title="Manually link this report as a duplicate of an existing root report"
+                >
+                  <Icon name="link" className="size-3 text-brand-600" />
+                  Attach as Similar Report
+                </button>
+              )}
             </div>
             <h1 className="mt-3 text-2xl font-bold leading-tight sm:text-[1.75rem]">{issue.title}</h1>
             <p className="mt-3 text-ink-muted">{issue.description}</p>
@@ -726,6 +739,19 @@ export default function IssueDetail() {
         onConfirm={executeDetach}
         onClose={() => !isDetaching && setConfirmDetachTarget(null)}
       />
+
+      {/* Admin Manual Duplicate Linking Modal */}
+      {isAdmin && (
+        <AttachDuplicateModal
+          issue={issue}
+          isOpen={showAttachModal}
+          onClose={() => setShowAttachModal(false)}
+          onAttached={async () => {
+            setShowAttachModal(false);
+            await load();
+          }}
+        />
+      )}
     </main>
   );
 }
