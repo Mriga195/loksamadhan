@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 're
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Icon from './Icon';
+import { ASSAM_VIEWBOX, inAssam } from '../assam';
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -50,15 +51,20 @@ async function reverseGeocode(lat, lng) {
     const addr = data.address || {};
 
     const street = addr.road || addr.street || addr.footway || addr.path || '';
-    const neighbourhood = addr.suburb || addr.neighbourhood || addr.residential || addr.subdivision || '';
-    const city = addr.city || addr.town || addr.village || addr.municipality || 'Tezpur';
+    const neighbourhood = addr.suburb || addr.neighbourhood || addr.residential || addr.subdivision || addr.hamlet || '';
+    const city = addr.city || addr.town || addr.village || addr.municipality || '';
+    const subdistrict = addr.county || addr.city_district || '';
     const district = addr.state_district || addr.county || addr.district || '';
     const state = addr.state || 'Assam';
 
-    const parts = [street, neighbourhood, city, state].filter(Boolean);
-    const displayName = parts.length > 0 ? parts.join(', ') : (data.display_name || 'Tezpur, Assam');
-    const area = neighbourhood || city || 'Tezpur';
-    const region = district || city || 'Tezpur';
+    // Unpopulated spots (forest, river, farmland) return no city — never invent one, fall back to
+    // whatever Nominatim did give, then to the raw coordinates.
+    const parts = [...new Set([street, neighbourhood, city, subdistrict, district, state].filter(Boolean))];
+    const displayName = parts.length > 1
+      ? parts.join(', ')
+      : (data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    const area = neighbourhood || city || subdistrict || district || '';
+    const region = district || city || '';
 
     return { displayName, area, street, city, district, region };
   } catch (err) {
@@ -76,14 +82,14 @@ async function searchLocations(query) {
   if (coordMatch) {
     const v1 = parseFloat(coordMatch[1]);
     const v2 = parseFloat(coordMatch[3]);
-    if (Math.abs(v1) <= 90 && Math.abs(v2) <= 180) {
+    if (inAssam(v1, v2)) {
       return [{
         lat: v1,
         lon: v2,
         display_name: `Coordinates: ${v1.toFixed(5)}, ${v2.toFixed(5)}`,
       }];
     }
-    if (Math.abs(v2) <= 90 && Math.abs(v1) <= 180) {
+    if (inAssam(v2, v1)) {
       return [{
         lat: v2,
         lon: v1,
@@ -94,12 +100,12 @@ async function searchLocations(query) {
 
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=5`,
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=5&countrycodes=in&bounded=1&viewbox=${ASSAM_VIEWBOX}`,
       { headers: { 'Accept-Language': 'en' } }
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return data || [];
+    return (data || []).filter(r => inAssam(parseFloat(r.lat), parseFloat(r.lon)));
   } catch (err) {
     console.error('Search location error:', err);
     return [];
@@ -118,6 +124,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
   const [geoStatus, setGeoStatus] = useState('locating'); // 'locating' | 'success' | 'fallback'
   const [detectedAddress, setDetectedAddress] = useState('');
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [outsideAssam, setOutsideAssam] = useState(false);
 
   // Manual location search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -142,6 +149,13 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
   }, []);
 
   const updateLocation = async (lat, lng) => {
+    if (!inAssam(lat, lng)) {
+      // Reports are Assam-only: snap the pin back and say why.
+      setOutsideAssam(true);
+      setPosition(p => [...p]);
+      return;
+    }
+    setOutsideAssam(false);
     setPosition([lat, lng]);
 
     // Abort prior reverse-geocode if in flight
@@ -156,7 +170,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
     if (geocodeAbortRef.current !== currentCall) return;
 
     setIsGeocoding(false);
-    const locInfo = info || { displayName: 'Tezpur, Assam', area: 'Tezpur' };
+    const locInfo = info || { displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, area: '' };
     setDetectedAddress(locInfo.displayName);
 
     // Notify parent of location in API format [lng, lat] (LONGITUDE FIRST) along with address info
@@ -178,6 +192,12 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        if (!inAssam(lat, lng)) {
+          setGeoStatus('fallback');
+          updateLocation(TEZPUR_CENTER[0], TEZPUR_CENTER[1]);
+          setMapCenter(TEZPUR_CENTER);
+          return;
+        }
         setGeoStatus('success');
         updateLocation(lat, lng);
         setMapCenter([lat, lng]);
@@ -383,7 +403,11 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
         <div className="flex items-center gap-1.5 min-w-0">
           <Icon name="map" className="size-4 shrink-0 text-brand-600" />
           <span className="truncate">
-            {isGeocoding ? (
+            {outsideAssam ? (
+              <span className="font-semibold text-red-600">
+                That spot is outside Assam. LokSamadhan only accepts reports inside Assam — pin a location within the state.
+              </span>
+            ) : isGeocoding ? (
               <span className="text-brand-600 animate-pulse font-medium">Resolving address for pin…</span>
             ) : detectedAddress ? (
               <span>

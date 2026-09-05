@@ -6,7 +6,7 @@ const User = require('../models/User');
 const { auth, requireRole } = require('../middleware/auth');
 const { upload, uploadErrors, uploadToCloud, photoPath } = require('../lib/upload');
 const { publicIssue, publicIssueList } = require('../lib/serialize');
-const { CATEGORIES, DEPARTMENTS, STATUSES, PRIORITIES } = require('../constants');
+const { CATEGORIES, DEPARTMENTS, STATUSES, PRIORITIES, inAssam } = require('../constants');
 
 const router = express.Router();
 const officer = requireRole('officer', 'admin');
@@ -433,6 +433,7 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
   const lng = Number(req.body.lng);
   const lat = Number(req.body.lat);
   if (!validLngLat(lng, lat)) return bad(res, 'Valid lng and lat are required.');
+  if (!inAssam(lng, lat)) return bad(res, 'LokSamadhan only accepts reports located inside Assam.');
 
   // Fallback: If address not provided by client, resolve location according to pin
   if (!address) {

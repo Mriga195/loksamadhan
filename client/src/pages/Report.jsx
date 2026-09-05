@@ -169,10 +169,10 @@ const Report = () => {
       } else if (pinAddress) {
         finalAddress = pinAddress;
       } else {
-        finalAddress = 'Tezpur, Assam';
+        finalAddress = `${location[1].toFixed(5)}, ${location[0].toFixed(5)}, Assam`;
       }
 
-      const finalArea = pinArea || (landmark ? landmark : 'Tezpur');
+      const finalArea = pinArea || landmark || finalAddress;
 
       fd.append('address', finalAddress);
       fd.append('area', finalArea);
