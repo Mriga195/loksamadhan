@@ -54,7 +54,19 @@ router.get('/', auth(false), ah(async (req, res) => {
   // Default excludes duplicate children so the public feed is not cluttered by a cluster.
   if (duplicates !== 'include') filter.duplicateOf = null;
 
-  if (q) filter.$text = { $search: String(q) };
+  if (q) {
+    const trimmed = String(q).trim();
+    if (trimmed) {
+      const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escaped, 'i');
+      filter.$or = [
+        { title: regex },
+        { description: regex },
+        { address: regex },
+        { area: regex },
+      ];
+    }
+  }
 
   if (near) {
     const [lng, lat] = String(near).split(',').map(Number);
