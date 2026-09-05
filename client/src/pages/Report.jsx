@@ -11,6 +11,35 @@ import { field, primaryBtn } from '../formStyles';
 
 const CATEGORIES = ['Road', 'Water', 'Sanitation', 'Streetlight', 'Drainage', 'Other'];
 
+const DEPT_CATEGORY_MAP = {
+  'water-supply': 'Water',
+  'water supply': 'Water',
+  'water': 'Water',
+  'solid-waste': 'Sanitation',
+  'solid waste': 'Sanitation',
+  'solid waste management': 'Sanitation',
+  'sanitation': 'Sanitation',
+  'roads': 'Road',
+  'road': 'Road',
+  'roads & infrastructure': 'Road',
+  'street-lighting': 'Streetlight',
+  'street lighting': 'Streetlight',
+  'streetlight': 'Streetlight',
+  'drainage': 'Drainage',
+  'drainage & sewerage': 'Drainage',
+  'parks': 'Other',
+  'parks & gardens': 'Other',
+  'other': 'Other',
+};
+
+function resolveCategory(val) {
+  if (!val || typeof val !== 'string') return '';
+  const trimmed = val.trim();
+  const directMatch = CATEGORIES.find(c => c.toLowerCase() === trimmed.toLowerCase());
+  if (directMatch) return directMatch;
+  return DEPT_CATEGORY_MAP[trimmed.toLowerCase()] || '';
+}
+
 const EN = {
   pageTitle: 'Report a civic issue',
   pageSub: 'Help us identify and fix problems in your community. Provide details and location below.',
@@ -38,7 +67,23 @@ const Report = () => {
   const [t, setT] = useState(EN);
   const draft = routeLocation.state?.draft;
 
-  const [category, setCategory] = useState(draft?.category || '');
+  const [category, setCategory] = useState(() => {
+    if (draft?.category && CATEGORIES.includes(draft.category)) {
+      return draft.category;
+    }
+    const fromState = routeLocation.state?.category;
+    if (fromState) {
+      const resolved = resolveCategory(fromState);
+      if (resolved) return resolved;
+    }
+    const params = new URLSearchParams(routeLocation.search);
+    const fromQuery = params.get('category') || params.get('dept');
+    if (fromQuery) {
+      const resolved = resolveCategory(fromQuery);
+      if (resolved) return resolved;
+    }
+    return '';
+  });
   const [address, setAddress] = useState(draft?.address || '');
   const [location, setLocation] = useState(draft?.location || [92.7926, 26.6338]);
   const [pinAddress, setPinAddress] = useState(draft?.pinAddress || '');
@@ -61,6 +106,21 @@ const Report = () => {
       setT(Object.fromEntries(Object.keys(EN).map((k, i) => [k, vals[i]])))
     );
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (draft?.category) return;
+    const fromState = routeLocation.state?.category;
+    if (fromState) {
+      const resolved = resolveCategory(fromState);
+      if (resolved) { setCategory(resolved); return; }
+    }
+    const params = new URLSearchParams(routeLocation.search);
+    const fromQuery = params.get('category') || params.get('dept');
+    if (fromQuery) {
+      const resolved = resolveCategory(fromQuery);
+      if (resolved) setCategory(resolved);
+    }
+  }, [routeLocation.search, routeLocation.state, draft?.category]);
 
   useEffect(() => {
     if (!authLoading && user && (user.role === 'officer' || user.role === 'admin'))
