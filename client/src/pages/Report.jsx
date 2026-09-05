@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch as api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useLang } from '../LangContext';
 import MapPicker from '../components/MapPicker';
 import PhotoInput from '../components/PhotoInput';
-import DuplicatePanel from '../components/DuplicatePanel';
 import Spinner from '../components/Spinner';
 import Icon from '../components/Icon';
 import { field, primaryBtn } from '../formStyles';
@@ -45,13 +44,8 @@ const Report = () => {
   const [title, setTitle] = useState(draft?.title || '');
   const [description, setDescription] = useState(draft?.description || '');
   const [photos, setPhotos] = useState(draft?.photos || []);
-  const [duplicateOfId, setDuplicateOfId] = useState(null);
-  const [duplicates, setDuplicates] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [dismissedIds, setDismissedIds] = useState(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     if (lang === 'en') { setT(EN); return; }
@@ -74,38 +68,7 @@ const Report = () => {
     }
   }, [user, routeLocation.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const lng = location ? location[0] : null;
-    const lat = location ? location[1] : null;
-    if (!category || lng == null || lat == null || title.trim().length < 5) {
-      setDuplicates([]); setIsSearching(false); return;
-    }
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-    setIsSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const q = new URLSearchParams({ lng: String(lng), lat: String(lat), category, text: title.trim() });
-        const data = await api(`/api/issues/similar?${q}`, { signal: abortController.signal });
-        if (!abortController.signal.aborted) { setDuplicates(data.items || []); setIsSearching(false); }
-      } catch (err) {
-        if (err.name !== 'AbortError') { console.error(err); setIsSearching(false); }
-      }
-    }, 400);
-    return () => { clearTimeout(timer); abortController.abort(); };
-  }, [category, location, title]);
 
-  const handleSupportIssue = async (issue) => {
-    const issueId = typeof issue === 'string' ? issue : issue._id;
-    if (!user) { navigate('/login', { state: { from: '/report', pendingSupportId: issueId } }); return; }
-    try {
-      await api(`/api/issues/${issueId}/support`, { method: 'POST' });
-      navigate(`/issues/${issueId}`, { state: { message: 'You have supported this issue!' } });
-    } catch (err) { setError(err.message || 'Failed to support issue'); }
-  };
-
-  const handleReportAsNew = id => setDismissedIds(prev => new Set(prev).add(id));
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setError(null);
@@ -126,7 +89,6 @@ const Report = () => {
       fd.append('category', category);
       if (address.trim()) fd.append('address', address.trim());
       fd.append('lng', location[0]); fd.append('lat', location[1]);
-      if (duplicateOfId) fd.append('duplicateOf', duplicateOfId);
       photos.forEach(f => fd.append('photos', f));
       const res = await api('/api/issues', { method: 'POST', body: fd, isForm: true });
       navigate(`/issues/${res._id || res.id}`, { state: { message: 'Issue reported successfully!' } });
@@ -174,8 +136,6 @@ const Report = () => {
         <Step n={3} icon="clipboard" label={t.step3Label} required hint={t.step3Hint}>
           <input type="text" value={title} onChange={e => setTitle(e.target.value)}
             placeholder={t.titlePlaceholder} required minLength={5} className={field} />
-          <DuplicatePanel duplicates={duplicates} isSearching={isSearching}
-            dismissedIds={dismissedIds} onSupportIssue={handleSupportIssue} onReportAsNew={handleReportAsNew} />
           <textarea value={description} onChange={e => setDescription(e.target.value)}
             placeholder={t.descPlaceholder} rows={4} required minLength={10} className={`${field} mt-4 py-3`} />
         </Step>
