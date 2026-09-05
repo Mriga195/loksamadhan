@@ -66,7 +66,7 @@ async function reverseGeocode(lat, lng) {
     const area = neighbourhood || city || subdistrict || district || '';
     const region = district || city || '';
 
-    return { displayName, area, street, city, district, region };
+    return { displayName, area, street, city, district, region, state, isAssam: /assam/i.test(state) };
   } catch (err) {
     console.error('Reverse geocode error:', err);
     return null;
@@ -105,7 +105,10 @@ async function searchLocations(query) {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return (data || []).filter(r => inAssam(parseFloat(r.lat), parseFloat(r.lon)));
+    // The bbox alone leaks Bhutan, Arunachal, Meghalaya and Bengal — trust Nominatim's own state.
+    return (data || []).filter(r =>
+      /assam/i.test(r.address?.state || '') && inAssam(parseFloat(r.lat), parseFloat(r.lon))
+    );
   } catch (err) {
     console.error('Search location error:', err);
     return [];
@@ -132,6 +135,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
+  const lastGoodRef = useRef(null);
   const markerRef = useRef(null);
   const geocodeAbortRef = useRef(null);
   const searchTimeoutRef = useRef(null);
@@ -148,11 +152,16 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, []);
 
+  const rejectOutside = () => {
+    // Reports are Assam-only: snap the pin back to the last accepted spot and say why.
+    setOutsideAssam(true);
+    setIsGeocoding(false);
+    setPosition(p => lastGoodRef.current || [...p]);
+  };
+
   const updateLocation = async (lat, lng) => {
     if (!inAssam(lat, lng)) {
-      // Reports are Assam-only: snap the pin back and say why.
-      setOutsideAssam(true);
-      setPosition(p => [...p]);
+      rejectOutside();
       return;
     }
     setOutsideAssam(false);
@@ -170,7 +179,17 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
     if (geocodeAbortRef.current !== currentCall) return;
 
     setIsGeocoding(false);
+
+    // The bbox is a rectangle, so it also covers slices of Bhutan, Arunachal, Meghalaya, Nagaland
+    // and Bengal. Nominatim's own state field is the authority on whether the pin is in Assam.
+    // If the lookup itself failed we cannot tell, so the bbox check above stands alone.
+    if (info && !info.isAssam) {
+      rejectOutside();
+      return;
+    }
+
     const locInfo = info || { displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, area: '' };
+    lastGoodRef.current = [lat, lng];
     setDetectedAddress(locInfo.displayName);
 
     // Notify parent of location in API format [lng, lat] (LONGITUDE FIRST) along with address info

@@ -435,28 +435,24 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
   if (!validLngLat(lng, lat)) return bad(res, 'Valid lng and lat are required.');
   if (!inAssam(lng, lat)) return bad(res, 'LokSamadhan only accepts reports located inside Assam.');
 
+  // The bbox is a rectangle and also covers slices of Bhutan, Arunachal, Meghalaya, Nagaland and
+  // Bengal, so ask the geocoder which state the pin is actually in. A failed lookup cannot prove
+  // the pin is outside Assam, so the bbox check above stands alone in that case.
+  const geo = await reverseAddress(lng, lat);
+  if (geo && geo.address && geo.address.state && !/assam/i.test(geo.address.state)) {
+    return bad(res, 'LokSamadhan only accepts reports located inside Assam.');
+  }
+
   // Fallback: If address not provided by client, resolve location according to pin
   if (!address) {
-    try {
-      const geoRes = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        { headers: { 'User-Agent': 'LokSamadhanCivicApp/1.0', 'Accept-Language': 'en' }, signal: AbortSignal.timeout(3000) }
-      );
-      if (geoRes.ok) {
-        const geoData = await geoRes.json();
-        const addr = geoData.address || {};
-        const street = addr.road || addr.street || addr.footway || '';
-        const neighbourhood = addr.suburb || addr.neighbourhood || addr.residential || '';
-        const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
-        const state = addr.state || '';
-        const parts = [street, neighbourhood, city, state].filter(Boolean);
-        address = parts.join(', ') || geoData.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        if (!area) area = neighbourhood || city || 'General';
-      }
-    } catch {
-      if (!address) address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      if (!area) area = 'General';
-    }
+    const addr = geo?.address || {};
+    const street = addr.road || addr.street || addr.footway || '';
+    const neighbourhood = addr.suburb || addr.neighbourhood || addr.residential || '';
+    const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
+    const state = addr.state || '';
+    const parts = [street, neighbourhood, city, state].filter(Boolean);
+    address = parts.join(', ') || geo?.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    if (!area) area = neighbourhood || city || 'General';
   }
 
   if (!area) {
@@ -1036,6 +1032,19 @@ router.patch('/:id/duplicate', auth(true), officer, ah(async (req, res) => {
 }));
 
 /* --------------------------------------------------------------------------- helpers */
+// Returns Nominatim's reverse-geocode payload, or null if the lookup failed.
+async function reverseAddress(lng, lat) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+      { headers: { 'User-Agent': 'LokSamadhanCivicApp/1.0', 'Accept-Language': 'en' }, signal: AbortSignal.timeout(3000) }
+    );
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 function validLngLat(lng, lat) {
   return Number.isFinite(lng) && Number.isFinite(lat)
     && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
