@@ -24,10 +24,14 @@ function formatIssueRef(issue) {
   return `LS-${year}-${hex}`;
 }
 
+let cachedTransporter = null;
+
 /**
- * Create Nodemailer transporter based on .env configuration
+ * Dynamically get or create Nodemailer transporter based on current process.env
  */
-function createTransporter() {
+function getTransporter() {
+  if (cachedTransporter) return cachedTransporter;
+
   const user = process.env.EMAIL_USER;
   const rawPass = process.env.EMAIL_PASS;
   const pass = rawPass ? String(rawPass).replace(/\s+/g, '') : '';
@@ -36,24 +40,23 @@ function createTransporter() {
     return null;
   }
 
-  // If EMAIL_SERVICE is specified (e.g. 'gmail')
-  if (process.env.EMAIL_SERVICE) {
-    return nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE,
+  // Create transporter with Gmail service or custom host
+  if (process.env.EMAIL_SERVICE === 'gmail' || /@gmail\.com$/i.test(user)) {
+    cachedTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+    });
+  } else {
+    cachedTransporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      port: Number(process.env.EMAIL_PORT) || 587,
+      secure: process.env.EMAIL_SECURE === 'true',
       auth: { user, pass },
     });
   }
 
-  // Default to standard host/port SMTP
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: Number(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_SECURE === 'true',
-    auth: { user, pass },
-  });
+  return cachedTransporter;
 }
-
-const transporter = createTransporter();
 
 /**
  * Base email layout wrapper with LokSamadhan Civic Theme
@@ -199,7 +202,8 @@ function wrapCivicTemplate({ title, preheader, contentHtml }) {
  * Dispatch an email with graceful fallback to console logging
  */
 async function sendMail({ to, subject, html, text }) {
-  if (!transporter) {
+  const activeTransporter = getTransporter();
+  if (!activeTransporter) {
     console.log('\n======================================================');
     console.log('📧 [LokSamadhan Email Fallback] (No SMTP configured)');
     console.log(`To: ${to}`);
@@ -209,20 +213,22 @@ async function sendMail({ to, subject, html, text }) {
     return { messageId: 'simulated-dev-' + Date.now() };
   }
 
+  const fromSender = process.env.EMAIL_USER
+    ? `"LokSamadhan Portal" <${process.env.EMAIL_USER}>`
+    : (process.env.EMAIL_FROM || DEFAULT_FROM);
+
   try {
-    const info = await transporter.sendMail({
-      from: DEFAULT_FROM,
+    const info = await activeTransporter.sendMail({
+      from: fromSender,
       to,
       subject,
       text: text || subject,
       html,
     });
-    console.log(`[LokSamadhan Mailer] Email sent to ${to}: ${info.messageId}`);
+    console.log(`[LokSamadhan Mailer] Real email dispatched to ${to}: ${info.messageId}`);
     return info;
   } catch (err) {
     console.error(`[LokSamadhan Mailer] Error sending email to ${to}:`, err.message);
-    // Log preview in case of delivery failure so developer/user isn't blocked
-    console.log(`[LokSamadhan Mailer Fallback Preview] Subject: "${subject}" to "${to}"`);
     return { error: err.message };
   }
 }
@@ -475,7 +481,7 @@ async function sendIssueStatusUpdateEmail({
 }
 
 module.exports = {
-  transporter,
+  getTransporter,
   formatIssueRef,
   sendOtpEmail,
   sendIssueCreatedEmail,
