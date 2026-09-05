@@ -77,6 +77,7 @@ export default function OfficerDashboard() {
   const [deptFilter, setDeptFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('priority_desc'); // 'priority_desc' | 'priority_asc' | 'time_desc' | 'time_asc'
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -176,16 +177,32 @@ export default function OfficerDashboard() {
         );
       });
 
-    return [...filtered].sort((a, b) =>
-      (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3)
-      || new Date(b.createdAt) - new Date(a.createdAt));
-  }, [issues, tab, deptFilter, priorityFilter, searchQuery, TABS, duplicatesByParent]);
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'time_desc') {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      if (sortBy === 'time_asc') {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+      if (sortBy === 'priority_asc') {
+        const pA = PRIORITY_RANK[a.priority] ?? 3;
+        const pB = PRIORITY_RANK[b.priority] ?? 3;
+        if (pA !== pB) return pB - pA;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      // Default: priority_desc (High -> Medium -> Low, then newest)
+      const pA = PRIORITY_RANK[a.priority] ?? 3;
+      const pB = PRIORITY_RANK[b.priority] ?? 3;
+      if (pA !== pB) return pA - pB;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [issues, tab, deptFilter, priorityFilter, searchQuery, sortBy, TABS, duplicatesByParent]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const current = Math.min(page, pageCount);
   const visible = rows.slice((current - 1) * PER_PAGE, current * PER_PAGE);
 
-  useEffect(() => { setPage(1); }, [tab, deptFilter, priorityFilter, searchQuery]);
+  useEffect(() => { setPage(1); }, [tab, deptFilter, priorityFilter, searchQuery, sortBy]);
 
   const replace = updated =>
     setIssues(list => list.map(i => (i._id === updated._id ? { ...i, ...updated } : i)));
@@ -560,7 +577,7 @@ export default function OfficerDashboard() {
                       {/* Search & Granular Filters Row */}
                       <div className="grid gap-2 sm:grid-cols-12 pt-2 border-t border-line/50">
                         {/* Search Input */}
-                        <div className="relative sm:col-span-6">
+                        <div className={`relative ${isAdmin ? 'sm:col-span-4' : 'sm:col-span-5'}`}>
                           <Icon name="search" className="absolute left-3 top-2.5 size-4 text-slate-400" />
                           <input
                             type="text"
@@ -581,12 +598,12 @@ export default function OfficerDashboard() {
                         </div>
 
                         {/* Priority Filter */}
-                        <div className="sm:col-span-3">
+                        <div className={isAdmin ? 'sm:col-span-2' : 'sm:col-span-3'}>
                           <select
                             aria-label="Filter Priority"
                             value={priorityFilter}
                             onChange={e => setPriorityFilter(e.target.value)}
-                            className="w-full rounded-lg border border-line bg-canvas px-3 py-1.5 text-xs text-ink cursor-pointer focus:border-brand-500 focus:outline-none"
+                            className="w-full rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-xs text-ink cursor-pointer focus:border-brand-500 focus:outline-none"
                           >
                             <option value="">All Priorities</option>
                             <option value="high">High Priority Only</option>
@@ -602,13 +619,28 @@ export default function OfficerDashboard() {
                               aria-label="Filter Department"
                               value={deptFilter}
                               onChange={e => setDeptFilter(e.target.value)}
-                              className="w-full rounded-lg border border-line bg-canvas px-3 py-1.5 text-xs text-ink cursor-pointer focus:border-brand-500 focus:outline-none"
+                              className="w-full rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-xs text-ink cursor-pointer focus:border-brand-500 focus:outline-none"
                             >
                               <option value="">All Departments</option>
                               {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
                           </div>
                         )}
+
+                        {/* Sort By Dropdown */}
+                        <div className={isAdmin ? 'sm:col-span-3' : 'sm:col-span-4'}>
+                          <select
+                            aria-label="Sort issues"
+                            value={sortBy}
+                            onChange={e => setSortBy(e.target.value)}
+                            className="w-full rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-xs text-ink font-medium cursor-pointer focus:border-brand-500 focus:outline-none"
+                          >
+                            <option value="priority_desc">Sort: Priority (High to Low)</option>
+                            <option value="priority_asc">Sort: Priority (Low to High)</option>
+                            <option value="time_desc">Sort: Time (Newest First)</option>
+                            <option value="time_asc">Sort: Time (Oldest First)</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
@@ -637,8 +669,32 @@ export default function OfficerDashboard() {
                                 <th scope="col" className="px-4 py-3">Issue & Title</th>
                                 <th scope="col" className="px-4 py-3">Department</th>
                                 <th scope="col" className="px-4 py-3">Status</th>
-                                <th scope="col" className="px-4 py-3">Priority</th>
-                                <th scope="col" className="px-4 py-3">Reported</th>
+                                <th
+                                  scope="col"
+                                  onClick={() => setSortBy(prev => prev === 'priority_desc' ? 'priority_asc' : 'priority_desc')}
+                                  className="px-4 py-3 cursor-pointer select-none hover:text-brand-600 transition-colors group/th"
+                                  title="Click to sort by Priority"
+                                >
+                                  <span className="inline-flex items-center gap-1">
+                                    Priority
+                                    <span className={`text-[10px] ${sortBy.startsWith('priority') ? 'text-brand-600 font-bold' : 'text-slate-300 group-hover/th:text-slate-400'}`}>
+                                      {sortBy === 'priority_desc' ? '▼' : sortBy === 'priority_asc' ? '▲' : '⇅'}
+                                    </span>
+                                  </span>
+                                </th>
+                                <th
+                                  scope="col"
+                                  onClick={() => setSortBy(prev => prev === 'time_desc' ? 'time_asc' : 'time_desc')}
+                                  className="px-4 py-3 cursor-pointer select-none hover:text-brand-600 transition-colors group/th"
+                                  title="Click to sort by Reported Time"
+                                >
+                                  <span className="inline-flex items-center gap-1">
+                                    Reported
+                                    <span className={`text-[10px] ${sortBy.startsWith('time') ? 'text-brand-600 font-bold' : 'text-slate-300 group-hover/th:text-slate-400'}`}>
+                                      {sortBy === 'time_desc' ? '▼' : sortBy === 'time_asc' ? '▲' : '⇅'}
+                                    </span>
+                                  </span>
+                                </th>
                                 <th scope="col" className="px-4 py-3 text-right">Action</th>
                               </tr>
                             </thead>
