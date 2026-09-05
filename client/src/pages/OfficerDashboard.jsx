@@ -812,7 +812,7 @@ export default function OfficerDashboard() {
 
                                     {/* Sub-rows: Similar reports grouped under this original issue */}
                                     {isExpanded && (() => {
-                                      const limit = expandedLimits[issue._id] || 1;
+                                      const limit = expandedLimits[issue._id] || 3;
                                       const visibleDups = dups.slice(0, limit);
                                       const remaining = dups.length - limit;
 
@@ -883,7 +883,7 @@ export default function OfficerDashboard() {
                                             );
                                           })}
 
-                                          {dups.length > 1 && (
+                                          {dups.length > 3 && (
                                             <tr className="border-l-4 border-brand-400 bg-canvas/80 text-xs">
                                               <td colSpan={7} className="pl-8 pr-4 py-2">
                                                 <div className="flex items-center justify-between text-xs">
@@ -895,7 +895,7 @@ export default function OfficerDashboard() {
                                                       type="button"
                                                       onClick={e => {
                                                         e.stopPropagation();
-                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: (prev[issue._id] || 1) + 5 }));
+                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: (prev[issue._id] || 3) + 5 }));
                                                       }}
                                                       className="font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer text-xs"
                                                     >
@@ -906,7 +906,7 @@ export default function OfficerDashboard() {
                                                       type="button"
                                                       onClick={e => {
                                                         e.stopPropagation();
-                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: 1 }));
+                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: 3 }));
                                                       }}
                                                       className="font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer text-xs"
                                                     >

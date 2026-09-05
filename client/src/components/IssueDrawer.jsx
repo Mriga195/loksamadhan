@@ -565,7 +565,7 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
 
         {/* Similar Reports from other citizens */}
         {linkedDuplicates.length > 0 && (() => {
-          const limit = 1;
+          const limit = 3;
           const visible = showAllSimilar ? linkedDuplicates : linkedDuplicates.slice(0, limit);
           const hasMore = linkedDuplicates.length > limit;
 
