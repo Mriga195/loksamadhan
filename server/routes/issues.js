@@ -263,6 +263,7 @@ router.get('/:id', auth(false), ah(async (req, res) => {
 router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCloud, ah(async (req, res) => {
   const title = String(req.body.title ?? '').trim();
   const description = String(req.body.description ?? '').trim();
+  const { category } = req.body;
   let address = String(req.body.address ?? '').trim();
   let area = String(req.body.area ?? '').trim();
 
