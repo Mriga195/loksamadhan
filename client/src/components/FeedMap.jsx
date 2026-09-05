@@ -199,12 +199,12 @@ export default function FeedMap({ issues, numbered = true }) {
                   </div>
 
                   <p className="text-[11px] text-ink-muted line-clamp-1">
-                    📍 {issue.address || issue.area || 'Tezpur, Assam'}
+                    {issue.address || issue.area || 'Tezpur, Assam'}
                   </p>
 
                   <div className="pt-1 border-t border-line flex items-center justify-between text-[11px]">
                     <span className="text-ink-muted font-medium">
-                      👍 {issue.supporterCount || 0}
+                      {issue.supporterCount || 0} supporter{(issue.supporterCount || 0) === 1 ? '' : 's'}
                     </span>
                     <Link
                       to={`/issues/${issue._id}`}
