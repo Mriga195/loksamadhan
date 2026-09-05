@@ -66,7 +66,8 @@ export default function Home() {
   return (
     <main>
       {/* Hero — copy over a city skyline, with the live counters resting on top of it */}
-      <section className="relative isolate overflow-hidden bg-gradient-to-b from-brand-50 via-brand-50/50 to-canvas">
+      <section className="relative isolate -mt-20 overflow-hidden bg-gradient-to-b
+        from-brand-50 via-brand-50/50 to-canvas pt-20">
         <CityScene className="absolute inset-x-0 bottom-0 -z-10 h-[300px] w-full" />
 
         <div className="mx-auto max-w-3xl px-4 pt-14 text-center sm:pt-20">

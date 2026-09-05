@@ -158,7 +158,7 @@ export default function Departments() {
 
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
-                to="/report"
+                to={active.category ? `/report?category=${active.category}` : '/report'}
                 className="inline-flex min-h-10 items-center gap-2 rounded-full bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700"
               >
                 <Icon name="plus" className="size-[18px]" />

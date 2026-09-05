@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { apiFetch as api } from '../api';
 import { useAuth } from '../AuthContext';
 import MapPicker from '../components/MapPicker';
@@ -20,7 +20,14 @@ const Report = () => {
   // hands it back here after the session exists. `draft` is that returning payload.
   const draft = routeLocation.state?.draft;
 
-  const [category, setCategory] = useState(draft?.category || '');
+  // Arriving from a department card pre-picks its intake category. Checked against the list
+  // rather than trusted: a hand-typed ?category=Nonsense would otherwise sit in the select as
+  // a value the server will reject.
+  const [searchParams] = useSearchParams();
+  const preset = searchParams.get('category');
+  const presetCategory = CATEGORIES.includes(preset) ? preset : '';
+
+  const [category, setCategory] = useState(draft?.category || presetCategory);
   const [address, setAddress] = useState(draft?.address || '');
   const [location, setLocation] = useState(draft?.location || null); // [lng, lat]
   const [title, setTitle] = useState(draft?.title || '');
