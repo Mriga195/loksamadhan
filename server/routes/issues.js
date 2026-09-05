@@ -542,7 +542,7 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
     if (autoStatus === 'Acknowledged') {
       historyEntries.push({
         status: 'Acknowledged',
-        note: `Auto-assigned to ${department} (${issueRegion} Region). Officer assigned via regional load-balancing.`,
+        note: `Assigned to ${department} (${issueRegion} Division). A local field officer has been allotted to take action.`,
         evidence: null,
         by: req.user.id,
         at: new Date(now.getTime() + 1),
@@ -550,7 +550,7 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
     } else {
       historyEntries.push({
         status: 'Submitted',
-        note: `No designated officer stationed in ${issueRegion} Region for ${department || 'this category'}. Routed to Admin Triage Pool.`,
+        note: `Report received and queued for review by the municipal triage team for ${department || 'this category'}.`,
         evidence: null,
         by: req.user.id,
         at: new Date(now.getTime() + 1),
@@ -672,8 +672,8 @@ router.patch('/:id/assign', auth(true), adminOnly, ah(async (req, res) => {
   }
 
   const noteText = assignedOfficerName
-    ? `Triaged to ${department} (${issue.region || 'General'} Region, priority: ${issue.priority}) — assigned to ${assignedOfficerName}`
-    : `Triaged to ${department} (${issue.region || 'General'} Region, priority: ${issue.priority}) — unassigned (no officer stationed in this region)`;
+    ? `Assigned to ${department} (${issue.region || 'General'} Division) — allotted to field officer ${assignedOfficerName}.`
+    : `Assigned to ${department} (${issue.region || 'General'} Division) — awaiting field officer dispatch.`;
 
   issue.statusHistory.push({
     status: issue.status,

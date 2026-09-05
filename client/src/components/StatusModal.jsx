@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { apiFetch } from '../api';
 import { useAuth } from '../AuthContext';
 import StatusPill from './StatusPill';
+import { formatTimelineNote } from './StatusTimeline';
 
 export default function StatusModal({ issue, onClose, onSaved }) {
   const { user } = useAuth();
@@ -155,7 +156,7 @@ export default function StatusModal({ issue, onClose, onSaved }) {
                 <li key={i} className="flex items-start gap-2">
                   <StatusPill status={h.status} size="sm" />
                   <span className="text-ink-muted text-[11px]">{new Date(h.at).toLocaleDateString()}</span>
-                  {h.note && <span className="text-ink truncate font-normal">"{h.note}"</span>}
+                  {h.note && <span className="text-ink truncate font-normal">"{formatTimelineNote(h.note)}"</span>}
                 </li>
               ))}
             </ol>
