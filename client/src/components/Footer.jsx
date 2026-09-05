@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useLang } from '../LangContext';
 import Icon from './Icon';
 import Logo from './Logo';
 
@@ -19,9 +21,42 @@ const DEPARTMENTS = [
   { label: 'Parks & Gardens', dept: 'parks', icon: 'tree' },
 ];
 
+const EN = {
+  tagline: 'LokSamadhan is an initiative to empower citizens and strengthen civic services through technology and transparency.',
+  explore: 'Explore',
+  feed: 'Feed',
+  reportIssue: 'Report an Issue',
+  departments: 'Departments',
+  viewAll: 'View all departments',
+  promise: 'What we promise',
+  p1: 'Similar reports are linked, never deleted.',
+  p2: 'Resolution requires a note or evidence.',
+  p3: 'Your personal info is never made public.',
+  copyright: `© ${new Date().getFullYear()} LokSamadhan. Built for public accountability, not real municipal integration.`,
+  // dept labels
+  waterSupply: 'Water Supply',
+  solidWaste: 'Solid Waste Management',
+  roads: 'Roads & Infrastructure',
+  streetLighting: 'Street Lighting',
+  parks: 'Parks & Gardens',
+};
+
 const linkClass = 'flex items-center gap-2 hover:text-brand-600';
 
 export default function Footer() {
+  const { lang, translate } = useLang();
+  const [t, setT] = useState(EN);
+
+  useEffect(() => {
+    if (lang === 'en') { setT(EN); return; }
+    translate(Object.values(EN)).then((vals) => {
+      setT(Object.fromEntries(Object.keys(EN).map((k, i) => [k, vals[i]])));
+    });
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Translate dept labels
+  const deptLabels = [t.waterSupply, t.solidWaste, t.roads, t.streetLighting, t.parks];
+
   return (
     <footer className="border-t border-line bg-surface">
       <div className="mx-auto max-w-7xl px-4 py-12">
@@ -34,24 +69,28 @@ export default function Footer() {
             <p className="mt-3 max-w-xs text-sm text-ink-muted">
               LokSamadhan is an initiative to empower citizens and strengthen civic services
               through technology and transparency.
+              {t.tagline}
             </p>
           </div>
 
           <nav aria-label="Explore">
             <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               Explore
+              {t.explore}
             </h3>
             <ul className="mt-4 space-y-3 text-sm">
               <li>
                 <Link to="/feed" className={linkClass}>
                   <Icon name="home" className="size-[18px]" />
                   Feed
+                  {t.feed}
                 </Link>
               </li>
               <li>
                 <Link to="/report" className={linkClass}>
                   <Icon name="plus" className="size-[18px]" />
                   Report an Issue
+                  {t.reportIssue}
                 </Link>
               </li>
             </ul>
@@ -59,14 +98,14 @@ export default function Footer() {
 
           <nav aria-label="Departments">
             <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-              Departments
+              {t.departments}
             </h3>
             <ul className="mt-4 space-y-3 text-sm">
-              {DEPARTMENTS.map(({ label, dept, icon }) => (
+              {DEPARTMENTS.map(({ dept, icon }, idx) => (
                 <li key={dept}>
                   <Link to={`/departments?dept=${dept}`} className={linkClass}>
                     <Icon name={icon} className="size-[18px]" />
-                    {label}
+                    {deptLabels[idx]}
                   </Link>
                 </li>
               ))}
@@ -74,6 +113,7 @@ export default function Footer() {
                 <Link to="/departments" className={linkClass}>
                   <Icon name="building" className="size-[18px]" />
                   View all departments
+                  {t.viewAll}
                 </Link>
               </li>
             </ul>
@@ -82,11 +122,15 @@ export default function Footer() {
           <div>
             <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               What we promise
+              {t.promise}
             </h3>
             <ul className="mt-4 space-y-3 text-sm text-ink-muted">
               <li>Similar reports are linked, never deleted.</li>
               <li>Resolution requires a note or evidence.</li>
               <li>Your personal info is never made public.</li>
+              <li>{t.p1}</li>
+              <li>{t.p2}</li>
+              <li>{t.p3}</li>
             </ul>
           </div>
         </div>
@@ -94,6 +138,7 @@ export default function Footer() {
         <p className="mt-10 border-t border-line pt-6 text-xs text-ink-muted">
           &copy; {new Date().getFullYear()} LokSamadhan. Built for public accountability, not
           real municipal integration.
+          {t.copyright}
         </p>
       </div>
     </footer>
