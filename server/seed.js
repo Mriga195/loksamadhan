@@ -249,6 +249,9 @@ async function seed() {
     priority: 'high',
     status: 'Acknowledged',
     duplicateOf: waterRoot._id,
+    photos: [
+      'https://images.unsplash.com/photo-1574482620811-1aa16fed3ce8?w=800&auto=format&fit=crop&q=80',
+    ],
     statusHistory: [
       { status: 'Submitted', note: 'Reported by citizen', by: citizen2._id, at: daysAgo(1) },
       {
