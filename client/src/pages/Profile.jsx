@@ -8,6 +8,7 @@ import EmptyState from '../components/EmptyState';
 import StatusPill from '../components/StatusPill';
 import { timeAgo } from '../components/IssueCard';
 import Spinner, { Skeleton } from '../components/Spinner';
+import SafeImage from '../components/SafeImage';
 import { PasswordField } from '../components/AuthShell';
 import { field, primaryBtn } from '../formStyles';
 
@@ -534,11 +535,8 @@ function ReportRow({ issue, n }) {
         className="flex items-start gap-3 rounded-card border border-line bg-surface p-3
           shadow-sm transition-colors hover:bg-canvas sm:gap-4 sm:p-4">
         <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg
-          bg-canvas text-slate-300 sm:size-20">
-          {photo
-            ? <img src={photo} alt="" loading="lazy" className="size-full object-cover"
-                onError={e => { e.currentTarget.hidden = true; }} />
-            : <Icon name="photo" className="size-7" />}
+          bg-canvas text-slate-300 sm:size-20 border border-line/60">
+          <SafeImage src={photo} alt="" className="size-full object-cover" fallbackText="" iconClassName="size-7" />
         </span>
 
         <span className="min-w-0 flex-1">

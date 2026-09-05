@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import StatusPill from './StatusPill';
 
@@ -48,6 +49,7 @@ const metaPill = 'inline-flex max-w-full items-center gap-1.5 rounded-lg border 
 // `index` is the card's position in the feed, shown as the badge that ties the row to its pin
 // on the map beside it. 1-based, passed by Feed — the card does not know about the map.
 export default function IssueCard({ issue, index }) {
+  const [imgFailed, setImgFailed] = useState(false);
   const art = CATEGORY[issue.category] || CATEGORY.Other;
   const photo = issue.photos?.[0];
   const place = issue.address || issue.area;
@@ -71,9 +73,9 @@ export default function IssueCard({ issue, index }) {
             load or fail. */}
         <div className={`relative grid h-32 w-full shrink-0 place-items-center overflow-hidden
           rounded-xl sm:size-24 ${art.tile}`}>
-          {photo ? (
+          {photo && !imgFailed ? (
             <img src={photo} alt="" loading="lazy" className="size-full object-cover"
-              onError={e => { e.currentTarget.hidden = true; }} />
+              onError={() => setImgFailed(true)} />
           ) : (
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               strokeWidth="1.5" className="size-10">

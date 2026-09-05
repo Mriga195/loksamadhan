@@ -6,6 +6,7 @@ import AssignControls from './AssignControls';
 import Icon from './Icon';
 import StatusPill from './StatusPill';
 import StatusTimeline from './StatusTimeline';
+import SafeImage from './SafeImage';
 
 export const shortId = issue =>
   `LS-${new Date(issue.createdAt).getFullYear()}-${String(issue._id).slice(-6).toUpperCase()}`;
@@ -393,8 +394,8 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
             <div className="grid grid-cols-3 gap-2">
               {issue.resolution.evidence.map((src, idx) => (
                 <a key={idx} href={src} target="_blank" rel="noreferrer"
-                  className="block aspect-square overflow-hidden rounded-lg border border-line">
-                  <img src={src} alt="Resolution evidence" loading="lazy" className="size-full object-cover hover:scale-105 transition-transform" />
+                  className="block aspect-square overflow-hidden rounded-lg border border-line bg-slate-50">
+                  <SafeImage src={src} alt="Resolution evidence" className="size-full object-cover hover:scale-105 transition-transform" fallbackText="Proof photo" />
                 </a>
               ))}
             </div>
@@ -437,8 +438,9 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
                     {dup.photos?.length > 0 && (
                       <div className="flex gap-1 pt-1">
                         {dup.photos.map((src, idx) => (
-                          <a key={idx} href={src} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
-                            <img src={src} alt="Evidence preview" className="size-10 rounded object-cover border border-line hover:scale-105 transition-transform" />
+                          <a key={idx} href={src} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                            className="size-10 rounded overflow-hidden border border-line bg-slate-50">
+                            <SafeImage src={src} alt="Evidence preview" className="size-full object-cover hover:scale-105 transition-transform" fallbackText="" iconClassName="size-4" />
                           </a>
                         ))}
                       </div>
@@ -475,8 +477,8 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
             <div className="grid grid-cols-3 gap-2">
               {issue.photos.map((src, idx) => (
                 <a key={idx} href={src} target="_blank" rel="noreferrer" title="Citizen photo"
-                  className="group relative overflow-hidden rounded-lg border border-line aspect-square">
-                  <img src={src} alt="Citizen photo" loading="lazy" className="size-full object-cover transition-transform group-hover:scale-105" />
+                  className="group relative overflow-hidden rounded-lg border border-line aspect-square bg-slate-50">
+                  <SafeImage src={src} alt="Citizen photo" className="size-full object-cover transition-transform group-hover:scale-105" fallbackText="Photo" />
                 </a>
               ))}
             </div>

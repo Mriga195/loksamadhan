@@ -9,6 +9,7 @@ import StatusTimeline from '../components/StatusTimeline';
 import ErrorState from '../components/ErrorState';
 import Spinner, { Skeleton } from '../components/Spinner';
 import { timeAgo } from '../components/IssueCard';
+import SafeImage from '../components/SafeImage';
 import NotFound from './NotFound';
 import { useSeo } from '../seo';
 
@@ -510,11 +511,10 @@ export default function IssueDetail() {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {resolutionPhotos.map(src => (
-                  <a key={src} href={src} target="_blank" rel="noreferrer"
-                    className="group relative block aspect-square overflow-hidden rounded-xl border border-line">
-                    <img src={src} alt="Resolution proof" loading="lazy"
-                      className="size-full object-cover transition-transform duration-200 group-hover:scale-105" />
+                {resolutionPhotos.map((src, idx) => (
+                  <a key={idx} href={src} target="_blank" rel="noreferrer"
+                    className="group relative block aspect-square overflow-hidden rounded-xl border border-line bg-slate-50">
+                    <SafeImage src={src} alt="Resolution proof" className="size-full object-cover transition-transform duration-200 group-hover:scale-105" fallbackText="Proof photo" />
                     <span aria-hidden="true"
                       className="absolute bottom-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-surface/90 text-ink-muted shadow-sm">
                       <Icon name="zoom" className="size-4" />
@@ -538,11 +538,10 @@ export default function IssueDetail() {
                   </p>
 
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {photos.map(src => (
-                      <a key={src} href={src} target="_blank" rel="noreferrer"
-                        className="group relative block aspect-square overflow-hidden rounded-xl border border-line">
-                        <img src={src} alt={`Photo of: ${issue.title}`} loading="lazy"
-                          className="size-full object-cover transition-transform duration-200 group-hover:scale-105" />
+                    {photos.map((src, idx) => (
+                      <a key={idx} href={src} target="_blank" rel="noreferrer"
+                        className="group relative block aspect-square overflow-hidden rounded-xl border border-line bg-slate-50">
+                        <SafeImage src={src} alt={`Photo of: ${issue.title}`} className="size-full object-cover transition-transform duration-200 group-hover:scale-105" fallbackText="Photo unavailable" />
                         <span aria-hidden="true"
                           className="absolute bottom-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-surface/90 text-ink-muted shadow-sm">
                           <Icon name="zoom" className="size-4" />
