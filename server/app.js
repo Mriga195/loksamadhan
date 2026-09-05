@@ -18,6 +18,12 @@ app.use('/api/admin',  require('./routes/admin'));
 app.use('/api/issues', require('./routes/similar'));
 app.use('/api/issues', require('./routes/issues'));
 app.use('/api/stats',  require('./routes/stats'));
+app.use('/api/auth',      require('./routes/auth'));
+app.use('/api/admin',     require('./routes/admin'));
+app.use('/api/issues',    require('./routes/similar'));
+app.use('/api/issues',    require('./routes/issues'));
+app.use('/api/stats',     require('./routes/stats'));
+app.use('/api/translate', require('./routes/translate.route'));
 
 // ── Global error handler ──
 app.use((err, _req, res, _next) =>

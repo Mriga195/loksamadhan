@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../api';
+import { useLang } from '../LangContext';
 import IssueCard from '../components/IssueCard';
 import FilterBar from '../components/FilterBar';
 import EmptyState from '../components/EmptyState';
@@ -20,14 +21,41 @@ import StatsCards from '../components/StatsCards';
 const PAGE_SIZE = 10;
 const KEYS = ['category', 'status', 'department', 'q'];
 
+const EN = {
+  heading: 'Reported issues',
+  showingOf: (shown, total) => `Showing 1–${shown} of ${total} issues`,
+  showMore: 'Show more',
+  loading: 'Loading…',
+  noMatchTitle: 'No reports match these filters',
+  noMatchHint: 'Try a broader search, or clear the filters to see everything.',
+  noReportsTitle: 'No reports yet',
+  noReportsHint: 'When someone files the first report, it will appear here.',
+  clearFilters: 'Clear filters',
+};
+
 export default function Feed() {
   const [params, setParams] = useSearchParams();
+  const { lang, translate } = useLang();
   const [issues, setIssues] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [t, setT] = useState(EN);
+
+  // Translate static strings (not `showingOf` — that's a function, computed inline)
+  useEffect(() => {
+    if (lang === 'en') { setT(EN); return; }
+    const keys = ['showMore', 'loading', 'noMatchTitle', 'noMatchHint', 'noReportsTitle', 'noReportsHint', 'clearFilters', 'heading'];
+    const vals = keys.map(k => (typeof EN[k] === 'string' ? EN[k] : ''));
+    translate(vals).then((translated) => {
+      setT(prev => ({
+        ...prev,
+        ...Object.fromEntries(keys.map((k, i) => [k, translated[i] || prev[k]])),
+      }));
+    });
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filters = Object.fromEntries(KEYS.map(k => [k, params.get(k) || '']));
   const query = KEYS.map(k => filters[k]).join(' ');   // one stable dep for the effect
@@ -75,6 +103,7 @@ export default function Feed() {
       {/* The filter bar and the numbered map are the page's title in the design; the heading is
           kept for screen readers and the document outline. */}
       <h1 className="sr-only">Reported issues</h1>
+      <h1 className="sr-only">{t.heading}</h1>
 
       <StatsCards />
 
@@ -95,6 +124,9 @@ export default function Feed() {
                 ? 'Try a broader search, or clear the filters to see everything.'
                 : 'When someone files the first report, it will appear here.'}
               actionLabel={hasFilters ? 'Clear filters' : undefined}
+              title={hasFilters ? t.noMatchTitle : t.noReportsTitle}
+              hint={hasFilters ? t.noMatchHint : t.noReportsHint}
+              actionLabel={hasFilters ? t.clearFilters : undefined}
               onAction={hasFilters ? onClear : undefined}
             />
           )}
@@ -116,6 +148,7 @@ export default function Feed() {
                     className="inline-flex cursor-pointer items-center gap-1.5 font-medium
                       text-brand-600 hover:text-brand-700 disabled:opacity-60 transition-colors">
                     {loadingMore ? 'Loading…' : 'Show more'}
+                    {loadingMore ? t.loading : t.showMore}
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                       strokeWidth="2" className="size-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
