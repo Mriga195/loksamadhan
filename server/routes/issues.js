@@ -426,8 +426,8 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
   let address = String(req.body.address ?? '').trim();
   let area = String(req.body.area ?? '').trim();
 
-  if (title.length < 5 || title.length > 120) return bad(res, 'Title must be 5–120 characters.');
-  if (description.length < 10 || description.length > 2000) return bad(res, 'Description must be 10–2000 characters.');
+  if (title.length < 5 || title.length > 50) return bad(res, 'Title must be 5–50 characters.');
+  if (description.length < 10 || description.length > 300) return bad(res, 'Description must be 10–300 characters.');
   if (!CATEGORIES.includes(category)) return bad(res, 'Unknown category.');
 
   const lng = Number(req.body.lng);
