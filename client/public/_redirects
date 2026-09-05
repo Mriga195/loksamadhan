@@ -1,0 +1,5 @@
+# Client-side routing: every path that is not a real file serves the app shell,
+# so refreshing /feed or /issues/:id reaches React Router instead of the host's 404.
+# (wrangler.jsonc's not_found_handling covers a Workers deploy; this covers Cloudflare
+# Pages and Netlify, which never read wrangler.jsonc.)
+/*  /index.html  200
