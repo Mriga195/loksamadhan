@@ -160,7 +160,7 @@ export default function IssueDetail() {
   }
   if (loading) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <Skeleton count={2} className="h-56" />
           <Skeleton count={2} className="h-40" />
@@ -170,7 +170,7 @@ export default function IssueDetail() {
   }
   if (error && !issue) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         <ErrorState message={error} onRetry={load} />
       </main>
     );
@@ -181,7 +181,7 @@ export default function IssueDetail() {
   const hasMap = Array.isArray(issue.location?.coordinates) && issue.location.coordinates.length === 2;
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-7xl px-4 py-8">
       <Link to="/feed" className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:underline">
         <Icon name="left" className="size-4" />
         All reports

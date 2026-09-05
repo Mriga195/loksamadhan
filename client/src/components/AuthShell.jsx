@@ -14,7 +14,7 @@ const TONES = {
 export default function AuthShell({ tone = 'brand', icon, heading, blurb, points, children }) {
   const t = TONES[tone];
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto max-w-7xl px-4 py-10">
       <div className="grid overflow-hidden rounded-card border border-line bg-surface
         md:min-h-[38rem] md:grid-cols-2">
         <aside className={`hidden flex-col justify-center p-10 md:flex ${t.panel}`}>

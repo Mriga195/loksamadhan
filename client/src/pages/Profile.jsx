@@ -135,7 +135,7 @@ export default function Profile() {
 
   if (authLoading || (!user && !authLoading)) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-10">
+      <main className="mx-auto max-w-7xl px-4 py-10">
         <Skeleton count={3} className="h-28" />
       </main>
     );
@@ -163,7 +163,7 @@ export default function Profile() {
     : 'Recent member';
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <main className="mx-auto max-w-7xl px-4 py-8">
       {/* ── Profile Header Card ── */}
       <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
         <div className="h-28 bg-gradient-to-r from-brand-600 to-brand-700 sm:h-36" />
