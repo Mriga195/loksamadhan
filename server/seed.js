@@ -28,7 +28,7 @@ const daysAgo = (d, h = 0) => new Date(now.getTime() - (d * 24 + h) * 3600 * 100
 async function seed() {
   const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
   if (!mongoUri) {
-    console.error('❌ Error: MONGO_URI is not set in environment or server/.env');
+    console.error('Error: MONGO_URI is not set in environment or server/.env');
     process.exit(1);
   }
 
