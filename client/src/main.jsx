@@ -11,19 +11,12 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dev-dummy-id.
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <LangProvider>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
-    </LangProvider>
-  </StrictMode>,
-);
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
+      <LangProvider>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </LangProvider>
     </GoogleOAuthProvider>
   </StrictMode>,
 );
-
-

@@ -98,13 +98,6 @@ export default function Login() {
       <h1 className="text-2xl font-semibold">{t.title}</h1>
       <p className="mt-1 text-sm text-ink-muted">{t.sub}</p>
 
-      <form onSubmit={submit} className="mt-6">
-        {error && (
-          <p role="alert" className="mb-4 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
-            {error}
-          </p>
-        )}
-      {/* Errors sit above the fields and are announced, not just coloured. */}
       {error && (
         <p role="alert" className="mt-4 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
           {error}
@@ -125,7 +118,6 @@ export default function Login() {
       </div>
 
       <form onSubmit={submit}>
-
         <label className="block text-sm font-medium">
           {t.emailLabel}
           <input type="email" autoComplete="email" required
