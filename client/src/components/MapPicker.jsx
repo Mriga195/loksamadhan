@@ -52,13 +52,15 @@ async function reverseGeocode(lat, lng) {
     const street = addr.road || addr.street || addr.footway || addr.path || '';
     const neighbourhood = addr.suburb || addr.neighbourhood || addr.residential || addr.subdivision || '';
     const city = addr.city || addr.town || addr.village || addr.municipality || 'Tezpur';
+    const district = addr.state_district || addr.county || addr.district || '';
     const state = addr.state || 'Assam';
 
     const parts = [street, neighbourhood, city, state].filter(Boolean);
     const displayName = parts.length > 0 ? parts.join(', ') : (data.display_name || 'Tezpur, Assam');
     const area = neighbourhood || city || 'Tezpur';
+    const region = district || city || 'Tezpur';
 
-    return { displayName, area, street, city };
+    return { displayName, area, street, city, district, region };
   } catch (err) {
     console.error('Reverse geocode error:', err);
     return null;

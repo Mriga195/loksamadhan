@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String, default: null },
     role: { type: String, enum: ROLES, default: 'citizen' },
     department: { type: String, default: null },
+    region: { type: String, default: null, trim: true },
   },
   { timestamps: true }
 );
@@ -46,6 +47,7 @@ userSchema.methods.toPublic = function () {
     name: this.name,
     role: this.role,
     department: this.department,
+    region: this.region,
     avatar: this.avatar,
     authProvider: this.authProvider,
   };
@@ -61,6 +63,7 @@ userSchema.methods.toProfile = function () {
     email: this.email,
     role: this.role,
     department: this.department,
+    region: this.region,
     avatar: this.avatar,
     authProvider: this.authProvider,
     createdAt: this.createdAt,

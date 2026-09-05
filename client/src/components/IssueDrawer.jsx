@@ -128,6 +128,14 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
   const [adminNote, setAdminNote] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [showReopenForm, setShowReopenForm] = useState(false);
+  const [unassignOnReopen, setUnassignOnReopen] = useState(false);
+  const [showReassign, setShowReassign] = useState(false);
+
+  const status = issue.status;
+  const isClosedOrResolved = status === 'Closed' || status === 'Resolved';
+  const isAssigned = Boolean(
+    issue.assignedOfficer && (issue.assignedOfficer.name || issue.assignedOfficer._id)
+  );
 
   async function handleVerify(action) {
     setActionLoading(true);
@@ -157,7 +165,10 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
     try {
       const updated = await apiFetch(`/api/issues/${issue._id}/reopen`, {
         method: 'POST',
-        body: JSON.stringify({ note: adminNote.trim() || 'Reopened by Admin following citizen dissatisfaction.' }),
+        body: JSON.stringify({
+          note: adminNote.trim() || 'Reopened by Admin.',
+          unassign: unassignOnReopen,
+        }),
       });
       onSaved?.(updated);
     } catch (e) {
@@ -165,20 +176,46 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
     } finally {
       setActionLoading(false);
       setShowReopenForm(false);
+      setUnassignOnReopen(false);
     }
   }
 
-  const status = issue.status;
-
   return (
     <div className="space-y-3">
-      {/* Assignment triage — always available for admin */}
-      <div>
-        <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-          Triage &amp; Allotment
-        </h3>
-        <AssignControls issue={issue} onSaved={onSaved} />
-      </div>
+      {/* Assignment triage — ONLY shown for open, unassigned issues (e.g. newly reported or reopened without an assigned officer). Hidden if assigned, closed, or resolved. */}
+      {!isClosedOrResolved && !isAssigned && (
+        <div>
+          <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+            Triage &amp; Allotment
+          </h3>
+          <AssignControls issue={issue} onSaved={onSaved} />
+        </div>
+      )}
+
+      {/* If officer is already assigned and not closed/resolved, show triage only if Reassign is explicitly toggled */}
+      {!isClosedOrResolved && isAssigned && showReassign && (
+        <div className="rounded-xl border border-brand-200 bg-brand-50/20 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-brand-900">
+              Reassign Officer / Allotment
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowReassign(false)}
+              className="text-[11px] text-ink-muted hover:text-ink font-medium cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+          <AssignControls
+            issue={issue}
+            onSaved={updated => {
+              setShowReassign(false);
+              onSaved?.(updated);
+            }}
+          />
+        </div>
+      )}
 
       {/* State-specific admin actions */}
       {actionError && <p className="text-xs text-rose-600 font-medium">{actionError}</p>}
@@ -198,7 +235,7 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleVerify('approve')}
-                className="flex-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
               >
                 {actionLoading ? 'Saving…' : '✓ Approve & Move to Resolved'}
               </button>
@@ -206,7 +243,7 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
                 type="button"
                 disabled={actionLoading}
                 onClick={() => setShowRejectForm(true)}
-                className="flex-1 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                className="flex-1 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 cursor-pointer"
               >
                 ✕ Reject Proof
               </button>
@@ -221,12 +258,12 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
                 placeholder="Reason for rejection / rework instructions for the officer..."
               />
               <div className="flex gap-2">
-                <button type="button" onClick={() => setShowRejectForm(false)} className="text-xs text-ink-muted px-2 py-1 hover:bg-canvas rounded">Cancel</button>
+                <button type="button" onClick={() => setShowRejectForm(false)} className="text-xs text-ink-muted px-2 py-1 hover:bg-canvas rounded cursor-pointer">Cancel</button>
                 <button
                   type="button"
                   disabled={actionLoading || !adminNote.trim()}
                   onClick={() => handleVerify('reject')}
-                  className="flex-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
                 >
                   Confirm Rejection
                 </button>
@@ -236,9 +273,12 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
         </div>
       )}
 
-      {status === 'Unsatisfied' && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 space-y-2">
-          <p className="text-[11px] font-bold text-rose-900 uppercase tracking-wider">Citizen Unsatisfied — Reopen?</p>
+      {/* Unsatisfied, Resolved, or Closed: Reopen Workflow */}
+      {(status === 'Unsatisfied' || status === 'Resolved' || status === 'Closed') && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3 space-y-2">
+          <p className="text-[11px] font-bold text-rose-900 uppercase tracking-wider">
+            {status === 'Unsatisfied' ? 'Citizen Unsatisfied — Reopen?' : `${status} Issue — Reopen?`}
+          </p>
           {issue.citizenFeedback?.notes && (
             <p className="text-xs italic text-rose-800">"{issue.citizenFeedback.notes}"</p>
           )}
@@ -247,7 +287,7 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
               type="button"
               disabled={actionLoading}
               onClick={() => setShowReopenForm(true)}
-              className="w-full rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 disabled:opacity-50"
+              className="w-full rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
             >
               ↺ Reopen Issue
             </button>
@@ -260,13 +300,33 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
                 onChange={e => setAdminNote(e.target.value)}
                 placeholder="Reopening note / instructions for officer..."
               />
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setShowReopenForm(false)} className="text-xs text-ink-muted px-2 py-1 hover:bg-canvas rounded">Cancel</button>
+              {isAssigned && (
+                <label className="flex items-center gap-2 text-xs text-ink cursor-pointer pt-0.5 select-none">
+                  <input
+                    type="checkbox"
+                    checked={unassignOnReopen}
+                    onChange={e => setUnassignOnReopen(e.target.checked)}
+                    className="rounded border-line text-brand-600 focus:ring-brand-500"
+                  />
+                  <span>Unassign officer &amp; send to triage queue</span>
+                </label>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReopenForm(false);
+                    setUnassignOnReopen(false);
+                  }}
+                  className="text-xs text-ink-muted px-2 py-1 hover:bg-canvas rounded cursor-pointer"
+                >
+                  Cancel
+                </button>
                 <button
                   type="button"
                   disabled={actionLoading}
                   onClick={handleReopen}
-                  className="flex-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
                 >
                   {actionLoading ? 'Reopening…' : 'Confirm Reopen'}
                 </button>
@@ -274,6 +334,18 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* If assigned and not closed/resolved, provide action button to reassign officer */}
+      {!isClosedOrResolved && isAssigned && !showReassign && (
+        <button
+          type="button"
+          onClick={() => setShowReassign(true)}
+          className="w-full rounded-xl border border-line bg-canvas py-2 text-xs font-medium text-ink hover:bg-surface transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <Icon name="shield" className="size-3.5 text-brand-600" />
+          Reassign Officer
+        </button>
       )}
 
       {(status === 'Submitted' || status === 'Acknowledged' || status === 'In Progress') && (
@@ -396,10 +468,22 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
               </span>
             )}
             {/* Assigned Officer Pill */}
-            {issue.assignedOfficer && (
+            {issue.assignedOfficer && (issue.assignedOfficer.name || issue.assignedOfficer._id) ? (
               <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-700 border border-slate-200">
                 <Icon name="shield" className="size-3 text-brand-600" />
-                <span>Officer: <strong>{issue.assignedOfficer.name || 'Officer'}</strong></span>
+                <span>
+                  Officer: <strong>{issue.assignedOfficer.name || 'Assigned'}</strong>
+                </span>
+                {issue.assignedOfficer.region && (
+                  <span className="text-[10px] text-slate-500 font-normal">
+                    ({issue.assignedOfficer.region})
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs text-amber-800 border border-amber-200">
+                <Icon name="shield" className="size-3 text-amber-600" />
+                <span>Officer: <strong>Unassigned</strong></span>
               </div>
             )}
             {issue.department && (

@@ -49,11 +49,105 @@ function autoPriority(category, supporterCount = 0) {
 }
 
 /**
- * Pick the officer in a department with the fewest active issues assigned to them
- * (load-balancing round-robin by current workload).
+ * Dynamically determines the administrative region/district from:
+ * 1. Explicit client reverse-geocoded region or district
+ * 2. Matches against dynamically registered officer regions in the database
+ * 3. Reverse-geocoded county/district/city from coordinates
+ * 4. Extracted city/district tokens from address
+ * (100% dynamic, no hardcoded centroids or static lists)
  */
-async function leastLoadedOfficer(department) {
-  const officers = await User.find({ role: 'officer', department }).lean();
+async function determineRegion({ address = '', area = '', lng, lat, clientRegion = '' }) {
+  // Query all active distinct officer regions configured by admins in the database
+  const registeredRegions = await User.distinct('region', {
+    role: 'officer',
+    region: { $nin: [null, ''] },
+  });
+
+  const cReg = String(clientRegion || '').trim();
+  const fullText = `${cReg} ${address} ${area}`.toLowerCase();
+
+  // Sort by length descending so "Jorhat West" matches before "Jorhat"
+  const sortedRegistered = [...registeredRegions].sort((a, b) => b.length - a.length);
+
+  // Check if any registered officer region exists in the fullText
+  for (const reg of sortedRegistered) {
+    const regLower = reg.toLowerCase();
+    const regex = new RegExp(`(^|[^a-z0-9])${regLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`, 'i');
+    if (regex.test(fullText) || fullText.includes(regLower)) {
+      return reg;
+    }
+  }
+
+  // If client passed a region from reverse geocoding, clean and return it
+  if (cReg) {
+    const cleaned = cReg.replace(/\s+(district|division|zone|region|city|subdivision)$/i, '').trim();
+    if (cleaned) {
+      const matched = sortedRegistered.find(r => r.toLowerCase() === cleaned.toLowerCase());
+      if (matched) return matched;
+      return cleaned;
+    }
+  }
+
+  // If coordinates provided, query Nominatim to dynamically fetch the true geographic district
+  if (typeof lng === 'number' && typeof lat === 'number' && validLngLat(lng, lat)) {
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { 'User-Agent': 'LokSamadhanCivicApp/1.0', 'Accept-Language': 'en' }, signal: AbortSignal.timeout(3000) }
+      );
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        const addr = geoData.address || {};
+        const districtName = (addr.state_district || addr.county || addr.district || addr.city || addr.town || addr.municipality || '').trim();
+        if (districtName) {
+          const cleanDistrict = districtName.replace(/\s+(district|division|zone|region|city|subdivision)$/i, '').trim();
+          const matched = sortedRegistered.find(r => r.toLowerCase() === cleanDistrict.toLowerCase() || cleanDistrict.toLowerCase().includes(r.toLowerCase()));
+          if (matched) return matched;
+          return cleanDistrict;
+        }
+      }
+    } catch {
+      // ignore network errors
+    }
+  }
+
+  // Parse address parts for district/city
+  const parts = address.split(',').map(s => s.trim().replace(/\s+(district|division|zone|region|city)$/i, '')).filter(Boolean);
+  if (parts.length >= 2) {
+    const candidate = parts[parts.length - 2];
+    if (candidate && candidate.toLowerCase() !== 'assam' && candidate.toLowerCase() !== 'india') {
+      const matched = sortedRegistered.find(r => r.toLowerCase() === candidate.toLowerCase());
+      if (matched) return matched;
+      return candidate;
+    }
+  }
+
+  return parts[0] || 'General';
+}
+
+/**
+ * Pick the officer in a department matching the issue's region with the fewest active issues.
+ * If multiple officers exist with same dept and same region, split load wise.
+ * Option B (Strict): If no officer is found for the specific region, returns null so the issue
+ * remains unassigned in the Admin Triage pool.
+ */
+async function leastLoadedOfficer(department, region = null) {
+  if (!department) return null;
+
+  let officers = [];
+  if (region && typeof region === 'string' && region.trim()) {
+    const cleanReg = region.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    officers = await User.find({
+      role: 'officer',
+      department,
+      region: { $regex: new RegExp(`^${cleanReg}$`, 'i') },
+    }).lean();
+  } else {
+    officers = await User.find({ role: 'officer', department }).lean();
+  }
+
+  // Strict regional isolation: do not assign an officer from an outside district.
+  // Returning null leaves assignedOfficer as null and status as 'Submitted' for Admin Triage.
   if (!officers.length) return null;
   if (officers.length === 1) return officers[0];
 
@@ -74,7 +168,8 @@ async function leastLoadedOfficer(department) {
   const sorted = [...officers].sort((a, b) => {
     const ca = countMap[String(a._id)] || 0;
     const cb = countMap[String(b._id)] || 0;
-    return ca - cb;
+    if (ca !== cb) return ca - cb;
+    return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
   });
   return sorted[0];
 }
@@ -122,9 +217,8 @@ async function syncDuplicatesStatus(issue, status, note, byUserId, evidence = nu
 }
 
 /* ---------------------------------------------------------------- A3. GET /api/issues */
-// Public. auth(false) so a logged-in viewer gets hasSupported and an anonymous one still gets 200.
 router.get('/', auth(false), ah(async (req, res) => {
-  const { category, status, department, area, q, near, radius, bbox, duplicates, sort } = req.query;
+  const { category, status, department, area, region, q, near, radius, bbox, duplicates, sort } = req.query;
 
   // Built from a whitelist of known keys. req.query is NEVER passed to find(): `?status[$ne]=x`
   // arrives as an object and becomes a query operator.
@@ -143,6 +237,9 @@ router.get('/', auth(false), ah(async (req, res) => {
   }
   // Free text, not an enum — trimmed and matched exactly, never interpolated into an operator.
   if (area) filter.area = String(area).trim();
+  if (region) {
+    filter.region = new RegExp(`^${String(region).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+  }
 
   // Default excludes duplicate children so the public feed is not cluttered by a cluster.
   if (duplicates !== 'include') filter.duplicateOf = null;
@@ -157,6 +254,7 @@ router.get('/', auth(false), ah(async (req, res) => {
         { description: regex },
         { address: regex },
         { area: regex },
+        { region: regex },
       ];
     }
   }
@@ -198,6 +296,9 @@ router.get('/', auth(false), ah(async (req, res) => {
     } },
   ]);
 
+  // Populate assignedOfficer details so client receives officer name, role, department, and region
+  await Issue.populate(items, { path: 'assignedOfficer', select: '_id name role department region' });
+
   res.json({
     items: publicIssueList(items, req.user?.id, await duplicateCounts(items)),
     total: counted[0]?.total ?? 0,
@@ -209,6 +310,7 @@ router.get('/', auth(false), ah(async (req, res) => {
 /* ------------------------------------------------------------ GET /api/issues/mine */
 router.get('/mine', auth(true), ah(async (req, res) => {
   const issues = await Issue.find({ reporter: req.user._id })
+    .populate('assignedOfficer', 'name role department region')
     .sort({ createdAt: -1 })
     .lean();
 
@@ -227,10 +329,35 @@ router.get('/mine', auth(true), ah(async (req, res) => {
 
 /* --------------------------------- GET /api/issues/dept-officers */
 router.get('/dept-officers', auth(true), ah(async (req, res) => {
-  const { department } = req.query;
+  const { department, region } = req.query;
   if (!department) return bad(res, 'Department query parameter is required.');
-  const officers = await User.find({ role: 'officer', department }).select('_id name email department').lean();
-  res.json({ officers });
+
+  // All officers in this department
+  const allDeptOfficers = await User.find({ role: 'officer', department })
+    .select('_id name email department region')
+    .lean();
+
+  // All distinct regions configured across the entire office user database
+  const allRegions = await User.distinct('region', {
+    role: 'officer',
+    region: { $nin: [null, ''] },
+  });
+
+  // Filter officers if a region filter is provided
+  let officers = allDeptOfficers;
+  if (region && typeof region === 'string' && region.trim()) {
+    const regRegex = new RegExp(`^${region.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    officers = allDeptOfficers.filter(o => o.region && regRegex.test(o.region));
+  }
+
+  const deptRegions = [...new Set(allDeptOfficers.map(o => o.region).filter(Boolean))];
+
+  res.json({
+    officers,
+    allDeptOfficers,
+    deptRegions,
+    allRegions,
+  });
 }));
 
 /* ------------------------------------------------------------ A4. GET /api/issues/:id */
@@ -238,7 +365,7 @@ router.get('/:id', auth(false), ah(async (req, res) => {
   // Before Mongo: a non-ObjectId throws a CastError and 500s the detail page.
   if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
 
-  const issue = await Issue.findById(req.params.id).populate('assignedOfficer', 'name role department');
+  const issue = await Issue.findById(req.params.id).populate('assignedOfficer', 'name role department region');
   if (!issue) return res.status(404).json({ error: 'Issue not found.' });
 
   const children = await Issue.find({ duplicateOf: issue._id })
@@ -287,21 +414,21 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
         const addr = geoData.address || {};
         const street = addr.road || addr.street || addr.footway || '';
         const neighbourhood = addr.suburb || addr.neighbourhood || addr.residential || '';
-        const city = addr.city || addr.town || addr.village || 'Tezpur';
-        const state = addr.state || 'Assam';
+        const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
+        const state = addr.state || '';
         const parts = [street, neighbourhood, city, state].filter(Boolean);
-        address = parts.join(', ') || geoData.display_name || 'Tezpur, Assam';
-        if (!area) area = neighbourhood || city || 'Tezpur';
+        address = parts.join(', ') || geoData.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        if (!area) area = neighbourhood || city || 'General';
       }
     } catch {
-      if (!address) address = 'Tezpur, Assam';
-      if (!area) area = 'Tezpur';
+      if (!address) address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      if (!area) area = 'General';
     }
   }
 
   if (!area) {
     const parts = address.split(',').map(s => s.trim()).filter(Boolean);
-    area = parts.length > 1 ? parts[parts.length - 2] : (parts[0] || 'Tezpur');
+    area = parts.length > 1 ? parts[parts.length - 2] : (parts[0] || 'General');
   }
 
   // ── Smart Duplicate Detection: auto-group if same category within 1 km ──
@@ -329,6 +456,10 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
       parentIssue = nearby;
     }
   }
+
+  // Determine region dynamically from client input, address, area, or coordinates
+  const clientRegion = String(req.body.region ?? '').trim();
+  const issueRegion = await determineRegion({ address, area, lng, lat, clientRegion });
 
   // ── Auto-determine department from category ──
   let department = CATEGORY_DEPT_MAP[category] || null;
@@ -370,9 +501,9 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
       await parentIssue.save();
     }
   } else {
-    // ── ROOT ISSUE: Auto-assign to least-loaded officer in that department ──
+    // ── ROOT ISSUE: Auto-assign to least-loaded officer in that department & region ──
     if (department) {
-      const officer = await leastLoadedOfficer(department);
+      const officer = await leastLoadedOfficer(department, issueRegion);
       if (officer) {
         assignedOfficer = officer._id;
         autoStatus = 'Acknowledged';
@@ -382,7 +513,15 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
     if (autoStatus === 'Acknowledged') {
       historyEntries.push({
         status: 'Acknowledged',
-        note: `Auto-assigned to ${department} based on category. Officer assigned via load-balancing.`,
+        note: `Auto-assigned to ${department} (${issueRegion} Region). Officer assigned via regional load-balancing.`,
+        evidence: null,
+        by: req.user.id,
+        at: new Date(now.getTime() + 1),
+      });
+    } else {
+      historyEntries.push({
+        status: 'Submitted',
+        note: `No designated officer stationed in ${issueRegion} Region for ${department || 'this category'}. Routed to Admin Triage Pool.`,
         evidence: null,
         by: req.user.id,
         at: new Date(now.getTime() + 1),
@@ -392,6 +531,7 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
 
   const issue = await Issue.create({
     title, description, category, address, area,
+    region: parentIssue?.region || issueRegion,
     location: { type: 'Point', coordinates: [lng, lat] },
     photos: (req.files || []).map(photoPath),
     reporter: req.user.id,
@@ -404,7 +544,7 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
     statusHistory: historyEntries,
   });
 
-  await issue.populate('assignedOfficer', 'name role department');
+  await issue.populate('assignedOfficer', 'name role department region');
   res.status(201).json(publicIssue(issue, req.user.id));
 }));
 
@@ -450,7 +590,7 @@ router.post('/:id/support', auth(true), ah(async (req, res) => {
 /* ----------------------------------------------- B2. PATCH /api/issues/:id/assign */
 router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
-  const { department, officerId } = req.body;
+  const { department, region, officerId } = req.body;
   // Priority is now auto-determined; accept override from client if provided, else auto-calculate
   const clientPriority = req.body.priority;
 
@@ -460,6 +600,9 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
   if (!issue) return res.status(404).json({ error: 'Issue not found.' });
 
   issue.department = department;
+  if (region !== undefined) {
+    issue.region = String(region || '').trim() || null;
+  }
 
   // Auto-priority if not manually overridden
   issue.priority = (clientPriority && PRIORITIES.includes(clientPriority))
@@ -471,29 +614,37 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
 
   if (officerId && isId(officerId)) {
     // Admin manually chose a specific officer
-    const deptOfficers = await User.find({ role: 'officer', department }).lean();
-    const chosen = deptOfficers.find(o => String(o._id) === String(officerId));
+    const chosen = await User.findOne({ _id: officerId, role: 'officer' }).lean();
     if (chosen) {
       issue.assignedOfficer = chosen._id;
-      assignedOfficerName = chosen.name;
+      assignedOfficerName = `${chosen.name} (${chosen.region || 'All Zones'})`;
+      if (chosen.region && !issue.region) {
+        issue.region = chosen.region;
+      }
     }
   } else {
-    // Auto-select least-loaded officer in department
-    const least = await leastLoadedOfficer(department);
+    // Auto-select least-loaded officer in department matching the issue's region
+    const least = await leastLoadedOfficer(department, issue.region);
     if (least) {
       issue.assignedOfficer = least._id;
-      assignedOfficerName = `${least.name} (auto load-balanced)`;
+      assignedOfficerName = `${least.name} (auto load-balanced - ${least.region || issue.region || 'General'})`;
+    } else {
+      issue.assignedOfficer = null;
     }
   }
 
-  // Advance status from Submitted to Acknowledged upon triage/assignment
-  if (issue.status === 'Submitted') {
-    issue.status = 'Acknowledged';
+  // Advance status from Submitted to Acknowledged upon triage/assignment if officer is assigned
+  if (issue.assignedOfficer) {
+    if (issue.status === 'Submitted') {
+      issue.status = 'Acknowledged';
+    }
+  } else {
+    issue.status = 'Submitted';
   }
 
   const noteText = assignedOfficerName
-    ? `Triaged to ${department} (priority: ${issue.priority}) — assigned to ${assignedOfficerName}`
-    : `Triaged to ${department} (priority: ${issue.priority})`;
+    ? `Triaged to ${department} (${issue.region || 'General'} Region, priority: ${issue.priority}) — assigned to ${assignedOfficerName}`
+    : `Triaged to ${department} (${issue.region || 'General'} Region, priority: ${issue.priority}) — unassigned (no officer stationed in this region)`;
 
   issue.statusHistory.push({
     status: issue.status,
@@ -504,7 +655,7 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
   });
 
   await issue.save();
-  await issue.populate('assignedOfficer', 'name role department');
+  await issue.populate('assignedOfficer', 'name role department region');
 
   // Sync department and assigned officer to any linked duplicates
   await syncDuplicatesStatus(issue, issue.status, noteText, req.user.id);
@@ -555,7 +706,7 @@ router.post('/:id/report-resolution', auth(true), officer, upload.array('evidenc
   });
 
   await issue.save();
-  await issue.populate('assignedOfficer', 'name role department');
+  await issue.populate('assignedOfficer', 'name role department region');
 
   await syncDuplicatesStatus(
     issue,
@@ -610,7 +761,7 @@ router.post('/:id/verify-resolution', auth(true), adminOnly, ah(async (req, res)
   }
 
   await issue.save();
-  await issue.populate('assignedOfficer', 'name role department');
+  await issue.populate('assignedOfficer', 'name role department region');
 
   await syncDuplicatesStatus(
     issue,
@@ -672,7 +823,7 @@ router.post('/:id/citizen-feedback', auth(true), ah(async (req, res) => {
   }
 
   await issue.save();
-  await issue.populate('assignedOfficer', 'name role department');
+  await issue.populate('assignedOfficer', 'name role department region');
 
   await syncDuplicatesStatus(
     issue,
@@ -685,32 +836,41 @@ router.post('/:id/citizen-feedback', auth(true), ah(async (req, res) => {
 }));
 
 /* ---------------------------------- B2d. POST /api/issues/:id/reopen */
-// Admin reopens an unsatisfied issue back to In Progress
+// Admin reopens an issue (e.g. from Unsatisfied, Resolved, or Closed) back to In Progress (or Submitted if unassigned)
 router.post('/:id/reopen', auth(true), adminOnly, ah(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
   const note = String(req.body.note || '').trim();
+  const unassign = Boolean(req.body.unassign);
 
   const issue = await Issue.findById(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Issue not found.' });
 
-  issue.status = 'In Progress';
+  if (unassign) {
+    issue.assignedOfficer = null;
+    issue.status = 'Submitted';
+  } else {
+    issue.status = 'In Progress';
+  }
+
+  const defaultNote = unassign
+    ? 'Issue reopened by Admin and unassigned for re-triage.'
+    : 'Issue reopened by Admin following citizen dissatisfaction.';
+
   issue.statusHistory.push({
-    status: 'In Progress',
-    note: note
-      ? `Reopened by Admin: ${note}`
-      : 'Issue reopened by Admin following citizen dissatisfaction.',
+    status: issue.status,
+    note: note ? `Reopened by Admin: ${note}` : defaultNote,
     evidence: null,
     by: req.user.id,
     at: new Date(),
   });
 
   await issue.save();
-  await issue.populate('assignedOfficer', 'name role department');
+  await issue.populate('assignedOfficer', 'name role department region');
 
   await syncDuplicatesStatus(
     issue,
-    'In Progress',
-    note || 'Issue reopened by Admin following citizen dissatisfaction.',
+    issue.status,
+    note || defaultNote,
     req.user.id
   );
 
@@ -814,7 +974,7 @@ router.patch('/:id/duplicate', auth(true), officer, ah(async (req, res) => {
   // Nothing is ever deleted. Both issues stay in the database and both stay queryable via
   // GET /api/issues?duplicates=include. A judge will check this.
   await issue.save();
-  await issue.populate('assignedOfficer', 'name role department');
+  await issue.populate('assignedOfficer', 'name role department region');
   res.json(publicIssue(issue, req.user.id));
 }));
 

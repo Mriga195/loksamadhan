@@ -13,7 +13,8 @@ import { field, primaryBtn } from '../formStyles';
 // explored. Keep this in sync with server/seed.js.
 const DEMO = [
   { role: 'Citizen', email: 'citizen1@example.com', name: 'Ankur Sharma' },
-  { role: 'Officer', email: 'officer.roads@loksamadhan.gov.in', name: 'Rina Das' },
+  { role: 'Officer (Tezpur)', email: 'officer.roads@loksamadhan.gov.in', name: 'Rina Das' },
+  { role: 'Officer (Jorhat)', email: 'officer.roads.jorhat@loksamadhan.gov.in', name: 'Pranjal Bora' },
   { role: 'Admin', email: 'admin@loksamadhan.gov.in', name: 'Admin Bora' },
 ];
 const DEMO_PASSWORD = 'password123';

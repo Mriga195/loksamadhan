@@ -88,6 +88,7 @@ const Report = () => {
   const [location, setLocation] = useState(draft?.location || [92.7926, 26.6338]);
   const [pinAddress, setPinAddress] = useState(draft?.pinAddress || '');
   const [pinArea, setPinArea] = useState(draft?.pinArea || '');
+  const [pinRegion, setPinRegion] = useState(draft?.pinRegion || '');
   const [title, setTitle] = useState(draft?.title || '');
   const [description, setDescription] = useState(draft?.description || '');
   const [photos, setPhotos] = useState(draft?.photos || []);
@@ -98,6 +99,9 @@ const Report = () => {
     setLocation(coords);
     if (info?.displayName) setPinAddress(info.displayName);
     if (info?.area) setPinArea(info.area);
+    if (info?.region || info?.district || info?.city) {
+      setPinRegion(info.region || info.district || info.city);
+    }
   };
 
   useEffect(() => {
@@ -173,6 +177,7 @@ const Report = () => {
 
       fd.append('address', finalAddress);
       fd.append('area', finalArea);
+      if (pinRegion) fd.append('region', pinRegion);
       fd.append('lng', location[0]); fd.append('lat', location[1]);
       photos.forEach(f => fd.append('photos', f));
       const res = await api('/api/issues', { method: 'POST', body: fd, isForm: true });

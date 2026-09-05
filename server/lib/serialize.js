@@ -31,14 +31,21 @@ function publicIssue(issue, viewerId = null, extra = {}) {
     category: issue.category,
     address: issue.address || null,
     area: issue.area || null,          // neighbourhood, for Lane 3's filter bar
+    region: issue.region || null,      // district/zone
     location: issue.location,              // { type:'Point', coordinates:[lng, lat] }
     photos: issue.photos || [],            // ['/uploads/abc.jpg']
     status: issue.status,
     department: issue.department || null,
     assignedOfficer: issue.assignedOfficer
       ? (issue.assignedOfficer.name
-          ? { _id: issue.assignedOfficer._id, name: issue.assignedOfficer.name }
-          : { _id: issue.assignedOfficer, name: null })
+          ? {
+              _id: issue.assignedOfficer._id,
+              name: issue.assignedOfficer.name,
+              role: issue.assignedOfficer.role || null,
+              department: issue.assignedOfficer.department || null,
+              region: issue.assignedOfficer.region || null,
+            }
+          : { _id: issue.assignedOfficer?._id || issue.assignedOfficer, name: null })
       : null,
     priority: issue.priority || null,
     resolution: issue.resolution || null,

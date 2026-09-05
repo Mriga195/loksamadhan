@@ -80,7 +80,7 @@ router.get('/users', async (req, res, next) => {
 // ── POST /api/admin/users — Create new office user ──
 router.post('/users', async (req, res, next) => {
   try {
-    const { name, email, password, role, department } = req.body;
+    const { name, email, password, role, department, region } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: 'Name, email, password, and role are required' });
@@ -116,6 +116,7 @@ router.post('/users', async (req, res, next) => {
       passwordHash,
       role,
       department: role === 'officer' ? (department || null) : (department || 'General Administration'),
+      region: role === 'officer' ? (String(region || '').trim() || null) : null,
     });
 
     res.status(201).json({
@@ -143,7 +144,7 @@ router.patch('/users/:id', async (req, res, next) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const { name, email, password, role, department } = req.body;
+    const { name, email, password, role, department, region } = req.body;
 
     if (name !== undefined) {
       const trimmedName = String(name).trim();
@@ -178,6 +179,10 @@ router.patch('/users/:id', async (req, res, next) => {
         return res.status(400).json({ error: 'Invalid department selected' });
       }
       user.department = department || null;
+    }
+
+    if (region !== undefined) {
+      user.region = String(region || '').trim() || null;
     }
 
     if (password) {
