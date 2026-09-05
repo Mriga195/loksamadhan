@@ -790,7 +790,21 @@ router.post('/:id/report-resolution', auth(true), officer, upload.array('evidenc
 
   issue.status = 'Pending Verification';
 
-  // Automatically run AI verification between Before (citizen) and After (officer) photos
+  issue.statusHistory.push({
+    status: 'Pending Verification',
+    note: `Resolution submitted by officer: ${note}`,
+    evidence: allEvidence[0] || null,
+    by: req.user.id,
+    at: new Date(),
+  });
+
+  // The officer's submission is made durable BEFORE the vision call. That call can take tens of
+  // seconds and the serverless function has a shorter ceiling than that — running it first meant a
+  // slow Groq response killed the request with nothing saved, losing the officer's proof entirely.
+  await issue.save();
+
+  // Advisory verdict for the admin's triage drawer. Best effort by design: if it times out or the
+  // function is cut short here, the resolution still stands and the admin can press Run check.
   if (issue.photos?.[0] && allEvidence[0]) {
     try {
       const { verifyResolutionProof } = require('../lib/aiVision');
@@ -801,20 +815,11 @@ router.post('/:id/report-resolution', auth(true), officer, upload.array('evidenc
         title: issue.title,
         resolutionNote: note,
       });
+      await issue.save();
     } catch (aiErr) {
       console.warn('Auto AI verification on resolution skipped:', aiErr.message);
     }
   }
-
-  issue.statusHistory.push({
-    status: 'Pending Verification',
-    note: `Resolution submitted by officer: ${note}`,
-    evidence: allEvidence[0] || null,
-    by: req.user.id,
-    at: new Date(),
-  });
-
-  await issue.save();
   await issue.populate('assignedOfficer', 'name role department region');
 
   await syncDuplicatesStatus(
