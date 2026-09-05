@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Spinner from '../components/Spinner';
 import AuthShell, { PasswordField } from '../components/AuthShell';
@@ -23,6 +23,11 @@ const POINTS = [
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Arrives when someone bounced off the report form and chose to sign up instead of log in.
+  const from = location.state?.from || '/';
+  const draft = location.state?.draft;
 
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [pending, setPending] = useState(false);
@@ -37,7 +42,7 @@ export default function Register() {
     setPending(true);
     try {
       await register(form.name.trim(), form.email.trim(), form.password);
-      navigate('/', { replace: true });
+      navigate(from, { replace: true, state: draft ? { draft } : undefined });
     } catch (err) {
       setError(err.message);          // e.g. "Email already registered", verbatim
       setPending(false);
@@ -103,7 +108,7 @@ export default function Register() {
         </button>
 
         <p className="mt-4 text-center text-sm text-ink-muted">
-          Already registered? <Link to="/login" className="text-brand-600 underline">Log in</Link>
+          Already registered? <Link to="/login" state={location.state} className="text-brand-600 underline">Log in</Link>
         </p>
       </form>
     </AuthShell>

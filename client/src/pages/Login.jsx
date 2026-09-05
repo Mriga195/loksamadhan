@@ -45,7 +45,8 @@ export default function Login() {
       // Officers and admins land on their queue; that is the only place their session is useful.
       const target = from !== '/' ? from
         : (user.role === 'officer' || user.role === 'admin') ? '/dashboard' : '/';
-      navigate(target, { replace: true });
+      // Whatever the visitor had typed before the wall comes back with them.
+      navigate(target, { replace: true, state: location.state?.draft ? { draft: location.state.draft } : undefined });
     } catch (err) {
       setError(err.message);          // the server's { error }, verbatim
       setPending(false);
@@ -102,7 +103,7 @@ export default function Login() {
         </button>
 
         <p className="mt-4 text-center text-sm text-ink-muted">
-          No account? <Link to="/register" className="text-brand-600 underline">Sign up</Link>
+          No account? <Link to="/register" state={location.state} className="text-brand-600 underline">Sign up</Link>
         </p>
       </form>
 

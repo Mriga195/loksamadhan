@@ -1,4 +1,5 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Avatar from './Avatar';
 import Icon from './Icon';
@@ -16,100 +17,183 @@ import Logo from './Logo';
 // city anywhere in the API). Faking any of those is worse than leaving them out.
 //
 // The nav shows only what the visitor can actually do:
-//   signed out    — Feed, Log in, Sign up. No "Report an issue": POST /api/issues is auth(true)
-//                   and the form would just bounce them to login.
-//   citizen       — Feed, Report an issue, and who they are signed in as.
-//   officer/admin — Feed, Dashboard, and who they are signed in as.
+//   signed out    — Feed, Departments, Report an issue, Log in, Sign up. Reporting is offered:
+//                   the form is fillable signed-out and the login wall sits at submit.
+//   citizen       — Feed, Departments, Report an issue, and who they are signed in as.
+//   officer/admin — Feed, Departments, Dashboard, and who they are signed in as.
 //
-// No JS dropdown behind the avatar. On narrow screens the row wraps onto a second line instead
-// of collapsing behind a hamburger — fewer moving parts, nothing to trap focus in, and it
-// cannot scroll sideways.
+// Below md the same set collapses behind a hamburger. The panel is a plain block inside the
+// nav card, not an overlay: it pushes the page down, so there is no scroll lock, no backdrop
+// and no focus trap to get wrong. Escape and any navigation close it.
 
 const item = ({ isActive }) =>
-  'flex min-h-11 items-center gap-2 rounded-full px-2 text-sm transition-colors duration-200 sm:px-4 ' +
+  'flex min-h-11 items-center gap-2 rounded-full px-4 text-sm transition-colors duration-200 ' +
   (isActive ? 'bg-brand-50 font-medium text-brand-600' : 'text-ink hover:bg-canvas');
 
-const cta = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand-600'
-  + ' px-3 text-sm sm:px-5' +
-  ' font-medium text-white transition-colors duration-200 hover:bg-brand-700';
+const cta = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand-600' +
+  ' px-5 text-sm font-medium text-white transition-colors duration-200 hover:bg-brand-700';
 
-const outline = 'inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-surface px-4 text-sm' +
-  ' font-medium text-ink transition-colors duration-200 hover:bg-canvas hover:border-slate-300';
+const outline = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border' +
+  ' border-line bg-surface px-4 text-sm font-medium text-ink transition-colors duration-200' +
+  ' hover:bg-canvas hover:border-slate-300';
 
 export default function Nav() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { user, loading, logout } = useAuth();
   const isStaff = user?.role === 'officer' || user?.role === 'admin';
 
+  const [open, setOpen] = useState(false);
+
+  // Any navigation closes the panel — otherwise tapping "Feed" leaves the menu covering it.
+  useEffect(() => { setOpen(false); }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = e => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   const handleLogout = () => {
+    setOpen(false);
     logout();
     navigate('/login');
   };
+
+  // The link set, rendered twice: inline on desktop, stacked in the panel.
+  const links = (
+    <>
+      <NavLink to="/feed" className={item}>
+        <Icon name="home" className="size-[18px]" />
+        Feed
+      </NavLink>
+
+      <NavLink to="/departments" className={item}>
+        <Icon name="building" className="size-[18px]" />
+        Departments
+      </NavLink>
+
+      {isStaff && !loading && (
+        <NavLink to="/dashboard" className={item}>
+          <Icon name="dashboard" className="size-[18px]" />
+          Dashboard
+        </NavLink>
+      )}
+    </>
+  );
 
   return (
     <header className="sticky top-0 z-30 px-4 pt-4">
       <nav
         aria-label="Main"
-        className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-1 gap-y-2 rounded-2xl
-          border border-line bg-surface px-3 py-2 shadow-[0_2px_12px_rgba(15,23,42,0.06)]
-          sm:gap-x-2 sm:px-4 sm:py-2.5"
+        className="mx-auto max-w-7xl rounded-2xl border border-line bg-surface px-3 py-2
+          shadow-[0_2px_12px_rgba(15,23,42,0.06)] md:px-4 md:py-2.5"
       >
-        <Link to="/" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold
-          sm:mr-2 sm:gap-2 sm:text-lg">
-          <Logo className="size-8 sm:size-9" />
-          <span className="text-brand-600">Lok</span>Samadhan
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/" className="inline-flex min-h-11 items-center gap-2 text-base font-bold
+            md:mr-2 md:text-lg">
+            <Logo className="size-8 md:size-9" />
+            <span className="text-brand-600">Lok</span>Samadhan
+          </Link>
 
-        <NavLink to="/feed" className={item}>
-          <Icon name="home" className="size-[18px]" />
-          <span className="max-sm:sr-only">Feed</span>
-        </NavLink>
+          <div className="hidden items-center gap-2 md:flex">{links}</div>
 
-        <NavLink to="/departments" className={item}>
-          <Icon name="building" className="size-[18px]" />
-          <span className="max-sm:sr-only">Departments</span>
-        </NavLink>
+          <div className="ml-auto hidden items-center gap-2 md:flex">
+            {/* While the token is being validated, render nothing here rather than flashing
+                "Log in" at a user who is already signed in. The space is held by the row. */}
+            {loading ? null : user ? (
+              <>
+                {!isStaff && (
+                  <Link to="/report" className={cta}>
+                    <Icon name="plus" className="size-[18px]" />
+                    Report an Issue
+                  </Link>
+                )}
 
-        {isStaff && !loading && (
-          <NavLink to="/dashboard" className={item}>
-            <Icon name="dashboard" className="size-[18px]" />
-            <span className="max-sm:sr-only">Dashboard</span>
-          </NavLink>
-        )}
+                <Link to="/profile" title="My Profile"
+                  className="ml-1 flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-canvas">
+                  <Avatar name={user.name} />
+                  <span className="text-sm">
+                    <span className="block font-medium leading-tight">{user.name}</span>
+                    <span className="block text-xs capitalize text-ink-muted">{user.role}</span>
+                  </span>
+                </Link>
 
-        <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          {/* While the token is being validated, render nothing here rather than flashing
-              "Log in" at a user who is already signed in. The space is held by the row itself. */}
-          {loading ? null : user ? (
-            <>
-              {!isStaff && (
+                <button type="button" onClick={handleLogout} title="Log out" aria-label="Log out"
+                  className="cursor-pointer rounded-full p-2 text-ink-muted transition-colors
+                    duration-200 hover:bg-canvas hover:text-ink">
+                  <Icon name="logout" className="size-[18px]" />
+                </button>
+              </>
+            ) : (
+              <>
                 <Link to="/report" className={cta}>
                   <Icon name="plus" className="size-[18px]" />
-                  <span className="max-sm:sr-only">Report an Issue</span>
+                  Report an Issue
                 </Link>
-              )}
+                <NavLink to="/login" className={item}>Log in</NavLink>
+                <Link to="/register" className={outline}>Sign up</Link>
+              </>
+            )}
+          </div>
 
-              <Link to="/profile" className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-canvas sm:ml-1" title="My Profile">
-                <Avatar name={user.name} className="size-8 text-sm sm:size-9" />
-                <span className="hidden text-sm sm:block">
-                  <span className="block font-medium leading-tight">{user.name}</span>
-                  <span className="block text-xs capitalize text-ink-muted">{user.role}</span>
-                </span>
-              </Link>
-
-              <button type="button" onClick={handleLogout} title="Log out" aria-label="Log out"
-                className="cursor-pointer rounded-full p-2 text-ink-muted transition-colors
-                  duration-200 hover:bg-canvas hover:text-ink">
-                <Icon name="logout" className="size-[18px]" />
-              </button>
-            </>
-          ) : (
-            <>
-              <NavLink to="/login" className={item}>Log in</NavLink>
-              <Link to="/register" className={cta}>Sign up</Link>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-controls="nav-menu"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            className="ml-auto grid size-11 cursor-pointer place-items-center rounded-full
+              text-ink transition-colors hover:bg-canvas md:hidden"
+          >
+            <Icon name={open ? 'close' : 'menu'} className="size-6" />
+          </button>
         </div>
+
+        {open && (
+          <div id="nav-menu" className="mt-2 flex flex-col gap-1 border-t border-line pt-3 md:hidden">
+            {links}
+
+            <div className="mt-2 flex flex-col gap-2 border-t border-line pt-3">
+              {loading ? null : user ? (
+                <>
+                  {!isStaff && (
+                    <Link to="/report" className={cta}>
+                      <Icon name="plus" className="size-[18px]" />
+                      Report an Issue
+                    </Link>
+                  )}
+
+                  <Link to="/profile"
+                    className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-canvas">
+                    <Avatar name={user.name} />
+                    <span className="text-sm">
+                      <span className="block font-medium leading-tight">{user.name}</span>
+                      <span className="block text-xs capitalize text-ink-muted">{user.role}</span>
+                    </span>
+                  </Link>
+
+                  <button type="button" onClick={handleLogout}
+                    className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2
+                      text-sm font-medium text-ink-muted transition-colors hover:bg-canvas hover:text-ink">
+                    <Icon name="logout" className="size-[18px]" />
+                    Log out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/report" className={cta}>
+                    <Icon name="plus" className="size-[18px]" />
+                    Report an Issue
+                  </Link>
+                  <Link to="/register" className={outline}>Sign up</Link>
+                  <NavLink to="/login" className={item}>Log in</NavLink>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
     </header>
   );

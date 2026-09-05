@@ -69,6 +69,13 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
+  /* Swipe decks page by scroll-snap; the bar under them is noise, the dots say where you are. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
   :focus-visible {
     outline: 2px solid var(--color-brand-600);
     outline-offset: 2px;

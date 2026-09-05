@@ -16,12 +16,16 @@ const Report = () => {
   const routeLocation = useLocation();
   const { user, loading: authLoading } = useAuth();
 
-  const [category, setCategory] = useState('');
-  const [address, setAddress] = useState('');
-  const [location, setLocation] = useState(null); // [lng, lat]
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [photos, setPhotos] = useState([]); // File[]
+  // A signed-out visitor may fill this form; submitting hands the whole draft to /login, which
+  // hands it back here after the session exists. `draft` is that returning payload.
+  const draft = routeLocation.state?.draft;
+
+  const [category, setCategory] = useState(draft?.category || '');
+  const [address, setAddress] = useState(draft?.address || '');
+  const [location, setLocation] = useState(draft?.location || null); // [lng, lat]
+  const [title, setTitle] = useState(draft?.title || '');
+  const [description, setDescription] = useState(draft?.description || '');
+  const [photos, setPhotos] = useState(draft?.photos || []); // File[]
   const [duplicateOfId, setDuplicateOfId] = useState(null);
 
   const [duplicates, setDuplicates] = useState([]);
@@ -33,11 +37,10 @@ const Report = () => {
 
   const abortControllerRef = useRef(null);
 
-  // Reporting requires an account — POST /api/issues is auth(true), so an anonymous visitor who
-  // reaches this URL directly would fill the whole form and lose it to a 401 on submit. Waits for
-  // authLoading so a signed-in user with a valid token is never bounced mid-validation.
+  // Anyone may fill the form — POST /api/issues is auth(true), so the login wall is at submit,
+  // not at the door. Officers and admins do not file reports, so they still bounce to their
+  // queue. Waits for authLoading so a signed-in user is never redirected mid-validation.
   useEffect(() => {
-    if (!authLoading && !user) navigate('/login', { state: { from: '/report' }, replace: true });
     if (!authLoading && user && (user.role === 'officer' || user.role === 'admin')) {
       navigate('/dashboard', { replace: true });
     }
@@ -162,6 +165,17 @@ const Report = () => {
       return;
     }
 
+    if (!user) {
+      const draftState = { category, address, location, title, description, photos };
+      try {
+        navigate('/login', { state: { from: '/report', draft: draftState } });
+      } catch {
+        // History state is structured-cloned; if a File ever refuses, keep the text at least.
+        navigate('/login', { state: { from: '/report', draft: { ...draftState, photos: [] } } });
+      }
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -214,6 +228,17 @@ const Report = () => {
           </p>
         </div>
       </header>
+
+      {!authLoading && !user && (
+        <p className="mt-6 flex items-start gap-3 rounded-card border border-brand-100
+          bg-brand-50 px-5 py-4 text-sm">
+          <Icon name="info" className="mt-0.5 size-5 shrink-0 text-brand-600" />
+          <span className="text-ink-muted">
+            You can fill this in now — we will ask you to log in when you submit, and bring you
+            straight back here with everything you have entered.
+          </span>
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="mt-6 rounded-lg bg-rejected-50 px-4 py-3 text-sm text-rejected-600">
@@ -290,7 +315,7 @@ const Report = () => {
 
         <Step n={4} icon="camera" label="Photos" optional
           hint="Add up to 3 photos to help us identify the issue better.">
-          <PhotoInput onPhotosChange={setPhotos} />
+          <PhotoInput onPhotosChange={setPhotos} initialPhotos={photos} />
         </Step>
 
         {/* Sits outside the step grid so it spans the full card width, as in the design. */}
