@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { useAuth } from '../AuthContext';
@@ -75,6 +75,26 @@ export default function OfficerDashboard() {
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [expanded, setExpanded] = useState({});
+  const [expandedLimits, setExpandedLimits] = useState({});
+
+  const toggleExpand = (id, e) => {
+    e.stopPropagation();
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Group duplicates by root issue id
+  const duplicatesByParent = useMemo(() => {
+    const map = {};
+    for (const item of issues) {
+      if (item.duplicateOf) {
+        const pId = String(item.duplicateOf);
+        if (!map[pId]) map[pId] = [];
+        map[pId].push(item);
+      }
+    }
+    return map;
+  }, [issues]);
 
   // Sync tab default once auth state / role loads
   useEffect(() => {
@@ -121,30 +141,40 @@ export default function OfficerDashboard() {
     overdue: i => (isAdmin ? true : i.department === department) && isOverdue(i),
   }), [department, isAdmin, user?._id]);
 
-  // Computed issues table rows
+  // Computed issues table rows (only root issues, duplicates are grouped under their root issue)
   const rows = useMemo(() => {
     const filterFn = TABS[tab] || (() => true);
     const query = searchQuery.trim().toLowerCase();
 
-    const filtered = issues
+    // Dashboard queue displays root issues; duplicates are grouped under their root issue
+    const rootIssues = issues.filter(i => !i.duplicateOf);
+
+    const filtered = rootIssues
       .filter(filterFn)
       .filter(i => !deptFilter || i.department === deptFilter)
       .filter(i => !priorityFilter || i.priority === priorityFilter)
       .filter(i => {
         if (!query) return true;
         const sid = shortId(i).toLowerCase();
+        const dups = duplicatesByParent[String(i._id)] || [];
+        const matchDup = dups.some(d =>
+          d.title?.toLowerCase().includes(query) ||
+          d.description?.toLowerCase().includes(query) ||
+          shortId(d).toLowerCase().includes(query)
+        );
         return (
           i.title?.toLowerCase().includes(query) ||
           i.description?.toLowerCase().includes(query) ||
           i.category?.toLowerCase().includes(query) ||
-          sid.includes(query)
+          sid.includes(query) ||
+          matchDup
         );
       });
 
     return [...filtered].sort((a, b) =>
       (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3)
       || new Date(b.createdAt) - new Date(a.createdAt));
-  }, [issues, tab, deptFilter, priorityFilter, searchQuery, TABS]);
+  }, [issues, tab, deptFilter, priorityFilter, searchQuery, TABS, duplicatesByParent]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const current = Math.min(page, pageCount);
@@ -173,18 +203,20 @@ export default function OfficerDashboard() {
     URL.revokeObjectURL(url);
   };
 
+  const rootIssues = useMemo(() => issues.filter(i => !i.duplicateOf), [issues]);
+
   const counts = {
-    all: issues.length,
-    unassigned: issues.filter(TABS.unassigned).length,
-    pending_verification: issues.filter(TABS.pending_verification).length,
-    unsatisfied: issues.filter(TABS.unsatisfied).length,
-    my_allotted: issues.filter(TABS.my_allotted).length,
-    issues: issues.filter(TABS.issues).length,
-    submitted: issues.filter(TABS.submitted).length,
-    in_progress: issues.filter(TABS.in_progress).length,
-    resolved: issues.filter(TABS.resolved).length,
-    closed: issues.filter(TABS.closed).length,
-    overdue: issues.filter(TABS.overdue).length,
+    all: rootIssues.length,
+    unassigned: rootIssues.filter(TABS.unassigned).length,
+    pending_verification: rootIssues.filter(TABS.pending_verification).length,
+    unsatisfied: rootIssues.filter(TABS.unsatisfied).length,
+    my_allotted: rootIssues.filter(TABS.my_allotted).length,
+    issues: rootIssues.filter(TABS.issues).length,
+    submitted: rootIssues.filter(TABS.submitted).length,
+    in_progress: rootIssues.filter(TABS.in_progress).length,
+    resolved: rootIssues.filter(TABS.resolved).length,
+    closed: rootIssues.filter(TABS.closed).length,
+    overdue: rootIssues.filter(TABS.overdue).length,
   };
 
   const tabs = isAdmin
@@ -587,82 +619,191 @@ export default function OfficerDashboard() {
                               {visible.map(issue => {
                                 const overdue = isOverdue(issue);
                                 const isSelected = selectedId === issue._id;
+                                const dups = duplicatesByParent[String(issue._id)] || [];
+                                const isExpanded = Boolean(expanded[issue._id]);
 
                                 return (
-                                  <tr
-                                    key={issue._id}
-                                    onClick={() => setSelectedId(issue._id)}
-                                    className={`group cursor-pointer transition-colors hover:bg-brand-50/40 ${
-                                      isSelected ? 'bg-brand-50/80 font-medium' : ''
-                                    }`}
-                                  >
-                                    <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold text-brand-600">
-                                      #{shortId(issue)}
-                                    </td>
+                                  <Fragment key={issue._id}>
+                                    <tr
+                                      onClick={() => setSelectedId(issue._id)}
+                                      className={`group cursor-pointer transition-colors hover:bg-brand-50/40 ${
+                                        isSelected ? 'bg-brand-50/80 font-medium' : ''
+                                      }`}
+                                    >
+                                      <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold text-brand-600">
+                                        #{shortId(issue)}
+                                      </td>
 
-                                    <td className="max-w-xs px-4 py-3">
-                                      <span className="block truncate font-semibold text-ink group-hover:text-brand-700">
-                                        {issue.title}
-                                      </span>
-                                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
-                                        <span className="rounded bg-slate-100 px-1.5 py-0.2 text-[10px]">
-                                          {issue.category}
+                                      <td className="max-w-xs px-4 py-3">
+                                        <span className="block truncate font-semibold text-ink group-hover:text-brand-700">
+                                          {issue.title}
                                         </span>
-                                        {issue.duplicateOf && (
-                                          <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.2 text-[10px] font-semibold">
-                                            Duplicate
+                                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
+                                          <span className="rounded bg-slate-100 px-1.5 py-0.2 text-[10px]">
+                                            {issue.category}
+                                          </span>
+                                          {dups.length > 0 && (
+                                            <button
+                                              type="button"
+                                              onClick={e => toggleExpand(issue._id, e)}
+                                              className="inline-flex items-center gap-1 rounded-full bg-brand-50 hover:bg-brand-100 text-brand-700 px-2 py-0.5 text-[10px] font-semibold border border-brand-200 transition-colors cursor-pointer"
+                                              title="Toggle similar reports grouped under this issue"
+                                            >
+                                              <span className="text-[9px]">{isExpanded ? '▼' : '▶'}</span>
+                                              <span>+{dups.length} similar report{dups.length === 1 ? '' : 's'}</span>
+                                            </button>
+                                          )}
+                                        </div>
+                                      </td>
+
+                                      <td className="px-4 py-3 text-ink-muted">
+                                        {issue.department ? (
+                                          <span className="inline-flex items-center gap-1 text-ink">
+                                            <Icon name="building" className="size-3 text-slate-400" />
+                                            {issue.department}
+                                          </span>
+                                        ) : (
+                                          <span className="italic text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px]">
+                                            Unassigned
                                           </span>
                                         )}
-                                      </div>
-                                    </td>
+                                      </td>
 
-                                    <td className="px-4 py-3 text-ink-muted">
-                                      {issue.department ? (
-                                        <span className="inline-flex items-center gap-1 text-ink">
-                                          <Icon name="building" className="size-3 text-slate-400" />
-                                          {issue.department}
+                                      <td className="px-4 py-3">
+                                        <StatusPill status={issue.status} />
+                                      </td>
+
+                                      <td className="px-4 py-3">
+                                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] border capitalize ${
+                                          PRIORITY_BADGES[issue.priority] || 'bg-slate-50 text-slate-600 border-slate-200'
+                                        }`}>
+                                          {issue.priority === 'high' && <span className="size-1.5 rounded-full bg-red-500" />}
+                                          {issue.priority === 'medium' && <span className="size-1.5 rounded-full bg-amber-500" />}
+                                          {issue.priority === 'low' && <span className="size-1.5 rounded-full bg-slate-400" />}
+                                          {issue.priority || 'Normal'}
                                         </span>
-                                      ) : (
-                                        <span className="italic text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px]">
-                                          Unassigned
-                                        </span>
-                                      )}
-                                    </td>
+                                      </td>
 
-                                    <td className="px-4 py-3">
-                                      <StatusPill status={issue.status} />
-                                    </td>
+                                      <td className="whitespace-nowrap px-4 py-3 text-ink-muted">
+                                        {age(issue.createdAt)}
+                                        {overdue && (
+                                          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1.5 py-0.2 text-[10px] font-bold text-red-700">
+                                            Overdue
+                                          </span>
+                                        )}
+                                      </td>
 
-                                    <td className="px-4 py-3">
-                                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] border capitalize ${
-                                        PRIORITY_BADGES[issue.priority] || 'bg-slate-50 text-slate-600 border-slate-200'
-                                      }`}>
-                                        {issue.priority === 'high' && <span className="size-1.5 rounded-full bg-red-500" />}
-                                        {issue.priority === 'medium' && <span className="size-1.5 rounded-full bg-amber-500" />}
-                                        {issue.priority === 'low' && <span className="size-1.5 rounded-full bg-slate-400" />}
-                                        {issue.priority || 'Normal'}
-                                      </span>
-                                    </td>
+                                      <td className="px-4 py-3 text-right">
+                                        <button
+                                          type="button"
+                                          onClick={e => { e.stopPropagation(); setSelectedId(issue._id); }}
+                                          className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 transition-colors"
+                                        >
+                                          Inspect
+                                        </button>
+                                      </td>
+                                    </tr>
 
-                                    <td className="whitespace-nowrap px-4 py-3 text-ink-muted">
-                                      {age(issue.createdAt)}
-                                      {overdue && (
-                                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1.5 py-0.2 text-[10px] font-bold text-red-700">
-                                          Overdue
-                                        </span>
-                                      )}
-                                    </td>
+                                    {/* Sub-rows: Similar reports grouped under this original issue */}
+                                    {isExpanded && (() => {
+                                      const limit = expandedLimits[issue._id] || 1;
+                                      const visibleDups = dups.slice(0, limit);
+                                      const remaining = dups.length - limit;
 
-                                    <td className="px-4 py-3 text-right">
-                                      <button
-                                        type="button"
-                                        onClick={e => { e.stopPropagation(); setSelectedId(issue._id); }}
-                                        className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 transition-colors"
-                                      >
-                                        Inspect
-                                      </button>
-                                    </td>
-                                  </tr>
+                                      return (
+                                        <>
+                                          {visibleDups.map(dup => {
+                                            const isDupSelected = selectedId === dup._id;
+                                            return (
+                                              <tr
+                                                key={dup._id}
+                                                onClick={() => setSelectedId(dup._id)}
+                                                className={`border-l-4 border-brand-400 bg-canvas/60 hover:bg-brand-50/50 cursor-pointer transition-colors text-xs ${
+                                                  isDupSelected ? 'bg-brand-50/90 font-medium' : ''
+                                                }`}
+                                              >
+                                                <td className="whitespace-nowrap pl-8 pr-4 py-2.5 font-mono text-[11px] text-brand-600">
+                                                  ↳ #{shortId(dup)}
+                                                </td>
+                                                <td className="px-4 py-2.5 max-w-xs">
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="font-semibold text-ink truncate">{dup.title}</span>
+                                                    <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.2 text-[9px] font-semibold shrink-0">
+                                                      Similar
+                                                    </span>
+                                                    {dup.photos?.length > 0 && (
+                                                      <span className="text-[10px] text-ink-muted flex items-center gap-0.5 shrink-0">
+                                                        <Icon name="photo" className="size-3" /> {dup.photos.length}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  {dup.description && (
+                                                    <p className="text-[11px] text-ink-muted truncate mt-0.5">{dup.description}</p>
+                                                  )}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-ink-muted text-xs">
+                                                  <span className="text-[11px] italic text-ink-muted">Same as original</span>
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                  <StatusPill status={dup.status} size="sm" />
+                                                </td>
+                                                <td className="px-4 py-2.5 text-ink-muted text-xs capitalize">
+                                                  {dup.priority || 'Normal'}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-ink-muted text-xs">
+                                                  {age(dup.createdAt)}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-right">
+                                                  <button
+                                                    type="button"
+                                                    onClick={e => { e.stopPropagation(); setSelectedId(dup._id); }}
+                                                    className="rounded border border-line bg-surface px-2 py-0.5 text-[10px] font-medium text-brand-600 hover:bg-brand-50"
+                                                  >
+                                                    Inspect
+                                                  </button>
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+
+                                          {dups.length > 1 && (
+                                            <tr className="border-l-4 border-brand-400 bg-canvas/80 text-xs">
+                                              <td colSpan={7} className="pl-8 pr-4 py-2">
+                                                <div className="flex items-center justify-between text-xs">
+                                                  <span className="text-[11px] text-ink-muted italic">
+                                                    Showing {visibleDups.length} of {dups.length} similar reports
+                                                  </span>
+                                                  {limit < dups.length ? (
+                                                    <button
+                                                      type="button"
+                                                      onClick={e => {
+                                                        e.stopPropagation();
+                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: (prev[issue._id] || 1) + 5 }));
+                                                      }}
+                                                      className="font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer text-xs"
+                                                    >
+                                                      Show more (+{remaining} more)
+                                                    </button>
+                                                  ) : (
+                                                    <button
+                                                      type="button"
+                                                      onClick={e => {
+                                                        e.stopPropagation();
+                                                        setExpandedLimits(prev => ({ ...prev, [issue._id]: 1 }));
+                                                      }}
+                                                      className="font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer text-xs"
+                                                    >
+                                                      Show less
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
+                                  </Fragment>
                                 );
                               })}
                             </tbody>
@@ -716,9 +857,11 @@ export default function OfficerDashboard() {
       {selected && viewMode === 'issues' && (
         <IssueDrawer
           issue={selected}
+          linkedDuplicates={duplicatesByParent[String(selected._id)] || []}
           onClose={() => setSelectedId(null)}
           onSaved={replace}
           onUpdateStatus={setEditing}
+          onSelectIssue={setSelectedId}
         />
       )}
 

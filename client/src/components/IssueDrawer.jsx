@@ -14,6 +14,13 @@ const fullDate = iso => new Date(iso).toLocaleString(undefined, {
   day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
 });
 
+const age = iso => {
+  const days = Math.floor((Date.now() - new Date(iso)) / 86400000);
+  if (days > 0) return `${days}d ago`;
+  const hours = Math.floor((Date.now() - new Date(iso)) / 3600000);
+  return hours > 0 ? `${hours}h ago` : 'just now';
+};
+
 const PRIORITY_COLORS = {
   high:   'bg-red-100 text-red-800 border-red-200',
   medium: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -279,10 +286,15 @@ function AdminActions({ issue, onSaved, onUpdateStatus }) {
   );
 }
 
-export default function IssueDrawer({ issue, onClose, onSaved, onUpdateStatus }) {
+export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onSaved, onUpdateStatus, onSelectIssue }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const isOfficer = user?.role === 'officer';
+  const [showAllSimilar, setShowAllSimilar] = useState(false);
+
+  useEffect(() => {
+    setShowAllSimilar(false);
+  }, [issue?._id]);
 
   useEffect(() => {
     const onKey = e => e.key === 'Escape' && onClose();
@@ -389,6 +401,70 @@ export default function IssueDrawer({ issue, onClose, onSaved, onUpdateStatus })
           </div>
         )}
 
+        {/* Similar Reports from other citizens */}
+        {linkedDuplicates.length > 0 && (() => {
+          const limit = 1;
+          const visible = showAllSimilar ? linkedDuplicates : linkedDuplicates.slice(0, limit);
+          const hasMore = linkedDuplicates.length > limit;
+
+          return (
+            <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                  <span>👥</span> Similar Citizen Reports ({linkedDuplicates.length})
+                </h3>
+                <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                  Nearby within 1km
+                </span>
+              </div>
+              <p className="text-xs text-amber-800">
+                {linkedDuplicates.length} additional {linkedDuplicates.length === 1 ? 'citizen reported' : 'citizens reported'} this same problem:
+              </p>
+              <div className="space-y-2">
+                {visible.map(dup => (
+                  <div
+                    key={dup._id}
+                    onClick={() => onSelectIssue?.(dup._id)}
+                    className="rounded-lg border border-line bg-surface p-2.5 text-xs space-y-1 hover:border-brand-300 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-ink truncate max-w-[200px]">#{shortId(dup)} — {dup.title}</span>
+                      <span className="text-[10px] text-ink-muted shrink-0">{age(dup.createdAt)}</span>
+                    </div>
+                    {dup.description && (
+                      <p className="text-[11px] text-ink-muted line-clamp-2 italic">"{dup.description}"</p>
+                    )}
+                    {dup.photos?.length > 0 && (
+                      <div className="flex gap-1 pt-1">
+                        {dup.photos.map((src, idx) => (
+                          <a key={idx} href={src} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
+                            <img src={src} alt="Evidence preview" className="size-10 rounded object-cover border border-line hover:scale-105 transition-transform" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {hasMore && (
+                <div className="pt-1 flex items-center justify-between text-xs text-amber-900 border-t border-amber-200/60 mt-2">
+                  <span className="text-[11px] text-amber-800">
+                    Showing {visible.length} of {linkedDuplicates.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllSimilar(prev => !prev)}
+                    className="font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer text-xs"
+                  >
+                    {showAllSimilar ? 'Show less' : `Show more (+${linkedDuplicates.length - limit} more)`}
+                  </button>
+                </div>
+              )}
+            </section>
+          );
+        })()}
+
         {/* Citizen Photos */}
         {(issue.photos?.length > 0) && (
           <section>
@@ -424,18 +500,18 @@ export default function IssueDrawer({ issue, onClose, onSaved, onUpdateStatus })
         {issue.duplicateOf ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-1.5">
             <div className="font-bold flex items-center gap-1.5 text-amber-900">
-              <span>🔗</span> Linked Duplicate Report
+              <span>🔗</span> Similar Report
             </div>
             <p className="text-[11px] text-amber-800 leading-relaxed">
-              This issue is linked to the original report #{String(issue.duplicateOf).slice(-6).toUpperCase()}. All investigation, officer resolution, and verification are tracked on the original report.
+              This report is similar to original issue #{String(issue.duplicateOf).slice(-6).toUpperCase()}. All investigation, officer resolution, and verification are managed on the original report.
             </p>
-            <Link
-              to={`/issues/${issue.duplicateOf}`}
-              target="_blank"
-              className="inline-flex items-center gap-1 font-semibold text-brand-600 hover:underline text-xs mt-1"
+            <button
+              type="button"
+              onClick={() => onSelectIssue?.(issue.duplicateOf)}
+              className="inline-flex items-center gap-1.5 font-semibold text-brand-600 hover:underline text-xs mt-1 cursor-pointer"
             >
-              Open Original Report &rarr;
-            </Link>
+              <span>👉</span> View Original Report in Dashboard
+            </button>
           </div>
         ) : (
           <>

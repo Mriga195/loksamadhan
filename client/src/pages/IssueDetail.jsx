@@ -36,7 +36,11 @@ export default function IssueDetail() {
   const [error, setError] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [supporting, setSupporting] = useState(false);
-  const [visibleDuplicates, setVisibleDuplicates] = useState(10);
+  const [visibleDuplicates, setVisibleDuplicates] = useState(1);
+
+  useEffect(() => {
+    setVisibleDuplicates(1);
+  }, [id]);
 
   // Citizen satisfaction action state
   const [showDisputeForm, setShowDisputeForm] = useState(false);
@@ -196,7 +200,7 @@ export default function IssueDetail() {
       {/* Duplicate alert */}
       {issue.duplicateOf && issue.parent && (
         <div className="mt-4 rounded-2xl border border-acknowledged-600/30 bg-acknowledged-50 p-4">
-          <p className="text-sm font-medium">This report is linked to an earlier report of the same issue.</p>
+          <p className="text-sm font-medium">This report is similar to an earlier report of the same issue.</p>
           <p className="mt-1 text-sm text-ink-muted">
             It is being tracked under the original, which is currently <StatusPill status={issue.parent.status} /> .
           </p>
@@ -563,7 +567,7 @@ export default function IssueDetail() {
           {issue.linkedDuplicates?.length > 0 && (
             <section className={`p-5 ${card}`}>
               <h2 className="font-semibold">
-                Also reported by {issue.linkedDuplicates.length}{' '}
+                Similar reports by {issue.linkedDuplicates.length}{' '}
                 {issue.linkedDuplicates.length === 1 ? 'citizen' : 'citizens'}
               </h2>
               <ul className="mt-2 divide-y divide-line">
@@ -579,15 +583,28 @@ export default function IssueDetail() {
                   </li>
                 ))}
               </ul>
-              {visibleDuplicates < issue.linkedDuplicates.length && (
-                <div className="mt-3 pt-2 border-t border-line flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setVisibleDuplicates(prev => prev + 10)}
-                    className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors"
-                  >
-                    Show more
-                  </button>
+              {issue.linkedDuplicates.length > 1 && (
+                <div className="mt-3 pt-2 border-t border-line flex items-center justify-between text-xs text-ink-muted">
+                  <span>
+                    Showing {Math.min(visibleDuplicates, issue.linkedDuplicates.length)} of {issue.linkedDuplicates.length}
+                  </span>
+                  {visibleDuplicates < issue.linkedDuplicates.length ? (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleDuplicates(prev => prev + 5)}
+                      className="inline-flex cursor-pointer items-center gap-1 font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                    >
+                      Show more (+{issue.linkedDuplicates.length - visibleDuplicates} more)
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleDuplicates(1)}
+                      className="inline-flex cursor-pointer items-center gap-1 font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                    >
+                      Show less
+                    </button>
+                  )}
                 </div>
               )}
             </section>

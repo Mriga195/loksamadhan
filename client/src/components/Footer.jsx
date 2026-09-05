@@ -84,7 +84,7 @@ export default function Footer() {
               What we promise
             </h3>
             <ul className="mt-4 space-y-3 text-sm text-ink-muted">
-              <li>Duplicates are linked, never deleted.</li>
+              <li>Similar reports are linked, never deleted.</li>
               <li>Resolution requires a note or evidence.</li>
               <li>Your personal info is never made public.</li>
             </ul>

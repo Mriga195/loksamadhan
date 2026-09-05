@@ -90,6 +90,37 @@ async function duplicateCounts(issues) {
   return Object.fromEntries(rows.map(r => [String(r._id), r.n]));
 }
 
+/**
+ * Synchronize status, department, officer, and resolution/feedback details
+ * to all duplicates linked to this issue cluster.
+ */
+async function syncDuplicatesStatus(issue, status, note, byUserId, evidence = null) {
+  const rootId = issue.duplicateOf || issue._id;
+  const setPayload = {
+    status,
+    department: issue.department,
+    assignedOfficer: issue.assignedOfficer,
+  };
+  if (issue.resolution) setPayload.resolution = issue.resolution;
+  if (issue.citizenFeedback) setPayload.citizenFeedback = issue.citizenFeedback;
+
+  const historyEntry = {
+    status,
+    note: note ? `${note} (Synced with original report)` : `Status updated to ${status} in sync with original report.`,
+    evidence: evidence || null,
+    by: byUserId,
+    at: new Date(),
+  };
+
+  await Issue.updateMany(
+    { duplicateOf: rootId },
+    {
+      $set: setPayload,
+      $push: { statusHistory: historyEntry },
+    }
+  );
+}
+
 /* ---------------------------------------------------------------- A3. GET /api/issues */
 // Public. auth(false) so a logged-in viewer gets hasSupported and an anonymous one still gets 200.
 router.get('/', auth(false), ah(async (req, res) => {
@@ -291,7 +322,7 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
     const parentHex = String(parentIssue._id).slice(-6).toUpperCase();
     historyEntries.push({
       status: autoStatus,
-      note: `Linked as duplicate to #LS-${parentYear}-${parentHex}. Handled under original report by assigned officer.`,
+      note: `Linked as similar report to #LS-${parentYear}-${parentHex}. Handled under original report by assigned officer.`,
       evidence: null,
       by: req.user.id,
       at: new Date(now.getTime() + 1),
@@ -447,15 +478,7 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
   await issue.populate('assignedOfficer', 'name role department');
 
   // Sync department and assigned officer to any linked duplicates
-  await Issue.updateMany(
-    { duplicateOf: issue._id },
-    {
-      $set: {
-        department: issue.department,
-        assignedOfficer: issue.assignedOfficer,
-      },
-    }
-  );
+  await syncDuplicatesStatus(issue, issue.status, noteText, req.user.id);
 
   res.json(publicIssue(issue, req.user.id));
 }));
@@ -504,6 +527,15 @@ router.post('/:id/report-resolution', auth(true), officer, upload.array('evidenc
 
   await issue.save();
   await issue.populate('assignedOfficer', 'name role department');
+
+  await syncDuplicatesStatus(
+    issue,
+    'Pending Verification',
+    `Resolution submitted by officer: ${note}`,
+    req.user.id,
+    allEvidence[0] || null
+  );
+
   res.json(publicIssue(issue, req.user.id));
 }));
 
@@ -550,6 +582,15 @@ router.post('/:id/verify-resolution', auth(true), adminOnly, ah(async (req, res)
 
   await issue.save();
   await issue.populate('assignedOfficer', 'name role department');
+
+  await syncDuplicatesStatus(
+    issue,
+    issue.status,
+    adminNotes?.trim() || (action === 'approve' ? 'Admin approved resolution proof.' : 'Admin rejected resolution proof.'),
+    req.user.id,
+    issue.resolution?.evidence?.[0] || null
+  );
+
   res.json(publicIssue(issue, req.user.id));
 }));
 
@@ -603,6 +644,14 @@ router.post('/:id/citizen-feedback', auth(true), ah(async (req, res) => {
 
   await issue.save();
   await issue.populate('assignedOfficer', 'name role department');
+
+  await syncDuplicatesStatus(
+    issue,
+    issue.status,
+    notes?.trim() || (satisfied ? 'Citizen confirmed satisfied with solution.' : 'Citizen reported dissatisfaction with solution.'),
+    req.user.id
+  );
+
   res.json(publicIssue(issue, req.user.id));
 }));
 
@@ -628,6 +677,14 @@ router.post('/:id/reopen', auth(true), adminOnly, ah(async (req, res) => {
 
   await issue.save();
   await issue.populate('assignedOfficer', 'name role department');
+
+  await syncDuplicatesStatus(
+    issue,
+    'In Progress',
+    note || 'Issue reopened by Admin following citizen dissatisfaction.',
+    req.user.id
+  );
+
   res.json(publicIssue(issue, req.user.id));
 }));
 
@@ -658,8 +715,8 @@ router.patch('/:id/status', auth(true), officer, upload.single('evidence'), uplo
     });
     await issue.save();
 
-    // Resolving a parent deliberately does not resolve its children: they keep pointing up and
-    // the detail page shows the parent's status. Honest about what actually happened.
+    await syncDuplicatesStatus(issue, status, note, req.user.id, evidence);
+
     res.json(publicIssue(issue, req.user.id));
   }));
 

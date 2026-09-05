@@ -33,7 +33,7 @@ const STEPS = [
 ];
 
 const TRUST = [
-  'Duplicate reports are linked to the original, never deleted — your "+1" still counts.',
+  'Similar reports are linked to the original, never deleted — your "+1" still counts.',
   'A report can only be marked Resolved with a note or photo evidence attached.',
   'Your name and contact details are never shown in a public report.',
 ];
