@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { useAuth } from '../AuthContext';
@@ -58,14 +58,22 @@ export default function OfficerDashboard() {
   const isAdmin = user?.role === 'admin';
   const department = user?.department;
 
+  const isLoggingOut = useRef(false);
+
   // Protect officer/admin dashboard route
   useEffect(() => {
-    if (!authLoading && (!user || (user.role !== 'officer' && user.role !== 'admin'))) {
-      navigate('/login', { state: { from: '/dashboard' }, replace: true });
+    if (isLoggingOut.current) return;
+    if (!authLoading) {
+      if (!user) {
+        navigate('/login', { state: { from: '/dashboard' }, replace: true });
+      } else if (user.role !== 'officer' && user.role !== 'admin') {
+        navigate('/', { replace: true });
+      }
     }
   }, [authLoading, user, navigate]);
 
   const handleLogout = () => {
+    isLoggingOut.current = true;
     logout();
     navigate('/login', { replace: true });
   };
@@ -445,7 +453,7 @@ export default function OfficerDashboard() {
           <div className="rounded-xl border border-line bg-canvas p-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-ink">
               <Icon name="shield" className="size-4 text-brand-600" />
-              Role: <span className="capitalize">{user.role}</span>
+              Role: <span className="capitalize">{user?.role}</span>
             </div>
             <p className="mt-1 text-[11px] text-ink-muted">
               {isAdmin ? 'System-wide administrative & staff control' : `Assigned: ${department || 'General Administration'}`}

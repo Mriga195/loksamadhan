@@ -49,12 +49,21 @@ export default function Register() {
   const from = (rawFrom && rawFrom !== '/login' && rawFrom !== '/register') ? rawFrom : null;
   const draft = location.state?.draft;
 
+  const getRedirectTarget = (targetUser) => {
+    const isStaff = targetUser?.role === 'officer' || targetUser?.role === 'admin';
+    if (from) {
+      if (from === '/dashboard' || from.startsWith('/dashboard/')) {
+        return isStaff ? from : '/';
+      }
+      return from;
+    }
+    return isStaff ? '/dashboard' : '/';
+  };
+
   // Automatically redirect away if already logged in or session restored
   useEffect(() => {
     if (!authLoading && user) {
-      const target = from
-        ? from
-        : (user.role === 'officer' || user.role === 'admin') ? '/dashboard' : '/';
+      const target = getRedirectTarget(user);
       navigate(target, { replace: true, state: draft ? { draft } : undefined });
     }
   }, [user, authLoading, from, navigate, draft]);
@@ -84,9 +93,7 @@ export default function Register() {
     setPending(true);
     try {
       const registeredUser = await register(form.name.trim(), form.email.trim(), form.password);
-      const target = from
-        ? from
-        : (registeredUser.role === 'officer' || registeredUser.role === 'admin') ? '/dashboard' : '/';
+      const target = getRedirectTarget(registeredUser);
       navigate(target, { replace: true, state: draft ? { draft } : undefined });
     } catch (err) {
       setError(err.message);
@@ -98,9 +105,7 @@ export default function Register() {
     setError(null);
     try {
       const loggedUser = await loginWithGoogle(credential);
-      const target = from
-        ? from
-        : (loggedUser.role === 'officer' || loggedUser.role === 'admin') ? '/dashboard' : '/';
+      const target = getRedirectTarget(loggedUser);
       navigate(target, { replace: true, state: draft ? { draft } : undefined });
     } catch (err) {
       setError(err.message);
