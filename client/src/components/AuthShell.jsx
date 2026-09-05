@@ -3,8 +3,13 @@ import Icon from './Icon';
 import { field } from '../formStyles';
 
 // Split-panel shell shared by /login and /register: pitch on the left, form on the right.
-// The left panel is decoration — it collapses away below md rather than pushing the form
-// down a phone screen.
+//
+// Below md the left panel collapses — a phone should not scroll past three feature tiles to
+// reach the password box. But collapsing it entirely left the form with no identity at all, so
+// the icon/heading/blurb come back as a compact banner and only the tile list is dropped.
+//
+// The card also goes edge-to-edge below sm: a rounded border with gutters costs ~32px of a
+// 360px screen to draw a box around the only thing on the page.
 
 const TONES = {
   brand: { panel: 'bg-brand-50', badge: 'bg-brand-100 text-brand-600', tile: 'bg-brand-100 text-brand-600' },
@@ -14,9 +19,19 @@ const TONES = {
 export default function AuthShell({ tone = 'brand', icon, heading, blurb, points, children }) {
   const t = TONES[tone];
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10">
-      <div className="grid overflow-hidden rounded-card border border-line bg-surface
-        md:min-h-[38rem] md:grid-cols-2">
+    <main className="mx-auto max-w-7xl sm:px-4 sm:py-10">
+      <div className="grid overflow-hidden border-line bg-surface
+        sm:rounded-card sm:border md:min-h-[38rem] md:grid-cols-2">
+        <div className={`flex items-center gap-4 px-5 py-6 md:hidden ${t.panel}`}>
+          <span className={`flex size-12 shrink-0 items-center justify-center rounded-full ${t.badge}`}>
+            <Icon name={icon} className="size-6" />
+          </span>
+          <span>
+            <span className="block font-semibold">{heading}</span>
+            <span className="mt-0.5 block text-sm text-ink-muted">{blurb}</span>
+          </span>
+        </div>
+
         <aside className={`hidden flex-col justify-center p-10 md:flex ${t.panel}`}>
           <div className={`mx-auto flex size-16 items-center justify-center rounded-full ${t.badge}`}>
             <Icon name={icon} className="size-8" />
@@ -39,7 +54,7 @@ export default function AuthShell({ tone = 'brand', icon, heading, blurb, points
           </ul>
         </aside>
 
-        <div className="flex flex-col justify-center p-6 sm:p-10">{children}</div>
+        <div className="flex flex-col justify-center p-5 sm:p-6 md:p-10">{children}</div>
       </div>
     </main>
   );

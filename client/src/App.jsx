@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import Footer from './components/Footer';
 import Nav from './components/Nav';
+import { useSeo } from './seo';
 
 // React Router keeps the window scroll position across navigations, so following a footer link
 // from the bottom of one page drops you at the bottom of the next one. Reset it here, once, for
@@ -31,6 +32,8 @@ function ScrollToTop() {
 }
 
 export default function App() {
+  useSeo();
+
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <ScrollToTop />

@@ -10,6 +10,7 @@ import ErrorState from '../components/ErrorState';
 import Spinner, { Skeleton } from '../components/Spinner';
 import { timeAgo } from '../components/IssueCard';
 import NotFound from './NotFound';
+import { useSeo } from '../seo';
 
 const card = 'rounded-2xl border border-line bg-surface';
 
@@ -37,6 +38,8 @@ export default function IssueDetail() {
   const [notFound, setNotFound] = useState(false);
   const [supporting, setSupporting] = useState(false);
   const [visibleDuplicates, setVisibleDuplicates] = useState(1);
+
+  useSeo(issue?.title, issue?.description?.slice(0, 160));
 
   useEffect(() => {
     setVisibleDuplicates(1);
