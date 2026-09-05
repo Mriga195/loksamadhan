@@ -32,6 +32,7 @@ const PRIORITY_COLORS = {
 
 // ── Officer-Specific Actions based on issue state ──
 function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
+  const { user } = useAuth();
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
 
@@ -52,7 +53,33 @@ function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
   }
 
   const status = issue.status;
-  const isAssignedToMe = true; // drawer only shows to officer who has access
+  const isAssignedToMe = Boolean(
+    issue.assignedOfficer &&
+    String(issue.assignedOfficer?._id || issue.assignedOfficer) === String(user?._id)
+  );
+
+  // If issue is NOT assigned to this officer, this is read-only (Department Queue view)
+  if (!isAssignedToMe) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-600 space-y-1">
+        <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+          <Icon name="shield" className="size-3.5 text-slate-500" />
+          <span>Department Queue (Read-Only)</span>
+        </div>
+        <p className="text-[11px] leading-relaxed text-slate-600">
+          {issue.assignedOfficer?.name ? (
+            <>
+              Assigned to <strong>{issue.assignedOfficer.name}</strong>
+              {issue.assignedOfficer.region ? ` (${issue.assignedOfficer.region})` : ''}.
+              Only the allotted officer can start work or report resolution.
+            </>
+          ) : (
+            <>This issue is currently unassigned. Only the allotted officer or administrator can take action.</>
+          )}
+        </p>
+      </div>
+    );
+  }
 
   // What actions are relevant for this officer right now?
   if (status === 'Closed') {
@@ -377,7 +404,11 @@ export default function IssueDrawer({ issue, linkedDuplicates = [], onClose, onS
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const isOfficer = user?.role === 'officer';
-  const canManage = isAdmin || isOfficer;
+  const isAssignedToMe = Boolean(
+    issue?.assignedOfficer &&
+    String(issue.assignedOfficer?._id || issue.assignedOfficer) === String(user?._id)
+  );
+  const canManage = isAdmin || (isOfficer && isAssignedToMe);
   const [showAllSimilar, setShowAllSimilar] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState(null); // { id, title }
   const [isDetaching, setIsDetaching] = useState(false);

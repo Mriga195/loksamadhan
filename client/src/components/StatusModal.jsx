@@ -7,10 +7,16 @@ export default function StatusModal({ issue, onClose, onSaved }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
+  const isAssignedToMe = Boolean(
+    issue.assignedOfficer &&
+    String(issue.assignedOfficer?._id || issue.assignedOfficer) === String(user?._id)
+  );
+
   // Mode is determined strictly by role and current issue status:
   // - Admin + Pending Verification  -> 'verify'
   // - Admin + Unsatisfied           -> 'reopen'
   // - Admin + other (e.g. Submitted)-> 'status'
+  // - Officer (Not assigned to me)  -> 'info' (read-only state)
   // - Officer + In Progress         -> 'report_resolution'
   // - Officer + Submitted/Ack       -> 'status' (start working)
   // - Officer + pending/closed/etc  -> 'info' (read-only state)
@@ -20,6 +26,9 @@ export default function StatusModal({ issue, onClose, onSaved }) {
       if (issue.status === 'Unsatisfied') return 'reopen';
       return 'status';
     }
+    // If not admin and not assigned to this officer, read-only!
+    if (!isAssignedToMe) return 'info';
+
     if (issue.status === 'In Progress') return 'report_resolution';
     if (issue.status === 'Submitted' || issue.status === 'Acknowledged') return 'status';
     return 'info';
@@ -343,6 +352,20 @@ export default function StatusModal({ issue, onClose, onSaved }) {
         {/* 5. READ-ONLY / INFORMATIONAL STATUS */}
         {mode === 'info' && (
           <div className="mt-4 rounded-xl border border-line bg-canvas p-4 text-xs text-ink space-y-2">
+            {!isAdmin && !isAssignedToMe && (
+              <p>
+                <strong className="font-semibold text-amber-700">Department Queue (Read-Only):</strong>{' '}
+                {issue.assignedOfficer?.name ? (
+                  <>
+                    This issue is allotted to <strong>{issue.assignedOfficer.name}</strong>
+                    {issue.assignedOfficer.region ? ` (${issue.assignedOfficer.region})` : ''}.
+                    Only the assigned officer can update this issue.
+                  </>
+                ) : (
+                  <>This issue is currently unassigned to you. Only the allotted officer or administrator can take action.</>
+                )}
+              </p>
+            )}
             {issue.status === 'Pending Verification' && (
               <p>
                 <strong className="font-semibold text-purple-700">Awaiting Admin Verification:</strong> The resolution proof has been submitted. The municipal administrator must verify the proof before closure.

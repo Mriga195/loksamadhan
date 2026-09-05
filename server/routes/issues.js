@@ -620,7 +620,7 @@ router.post('/:id/support', auth(true), ah(async (req, res) => {
 }));
 
 /* ----------------------------------------------- B2. PATCH /api/issues/:id/assign */
-router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
+router.patch('/:id/assign', auth(true), adminOnly, ah(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
   const { department, region, officerId } = req.body;
   // Priority is now auto-determined; accept override from client if provided, else auto-calculate
@@ -717,6 +717,14 @@ router.post('/:id/report-resolution', auth(true), officer, upload.array('evidenc
 
   const issue = await Issue.findById(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+  // An officer can only report resolution on issues assigned to them (cannot take action on other issues in the dept queue)
+  if (req.user.role === 'officer') {
+    const isAssigned = String(issue.assignedOfficer) === String(req.user.id);
+    if (!isAssigned) {
+      return res.status(403).json({ error: 'Forbidden: You can only report resolution on issues assigned to you.' });
+    }
+  }
 
   issue.resolution = {
     note,
@@ -928,6 +936,14 @@ router.patch('/:id/status', auth(true), officer, upload.single('evidence'), uplo
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).json({ error: 'Issue not found.' });
 
+    // An officer can only change status on issues assigned to them
+    if (req.user.role === 'officer') {
+      const isAssigned = String(issue.assignedOfficer) === String(req.user.id);
+      if (!isAssigned) {
+        return res.status(403).json({ error: 'Forbidden: You can only change the status of issues assigned to you.' });
+      }
+    }
+
     // Append only. History is never overwritten and past entries are never edited — that is
     // what makes the public timeline trustworthy. `by` is stored and stripped by serialize.js.
     issue.status = status;
@@ -948,6 +964,14 @@ router.patch('/:id/duplicate', auth(true), officer, ah(async (req, res) => {
 
   const issue = await Issue.findById(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+  // An officer can only link/detach duplicates for issues assigned to them
+  if (req.user.role === 'officer') {
+    const isAssigned = String(issue.assignedOfficer) === String(req.user.id);
+    if (!isAssigned) {
+      return res.status(403).json({ error: 'Forbidden: You can only link or detach issues assigned to you.' });
+    }
+  }
 
   if (duplicateOfId === null || duplicateOfId === undefined || duplicateOfId === '') {
     issue.duplicateOf = null;            // unlink restores a standalone issue; nothing is lost
