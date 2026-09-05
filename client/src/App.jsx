@@ -38,7 +38,9 @@ export default function App() {
     <div className="flex min-h-screen flex-col bg-canvas">
       <ScrollToTop />
       <Nav />
-      <div className="flex-1 pt-20">
+      {/* No top padding: the header is sticky, not fixed, so it already occupies its own
+          space in the flow. Each page brings its own top padding. */}
+      <div className="flex-1">
         <Outlet />
       </div>
       <Footer />

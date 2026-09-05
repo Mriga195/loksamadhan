@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import StatusPill from './StatusPill';
+import SlaBadge from './SlaBadge';
 
 // One row in the public feed. There is no reporter in the API response — no name, no avatar,
 // no "posted by". The serializer strips it on purpose (hard rule 3), so nothing here implies
@@ -20,7 +21,9 @@ export function timeAgo(iso) {
 }
 
 // Literal class strings: Tailwind cannot see `bg-${category}-100`.
-const CATEGORY = {
+// Exported: the report form picks categories from the same art, so the icon you tap to file an
+// issue is the icon you see on the card afterwards.
+export const CATEGORY = {
   Road:        { tile: 'bg-amber-100 text-amber-700',     tag: 'bg-amber-50 text-amber-700',   dot: 'bg-amber-500',   d: 'M4 20 9 4h6l5 16M9.5 12h5' },
   Water:       { tile: 'bg-sky-100 text-sky-700',         tag: 'bg-sky-50 text-sky-700',       dot: 'bg-sky-500',     d: 'M12 3s6 6.6 6 10.5a6 6 0 0 1-12 0C6 9.6 12 3 12 3Z' },
   Sanitation:  { tile: 'bg-emerald-100 text-emerald-700', tag: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500', d: 'M6 7h12l-1 13H7L6 7Zm3 0V4h6v3' },
@@ -96,7 +99,11 @@ export default function IssueCard({ issue, index }) {
             <h3 className="line-clamp-2 text-base font-semibold leading-snug sm:truncate sm:text-lg">
               {issue.title}
             </h3>
-            <StatusPill status={issue.status} className="shrink-0" />
+            <span className="flex shrink-0 flex-col items-end gap-1">
+              <StatusPill status={issue.status} />
+              {/* Status says where it is; this says whether that is acceptable by now. */}
+              <SlaBadge sla={issue.sla} />
+            </span>
           </div>
 
           {/* Two pills rather than a run-on line: the address is the long half and wraps on

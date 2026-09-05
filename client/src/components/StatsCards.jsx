@@ -135,7 +135,7 @@ function Deck({ label, children }) {
       <div
         ref={track}
         onScroll={onScroll}
-        className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto
+        className="no-scrollbar relative flex snap-x snap-mandatory gap-4 overflow-x-auto
           sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible xl:grid-cols-4"
       >
         {Children.map(children, child => (

@@ -6,6 +6,8 @@
 // Never spread the raw document (`{ ...issue.toObject() }`): that is how `reporter` leaks
 // back the day someone adds a field to the schema. Every field is listed explicitly.
 
+const { slaFor } = require('./sla');
+
 // `by` is deliberately absent. Officers are people too.
 const publicHistory = (statusHistory = []) =>
   statusHistory.map(h => ({
@@ -58,6 +60,8 @@ function publicIssue(issue, viewerId = null, extra = {}) {
       : false,
     isReporter,
     statusHistory: publicHistory(issue.statusHistory),
+    // Derived here rather than in each route, so a screen added later cannot ship without it.
+    sla: slaFor(issue),
     createdAt: issue.createdAt,
     updatedAt: issue.updatedAt,
   };

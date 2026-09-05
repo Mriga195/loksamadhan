@@ -271,21 +271,25 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
   return (
     <div className="w-full space-y-2.5">
       {/* Search and Location Actions Bar */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      {/* Column order flips below sm: on a phone you are standing at the problem, so GPS comes
+          first and search is the fallback. On a desktop it is the other way round. */}
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
         {/* Manual Location Search Input */}
         <div ref={searchContainerRef} className="relative flex-1">
           <div className="relative flex items-center">
             <Icon name="search" className="pointer-events-none absolute left-3 size-4 text-ink-muted" />
+            {/* text-base below sm: anything under 16px makes iOS Safari zoom the page in on
+                focus, and it never zooms back out. */}
             <input
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
               onKeyDown={handleSearchKeyDown}
               onFocus={() => { if (searchResults.length > 0) setShowResults(true); }}
-              placeholder="Search area, landmark, or enter location to place pin…"
-              className="h-10 w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-20 text-sm
-                placeholder:text-ink-muted focus:border-brand-600 focus:outline-none focus:ring-1
-                focus:ring-brand-600"
+              placeholder="Search area or landmark…"
+              className="h-11 w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-20
+                text-base placeholder:text-ink-muted focus:border-brand-600 focus:outline-none
+                focus:ring-1 focus:ring-brand-600 sm:h-10 sm:text-sm"
             />
             {isSearching ? (
               <span className="absolute right-2 text-xs font-medium text-brand-600 animate-pulse">
@@ -313,7 +317,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
                   key={item.place_id || idx}
                   type="button"
                   onClick={() => handleSelectLocation(item)}
-                  className="flex w-full items-start gap-2.5 px-3.5 py-2 text-left text-xs text-ink
+                  className="flex w-full items-start gap-2.5 px-3.5 py-3 text-left text-sm text-ink
                     hover:bg-brand-50/70 transition-colors cursor-pointer border-b border-line/40 last:border-b-0"
                 >
                   <Icon name="map" className="mt-0.5 size-3.5 shrink-0 text-brand-600" />
@@ -321,7 +325,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
                     <span className="block font-semibold text-ink truncate">
                       {item.display_name?.split(',')[0]}
                     </span>
-                    <span className="block text-[11px] text-ink-muted truncate">
+                    <span className="block text-xs text-ink-muted truncate">
                       {item.display_name}
                     </span>
                   </div>
@@ -336,9 +340,10 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
           type="button"
           onClick={fetchCurrentLocation}
           disabled={geoStatus === 'locating'}
-          className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border
-            border-brand-200 bg-surface px-4 text-sm font-semibold text-brand-600 shadow-sm
-            transition-colors hover:bg-brand-50 disabled:opacity-50 shrink-0"
+          className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2
+            rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-semibold text-brand-600
+            shadow-sm transition-colors hover:bg-brand-100 disabled:opacity-50 sm:min-h-10 sm:w-auto
+            sm:shrink-0 sm:bg-surface sm:hover:bg-brand-50"
         >
           <Icon name="locate" className={`size-4 ${geoStatus === 'locating' ? 'animate-spin' : ''}`} />
           {geoStatus === 'locating' ? 'Locating…' : 'Use current location'}
@@ -346,7 +351,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
       </div>
 
       {/* Map Container */}
-      <div className="relative isolate z-0 h-72 w-full overflow-hidden rounded-lg border border-line">
+      <div className="relative isolate z-0 h-80 w-full overflow-hidden rounded-lg border border-line sm:h-72">
         <MapContainer
           center={position}
           zoom={14}
@@ -390,7 +395,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
             )}
           </span>
         </div>
-        <span className="font-mono text-ink-muted text-[11px] shrink-0">
+        <span className="hidden shrink-0 font-mono text-[11px] text-ink-muted sm:inline">
           [{position[1].toFixed(5)}, {position[0].toFixed(5)}]
         </span>
       </div>

@@ -24,6 +24,12 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ROLES, default: 'citizen' },
     department: { type: String, default: null },
     region: { type: String, default: null, trim: true },
+
+    // Notifications are derived from each issue's statusHistory rather than stored as rows of
+    // their own — the events already exist, duplicating them would just be a second copy to
+    // keep in sync. This is the only state a derived feed cannot infer: how far the reader
+    // has already read.
+    notificationsSeenAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

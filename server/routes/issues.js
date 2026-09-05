@@ -361,6 +361,38 @@ router.get('/dept-officers', auth(true), ah(async (req, res) => {
 }));
 
 /* ------------------------------------------------------------ A4. GET /api/issues/:id */
+// GET /api/issues/lookup/:ref — resolve the reference people actually have in front of them.
+//
+// The UI shows every issue as LS-<year>-<last six of the id> (shortId in IssueDrawer.jsx), so
+// that is what ends up on a printed receipt, in a WhatsApp message and in a citizen's notes —
+// not the 24-character ObjectId. Only the server can reverse it.
+//
+// Six hex characters is 16.7 million values, narrowed further by year, so a collision in a
+// municipal dataset is not a practical concern — but if two ever do match, this says so rather
+// than silently opening the wrong report.
+// ponytail: unindexed $expr scan. Fine at this size; give Issue a stored `ref` field if the
+// collection ever reaches the point where this shows up in timings.
+const REF = /^#?LS-(\d{4})-([0-9a-f]{6})$/i;
+
+router.get('/lookup/:ref', auth(false), ah(async (req, res) => {
+  const parsed = REF.exec(String(req.params.ref).trim());
+  if (!parsed) return bad(res, 'Reference must look like LS-2026-61AB11.');
+  const [, year, suffix] = parsed;
+
+  const start = new Date(Date.UTC(Number(year), 0, 1));
+  const end = new Date(Date.UTC(Number(year) + 1, 0, 1));
+
+  const matches = await Issue.find({
+    createdAt: { $gte: start, $lt: end },
+    $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: `${suffix.toLowerCase()}$` } },
+  }).select('_id').limit(2).lean();
+
+  if (matches.length === 0) return res.status(404).json({ error: 'No issue with that reference.' });
+  if (matches.length > 1) return bad(res, 'That reference matches more than one issue.');
+
+  res.json({ _id: matches[0]._id });
+}));
+
 router.get('/:id', auth(false), ah(async (req, res) => {
   // Before Mongo: a non-ObjectId throws a CastError and 500s the detail page.
   if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');

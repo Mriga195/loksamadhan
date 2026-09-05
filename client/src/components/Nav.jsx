@@ -4,7 +4,9 @@ import { useAuth } from '../AuthContext';
 import { useLang } from '../LangContext';
 import Avatar from './Avatar';
 import Icon from './Icon';
+import FindIssue from './FindIssue';
 import LangToggle from './LangToggle';
+import NotificationBell from './NotificationBell';
 import Logo from './Logo';
 
 // Site header. Routes match router.jsx exactly.
@@ -47,6 +49,8 @@ const EN = {
   departments: 'Departments',
   dashboard: 'Dashboard',
   report: 'Report an Issue',
+  findById: 'Check status',   // the reader has a reference and wants to know where it got to
+  reportShort: 'Report',      // the phone bar — the long form does not fit beside the wordmark
   login: 'Log in',
   signup: 'Sign up',
   logout: 'Log out',
@@ -81,6 +85,9 @@ export default function Nav() {
   useEffect(() => {
     if (!open && !menuOpen) return;
     const onKey = e => { if (e.key !== 'Escape') return;
+      // A native <dialog> handles its own Escape. Without this, one press would close the
+      // dialog and the sheet under it at the same time.
+      if (document.querySelector('dialog[open]')) return;
       if (menuOpen) setMenuOpen(false); else setOpen(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -158,26 +165,29 @@ export default function Nav() {
               ? 'border-transparent bg-surface/85 shadow-[0_8px_28px_rgba(15,23,42,0.12)] backdrop-blur-xl'
               : 'border-line bg-surface shadow-[0_2px_12px_rgba(15,23,42,0.06)]'}`}
         >
-          <div className="flex items-center gap-2 md:grid md:grid-cols-[1fr_auto_1fr]">
+          <div className="flex items-center gap-2">
             <Link to="/" aria-label="LokSamadhan — home"
               className="inline-flex min-h-11 items-center gap-2 md:mr-2">
               <Logo className="size-9 md:size-10" />
-              <span className="text-base font-semibold tracking-tight max-[380px]:hidden md:hidden lg:inline">
+              <span className="text-base font-semibold tracking-tight max-[400px]:hidden md:hidden lg:inline">
                 LokSamadhan
               </span>
             </Link>
 
-            <div className="hidden items-center gap-1 md:flex md:justify-self-center">
+            {/* Two groups, not three: logo left, everything else right. */}
+            <div className="ml-auto hidden items-center gap-1 md:flex">
               {links(item)}
+              <FindIssue triggerClass={`${item({ isActive: false })} cursor-pointer`} label={t.findById} />
             </div>
 
-            <div className="ml-auto hidden items-center gap-2 md:flex md:justify-self-end">
+            <div className="hidden items-center gap-2 md:ml-6 md:flex">
               {/* Auth resolves a beat after paint. Hold the space rather than letting the bar
                   reflow under the reader's cursor. */}
               {loading ? (
                 <span aria-hidden="true" className="h-11 w-44 animate-pulse rounded-full bg-canvas" />
               ) : user ? (
                 <>
+                  <NotificationBell />
                   {!isStaff && reportCta()}
 
                   <div ref={menuRef} className="relative ml-1">
@@ -225,25 +235,36 @@ export default function Nav() {
 
             {/* Phone: the CTA stays on the bar — filing a report is the one thing worth a tap
                 without opening a menu first. Staff have no CTA, so they get the avatar instead. */}
-            <div className="ml-auto flex items-center gap-1 md:hidden">
+            <div className="ml-auto flex items-center gap-2 md:hidden">
+              {/* Icon only. A bare plus, not the shared `plus` icon — that one draws its own
+                  circle, and the button is already the circle. */}
               {!loading && !isStaff && (
-                <Link to="/report" aria-label={t.report}
-                  className="grid size-11 place-items-center rounded-full bg-brand-600 text-white
-                    transition-colors duration-200 hover:bg-brand-700">
-                  <Icon name="plus" className="size-5" />
+                <Link to="/report" aria-label={t.report} title={t.report}
+                  className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full
+                    px-2 text-[13px] font-medium text-brand-700 transition-colors duration-200
+                    hover:bg-brand-50">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2" strokeLinecap="round" className="size-4 shrink-0">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  {/* Short label, nowrap: the full "Report an Issue" wrapped to two lines and
+                      stretched the bar. Drops out entirely on the narrowest phones. */}
+                  <span className="max-[360px]:hidden">{t.reportShort}</span>
                 </Link>
               )}
+              <NotificationBell />
               <button
                 type="button"
                 onClick={() => setOpen(true)}
                 aria-expanded={open}
                 aria-controls="nav-sheet"
                 aria-label="Open menu"
-                className="grid size-11 cursor-pointer place-items-center rounded-full text-ink
-                  transition-colors hover:bg-canvas"
+                className={`grid size-11 cursor-pointer place-items-center rounded-full
+                  text-ink-muted transition-colors duration-200 hover:bg-canvas hover:text-ink
+                  ${user ? '' : 'border border-line'}`}
               >
                 {user ? <Avatar name={user.name} src={user.avatar} className="size-8 text-xs" />
-                      : <Icon name="menu" className="size-6" />}
+                      : <Icon name="menu" className="size-5" />}
               </button>
             </div>
           </div>
@@ -285,7 +306,13 @@ export default function Nav() {
               </Link>
             )}
 
-            <div className="flex flex-col gap-1">{links(sheetItem)}</div>
+            <div className="flex flex-col gap-1">
+              {links(sheetItem)}
+              <FindIssue
+                triggerClass={`${sheetItem({ isActive: false })} w-full cursor-pointer`}
+                label={t.findById}
+              />
+            </div>
 
             <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
               {loading ? (

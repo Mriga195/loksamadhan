@@ -23,11 +23,10 @@ const DEPARTMENTS = [
   'General Administration',
 ];
 
-const OVERDUE_DAYS = 7;
-const isOverdue = issue =>
-  issue.status !== 'Resolved' &&
-  issue.status !== 'Closed' &&
-  Date.now() - new Date(issue.createdAt) > OVERDUE_DAYS * 86400000;
+// "Late" is decided once, on the server, from the per-category targets in lib/sla.js and
+// shipped on every issue. This used to be a flat 7 days computed here, which meant a 3-day
+// water breach did not surface in this queue for another four days.
+const isOverdue = issue => issue.sla?.state === 'overdue';
 
 const PER_PAGE = 10;
 
@@ -624,7 +623,7 @@ export default function OfficerDashboard() {
                           {searchQuery || priorityFilter || deptFilter
                             ? 'Try clearing your search query or filters to see more results.'
                             : tab === 'overdue'
-                            ? `No unresolved issues have exceeded the ${OVERDUE_DAYS}-day SLA deadline.`
+                            ? 'No unresolved issues have passed their department deadline.'
                             : 'This queue is currently empty.'}
                         </p>
                       </div>
