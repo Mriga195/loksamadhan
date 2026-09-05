@@ -62,16 +62,16 @@ export default function IssueCard({ issue, index }) {
         transition-transform duration-200 ease-out group-hover:scale-x-100" />
 
       {/* One link wrapping the whole card: a single tab stop, and the entire row is a target. */}
-      <Link to={`/issues/${issue._id}`} className="flex items-start gap-4 p-5 pl-6">
+      <Link to={`/issues/${issue._id}`} className="flex items-start gap-3 p-4 pl-5 sm:gap-4 sm:p-5 sm:pl-6">
         {/* Fixed size and shrink-0 so the row height never changes as images load or fail. */}
-        <div className={`relative grid size-24 shrink-0 place-items-center overflow-hidden
-          rounded-xl ${art.tile}`}>
+        <div className={`relative grid size-16 shrink-0 place-items-center overflow-hidden
+          rounded-xl sm:size-24 ${art.tile}`}>
           {photo ? (
             <img src={photo} alt="" loading="lazy" className="size-full object-cover"
               onError={e => { e.currentTarget.hidden = true; }} />
           ) : (
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.5" className="size-10">
+              strokeWidth="1.5" className="size-7 sm:size-10">
               <path strokeLinecap="round" strokeLinejoin="round" d={art.d} />
             </svg>
           )}
@@ -85,8 +85,10 @@ export default function IssueCard({ issue, index }) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="truncate text-lg font-semibold leading-snug">{issue.title}</h3>
+          <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:justify-between sm:gap-3">
+            <h3 className="line-clamp-2 text-base font-semibold leading-snug sm:truncate sm:text-lg">
+              {issue.title}
+            </h3>
             <StatusPill status={issue.status} className="shrink-0" />
           </div>
 
@@ -109,7 +111,7 @@ export default function IssueCard({ issue, index }) {
           )}
 
           {/* Bottom row: category tag left, me-too right */}
-          <div className="mt-2.5 flex items-center justify-between gap-2">
+          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs
                 font-medium ${art.tag}`}>

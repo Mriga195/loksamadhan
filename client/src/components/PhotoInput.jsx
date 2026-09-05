@@ -7,9 +7,10 @@ const MAX = 3;
 const MAX_BYTES = 5 * 1024 * 1024;
 const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-export default function PhotoInput({ onPhotosChange }) {
-  const [photos, setPhotos] = useState([]);      // File[]
-  const [previews, setPreviews] = useState([]);  // object URLs, index-aligned with photos
+export default function PhotoInput({ onPhotosChange, initialPhotos = [] }) {
+  const [photos, setPhotos] = useState(initialPhotos);      // File[]
+  // Previews are derived once; a draft handed back from /login arrives as real File objects.
+  const [previews, setPreviews] = useState(() => initialPhotos.map(f => URL.createObjectURL(f)));
   const [error, setError] = useState(null);
   const latestPreviews = useRef(previews);
   latestPreviews.current = previews;

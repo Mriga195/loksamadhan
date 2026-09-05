@@ -38,15 +38,15 @@ export default function FilterBar({ value, onChange, onClear }) {
   const active = ['category', 'status', 'department', 'q'].filter(k => value[k]).length;
 
   return (
-    <section aria-label="Filter issues" className="mt-6 space-y-4">
-      {/* Row 1: Status chips */}
-      <div role="group" aria-label="Status" className="flex flex-wrap items-center gap-2">
+    <section aria-label="Filter issues" className="mt-6">
+      {/* Row 1: status chips — sm and up only; below that status is the first dropdown. */}
+      <div role="group" aria-label="Status" className="hidden flex-wrap items-center gap-2 sm:flex">
         {STATUSES.map(([val, label, dot]) => {
           const on = (value.status || '') === val;
           return (
             <button key={label} type="button" onClick={() => onChange('status', val)}
               aria-pressed={on}
-              className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-full
+              className={`inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full
                 border px-4 text-sm transition-all duration-200 ${on
                   ? 'border-brand-600 bg-brand-600 font-medium text-white shadow-sm'
                   : 'border-line bg-surface text-ink hover:bg-canvas hover:border-slate-300'}`}>
@@ -58,7 +58,7 @@ export default function FilterBar({ value, onChange, onClear }) {
       </div>
 
       {/* Row 2: Search, dropdowns, clear */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 sm:mt-4">
         <div className="relative flex-1 min-w-[180px]">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             strokeWidth="1.75"
@@ -70,6 +70,13 @@ export default function FilterBar({ value, onChange, onClear }) {
             value={text} onChange={e => setText(e.target.value)}
             className={`${control} w-full pl-10 pr-3`} />
         </div>
+
+        <select aria-label="Status" className={`${dropdown} sm:hidden`}
+          value={value.status || ''} onChange={e => onChange('status', e.target.value)}>
+          {STATUSES.map(([val, label]) => (
+            <option key={label} value={val}>{val === '' ? 'All statuses' : label}</option>
+          ))}
+        </select>
 
         <select aria-label="Category" className={dropdown}
           value={value.category || ''} onChange={e => onChange('category', e.target.value)}>

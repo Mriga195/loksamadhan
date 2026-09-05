@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Children, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../api';
 import Icon from './Icon';
 
@@ -79,15 +79,15 @@ function Card({ icon, tone, label, value, unit, delta, downIsGood, series }) {
   const good = rounded === 0 || (rounded < 0) === downIsGood;
 
   return (
-    <article className="rounded-card border border-line bg-surface p-5">
-      <div className="flex items-center gap-3">
-        <span className={`grid size-10 shrink-0 place-items-center rounded-full ${t.chip}`}>
+    <article className="rounded-card border border-line bg-surface p-4 sm:p-5">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <span className={`grid size-9 shrink-0 place-items-center rounded-full sm:size-10 ${t.chip}`}>
           <Icon name={icon} />
         </span>
-        <h3 className="text-sm font-medium text-ink-muted">{label}</h3>
+        <h3 className="text-xs font-medium leading-tight text-ink-muted sm:text-sm">{label}</h3>
       </div>
 
-      <p className="mt-3 text-3xl font-semibold tabular-nums">
+      <p className="mt-3 text-2xl font-semibold tabular-nums sm:text-3xl">
         {value}
         {unit && <span className="ml-1.5 text-base font-normal text-ink-muted">{unit}</span>}
       </p>
@@ -103,6 +103,50 @@ function Card({ icon, tone, label, value, unit, delta, downIsGood, series }) {
 
       <Spark values={series} className={t.line} />
     </article>
+  );
+}
+
+
+// Below sm the four cards are a one-at-a-time swipe deck: native scroll-snap does the paging,
+// so there is no drag maths, no timers and no autoplay — the reader moves it or it stays put.
+// From sm up the same children are just a grid.
+function Deck({ label, children }) {
+  const track = useRef(null);
+  const [page, setPage] = useState(0);
+  const count = Children.count(children);
+
+  const goTo = (i) => {
+    const el = track.current;
+    if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+  };
+
+  return (
+    <section aria-label={label}>
+      <div
+        ref={track}
+        onScroll={e => setPage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
+        className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto
+          sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible xl:grid-cols-4"
+      >
+        {Children.map(children, child => (
+          <div className="w-full shrink-0 snap-center sm:w-auto">{child}</div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-center justify-center gap-2 sm:hidden">
+        {Array.from({ length: count }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => goTo(i)}
+            aria-label={`Show card ${i + 1} of ${count}`}
+            aria-current={i === page}
+            className={`h-2 cursor-pointer rounded-full transition-all duration-200 ${
+              i === page ? 'w-6 bg-brand-600' : 'w-2 bg-line'}`}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -159,7 +203,7 @@ export default function StatsCards({ issues }) {
     const last = s => s[s.length - 1];
 
     return (
-      <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Deck label="Summary">
         <Card icon="clipboard" tone="rose" label="Open" value={last(open)}
           delta={weekDelta(open)} downIsGood series={open} />
         <Card icon="wrench" tone="blue" label="In Progress" value={last(progress)}
@@ -169,18 +213,18 @@ export default function StatsCards({ issues }) {
         <Card icon="clock" tone="violet" label="Avg. resolution time"
           value={last(avgDays).toFixed(1)} unit="days"
           delta={weekDelta(avgDays)} downIsGood series={avgDays} />
-      </section>
+      </Deck>
     );
   }
 
   // Loading skeleton
   if (loading && !stats) {
     return (
-      <section aria-label="Summary loading" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Deck label="Summary loading">
         {Array.from({ length: 4 }, (_, i) => (
           <div key={i} className="h-36 animate-pulse rounded-card border border-line bg-surface p-5" />
         ))}
-      </section>
+      </Deck>
     );
   }
 
@@ -203,7 +247,7 @@ export default function StatsCards({ issues }) {
   const avgSeries = m?.avgDays?.series ?? [avgVal];
 
   return (
-    <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <Deck label="Summary">
       <Card icon="clipboard" tone="rose" label="Open" value={openVal}
         delta={openDelta} downIsGood series={openSeries} />
       <Card icon="wrench" tone="blue" label="In Progress" value={progVal}
@@ -213,6 +257,6 @@ export default function StatsCards({ issues }) {
       <Card icon="clock" tone="violet" label="Avg. resolution time"
         value={avgVal.toFixed(1)} unit="days"
         delta={avgDelta} downIsGood series={avgSeries} />
-    </section>
+    </Deck>
   );
 }

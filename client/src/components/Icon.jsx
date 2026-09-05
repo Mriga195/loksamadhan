@@ -42,6 +42,7 @@ const PATHS = {
   locate: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0-5a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM12 2v2m0 16v2m8-10h2M2 12h2',
   grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   camera: 'M4 8a1 1 0 0 1 1-1h2l1.2-2h5.6L15 7h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8Zm8 2.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z',
+  menu: 'M4 7h16M4 12h16M4 17h16',
 };
 
 export default function Icon({ name, className = 'size-5' }) {
