@@ -20,7 +20,8 @@ const STATUSES = [
   ['Closed', 'Closed', 'bg-emerald-600'],
 ];
 
-const control = 'min-h-11 rounded-lg border border-line bg-surface px-3 text-sm text-ink';
+const control = 'h-11 rounded-lg border border-line bg-surface px-3 text-sm text-ink';
+const dropdown = `${control} w-full cursor-pointer sm:w-48`;
 
 export default function FilterBar({ value, onChange, onClear }) {
   const [text, setText] = useState(value.q || '');
@@ -37,7 +38,7 @@ export default function FilterBar({ value, onChange, onClear }) {
   const active = ['category', 'status', 'department', 'q'].filter(k => value[k]).length;
 
   return (
-    <section aria-label="Filter issues" className="space-y-3">
+    <section aria-label="Filter issues" className="mt-6 space-y-4">
       {/* Row 1: Status chips */}
       <div role="group" aria-label="Status" className="flex flex-wrap items-center gap-2">
         {STATUSES.map(([val, label, dot]) => {
@@ -45,7 +46,7 @@ export default function FilterBar({ value, onChange, onClear }) {
           return (
             <button key={label} type="button" onClick={() => onChange('status', val)}
               aria-pressed={on}
-              className={`inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full
+              className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-full
                 border px-4 text-sm transition-all duration-200 ${on
                   ? 'border-brand-600 bg-brand-600 font-medium text-white shadow-sm'
                   : 'border-line bg-surface text-ink hover:bg-canvas hover:border-slate-300'}`}>
@@ -70,13 +71,13 @@ export default function FilterBar({ value, onChange, onClear }) {
             className={`${control} w-full pl-10 pr-3`} />
         </div>
 
-        <select aria-label="Category" className={`${control} cursor-pointer`}
+        <select aria-label="Category" className={dropdown}
           value={value.category || ''} onChange={e => onChange('category', e.target.value)}>
           <option value="">Category</option>
           {CATEGORIES.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
 
-        <select aria-label="Department" className={`${control} cursor-pointer`}
+        <select aria-label="Department" className={dropdown}
           value={value.department || ''} onChange={e => onChange('department', e.target.value)}>
           <option value="">Department</option>
           {DEPARTMENTS.map(o => <option key={o} value={o}>{o}</option>)}
@@ -84,7 +85,7 @@ export default function FilterBar({ value, onChange, onClear }) {
 
         {active > 0 && (
           <button type="button" onClick={onClear}
-            className="min-h-9 cursor-pointer rounded-lg px-3 text-sm font-medium text-ink-muted
+            className="h-11 cursor-pointer rounded-lg px-3 text-sm font-medium text-ink-muted
               hover:text-brand-600 hover:bg-canvas transition-colors">
             Clear
           </button>

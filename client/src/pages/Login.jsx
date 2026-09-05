@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Spinner from '../components/Spinner';
+import Icon from '../components/Icon';
+import AuthShell, { field, PasswordField } from '../components/AuthShell';
 
 // Seeded accounts, click to fill. This is not decoration: a judge will not type credentials out
 // of a README, and a demo that cannot be logged into is a demo that gets watched instead of
@@ -13,8 +15,11 @@ const DEMO = [
 ];
 const DEMO_PASSWORD = 'password123';
 
-const field = 'mt-1 w-full min-h-11 rounded-lg border border-line bg-surface px-3 text-base' +
-  ' focus:border-brand-600';
+const POINTS = [
+  { icon: 'clipboard', title: 'File & track reports', body: 'Report issues and follow their resolution.' },
+  { icon: 'activity', title: 'Stay updated', body: 'See status changes as officers make them.' },
+  { icon: 'shield', title: 'Private by default', body: 'Your personal info is never made public.' },
+];
 
 export default function Login() {
   const { login } = useAuth();
@@ -47,13 +52,19 @@ export default function Login() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
+    <AuthShell
+      tone="brand"
+      icon="shield"
+      heading="Welcome back"
+      blurb="Log in to keep reporting and tracking issues in your ward."
+      points={POINTS}
+    >
       <h1 className="text-2xl font-semibold">Log in</h1>
       <p className="mt-1 text-sm text-ink-muted">
         You do not need an account to browse reports — only to file or support one.
       </p>
 
-      <form onSubmit={submit} className="mt-6 rounded-card border border-line bg-surface p-5">
+      <form onSubmit={submit} className="mt-6">
         {/* Errors sit above the fields and are announced, not just coloured. */}
         {error && (
           <p role="alert" className="mb-4 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
@@ -73,17 +84,12 @@ export default function Login() {
           />
         </label>
 
-        <label className="mt-4 block text-sm font-medium">
-          Password
-          <input
-            type="password"
-            autoComplete="current-password"
-            required
-            className={field}
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-          />
-        </label>
+        <PasswordField
+          label="Password"
+          autoComplete="current-password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+        />
 
         <button
           type="submit"
@@ -101,26 +107,30 @@ export default function Login() {
         </p>
       </form>
 
-      <section className="mt-6 rounded-card border border-dashed border-line p-4">
+      <section className="mt-8 rounded-card border border-dashed border-line p-4">
         <h2 className="text-sm font-medium">Demo accounts</h2>
         <p className="mt-0.5 text-xs text-ink-muted">
           Click one to fill the form. Password for all: <code>{DEMO_PASSWORD}</code>
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
           {DEMO.map(d => (
             <button
               key={d.email}
               type="button"
               onClick={() => { setEmail(d.email); setPassword(DEMO_PASSWORD); setError(null); }}
-              className="min-h-11 cursor-pointer rounded-lg border border-line px-3 text-left
-                text-xs transition-colors duration-200 hover:bg-canvas"
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border
+                border-line px-3 py-2 text-left text-xs transition-colors duration-200
+                hover:border-brand-600 hover:bg-brand-50"
             >
-              <span className="block font-medium">{d.role}</span>
-              <span className="block text-ink-muted">{d.name}</span>
+              <Icon name="users" className="size-4 text-ink-muted" />
+              <span>
+                <span className="block font-medium">{d.role}</span>
+                <span className="block text-ink-muted">{d.name}</span>
+              </span>
             </button>
           ))}
         </div>
       </section>
-    </main>
+    </AuthShell>
   );
 }
