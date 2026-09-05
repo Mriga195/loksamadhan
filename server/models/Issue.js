@@ -22,6 +22,7 @@ const issueSchema = new mongoose.Schema(
 
     address: { type: String, default: '' },
     area: { type: String, default: '' }, // neighbourhood name for easy filtering (Challenge Card)
+    region: { type: String, default: 'Tezpur', trim: true },
 
     photos: [{ type: String }], // relative paths under /uploads
 
@@ -74,6 +75,7 @@ const issueSchema = new mongoose.Schema(
 issueSchema.index({ location: '2dsphere' });
 issueSchema.index({ category: 1, status: 1 });
 issueSchema.index({ area: 1, status: 1 });
+issueSchema.index({ region: 1, status: 1 });
 issueSchema.index({ department: 1, status: 1 });
 issueSchema.index({ title: 'text', description: 'text' });
 
@@ -91,10 +93,18 @@ issueSchema.methods.toPublic = function () {
     location: this.location,
     address: this.address,
     area: this.area,
+    region: this.region,
     photos: this.photos,
     department: this.department,
     assignedOfficer: this.assignedOfficer
-      ? (this.assignedOfficer.name ? { _id: this.assignedOfficer._id, name: this.assignedOfficer.name } : this.assignedOfficer)
+      ? (this.assignedOfficer.name
+          ? {
+              _id: this.assignedOfficer._id,
+              name: this.assignedOfficer.name,
+              region: this.assignedOfficer.region || null,
+              department: this.assignedOfficer.department || null,
+            }
+          : this.assignedOfficer)
       : null,
     priority: this.priority,
     status: this.status,

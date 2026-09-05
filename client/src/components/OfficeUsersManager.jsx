@@ -13,6 +13,16 @@ const DEPARTMENTS = [
   'General Administration',
 ];
 
+const REGIONS = [
+  'Tezpur',
+  'Jorhat',
+  'Jorhat West',
+  'Sivasagar',
+  'Guwahati',
+  'Dibrugarh',
+  'Nagaon',
+];
+
 export default function OfficeUsersManager({ currentUser }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +30,7 @@ export default function OfficeUsersManager({ currentUser }) {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
+  const [regionFilter, setRegionFilter] = useState('');
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -33,6 +44,7 @@ export default function OfficeUsersManager({ currentUser }) {
     password: '',
     role: 'officer',
     department: DEPARTMENTS[0],
+    region: 'Tezpur',
   });
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -63,6 +75,7 @@ export default function OfficeUsersManager({ currentUser }) {
       password: '',
       role: 'officer',
       department: DEPARTMENTS[0],
+      region: 'Tezpur',
     });
     setFormError(null);
     setModalOpen(true);
@@ -77,6 +90,7 @@ export default function OfficeUsersManager({ currentUser }) {
       password: '',
       role: user.role || 'officer',
       department: user.department || DEPARTMENTS[0],
+      region: user.region || 'Tezpur',
     });
     setFormError(null);
     setModalOpen(true);
@@ -96,6 +110,7 @@ export default function OfficeUsersManager({ currentUser }) {
           email: formData.email,
           role: formData.role,
           department: formData.role === 'officer' ? formData.department : (formData.department || 'General Administration'),
+          region: formData.role === 'officer' ? (formData.region?.trim() || null) : null,
         };
         if (formData.password) {
           payload.password = formData.password;
@@ -118,6 +133,7 @@ export default function OfficeUsersManager({ currentUser }) {
           password: formData.password,
           role: formData.role,
           department: formData.role === 'officer' ? formData.department : (formData.department || 'General Administration'),
+          region: formData.role === 'officer' ? (formData.region?.trim() || null) : null,
         };
 
         const res = await apiFetch('/api/admin/users', {
@@ -162,9 +178,10 @@ export default function OfficeUsersManager({ currentUser }) {
       const matchesSearch = !search || user.name.toLowerCase().includes(q) || user.email.toLowerCase().includes(q);
       const matchesRole = !roleFilter || user.role === roleFilter;
       const matchesDept = !deptFilter || user.department === deptFilter;
-      return matchesSearch && matchesRole && matchesDept;
+      const matchesRegion = !regionFilter || (user.region && user.region.toLowerCase() === regionFilter.toLowerCase());
+      return matchesSearch && matchesRole && matchesDept && matchesRegion;
     });
-  }, [users, search, roleFilter, deptFilter]);
+  }, [users, search, roleFilter, deptFilter, regionFilter]);
 
   // Overall metrics summary
   const summaryStats = useMemo(() => {
@@ -183,7 +200,7 @@ export default function OfficeUsersManager({ currentUser }) {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-ink">Office User Management</h2>
-          <p className="text-sm text-ink-muted">Manage staff accounts, assign departments, and track performance work ratios.</p>
+          <p className="text-sm text-ink-muted">Manage staff accounts, assign operational regions/districts, and track performance work ratios.</p>
         </div>
         <button
           type="button"
@@ -240,13 +257,13 @@ export default function OfficeUsersManager({ currentUser }) {
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-ink-muted">Avg Work Ratio</p>
-              <p className="text-2xl font-bold text-emerald-600">{summaryStats.avgWorkRatio}%</p>
+              <p className="text-2xl font-bold text-ink">{summaryStats.avgWorkRatio}%</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
+      {/* Search & Filter Toolbar */}
       <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface p-4 shadow-sm">
         <div className="relative min-w-[220px] flex-1">
           <input
@@ -287,9 +304,20 @@ export default function OfficeUsersManager({ currentUser }) {
           ))}
         </select>
 
-        {(search || roleFilter || deptFilter) && (
+        <select
+          value={regionFilter}
+          onChange={(e) => setRegionFilter(e.target.value)}
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
+        >
+          <option value="">All Regions</option>
+          {REGIONS.map(r => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+
+        {(search || roleFilter || deptFilter || regionFilter) && (
           <button
-            onClick={() => { setSearch(''); setRoleFilter(''); setDeptFilter(''); }}
+            onClick={() => { setSearch(''); setRoleFilter(''); setDeptFilter(''); setRegionFilter(''); }}
             className="text-xs text-brand-600 hover:underline"
           >
             Reset Filters
@@ -378,9 +406,17 @@ export default function OfficeUsersManager({ currentUser }) {
                       </td>
 
                       <td className="px-4 py-3 text-ink-muted">
-                        <span className="font-medium text-ink-muted">
+                        <span className="font-medium text-ink">
                           {u.department || 'General Administration'}
                         </span>
+                        {u.role === 'officer' && (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                              <Icon name="map" className="size-3 text-brand-600" />
+                              {u.region ? `${u.region} Zone` : 'All Regions'}
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-4 py-3 min-w-[180px]">
@@ -528,7 +564,7 @@ export default function OfficeUsersManager({ currentUser }) {
                 {formData.role === 'officer' && (
                   <div>
                     <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
-                      Department
+                      Department <span className="text-rejected-600">*</span>
                     </label>
                     <select
                       value={formData.department}
@@ -542,6 +578,31 @@ export default function OfficeUsersManager({ currentUser }) {
                   </div>
                 )}
               </div>
+
+              {formData.role === 'officer' && (
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wider text-ink-muted mb-1">
+                    Assigned Region / District <span className="text-rejected-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    list="office-regions-list"
+                    required
+                    placeholder="e.g. Tezpur, Jorhat, Jorhat West, Sivasagar..."
+                    value={formData.region}
+                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-brand-600 focus:outline-none"
+                  />
+                  <datalist id="office-regions-list">
+                    {REGIONS.map(r => (
+                      <option key={r} value={r} />
+                    ))}
+                  </datalist>
+                  <p className="mt-1 text-[11px] text-ink-muted">
+                    New civic issues filed in this region/district will be auto-assigned to this officer.
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-line">
                 <button

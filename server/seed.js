@@ -42,7 +42,7 @@ async function seed() {
 
   const hash = await User.hashPassword(SEED_PASSWORD);
 
-  // ── 2. Create Users across all roles & departments ──
+  // ── 2. Create Users across all roles & departments with Regional Coverage ──
   const admin = await User.create({
     name: 'Admin Bora',
     email: 'admin@loksamadhan.gov.in',
@@ -51,12 +51,14 @@ async function seed() {
     department: 'General Administration',
   });
 
+  // --- TEZPUR OFFICERS ---
   const officerRoads = await User.create({
     name: 'Rina Das',
     email: 'officer.roads@loksamadhan.gov.in',
     passwordHash: hash,
     role: 'officer',
     department: 'Roads & Infrastructure',
+    region: 'Tezpur',
   });
 
   const officerWater = await User.create({
@@ -65,6 +67,7 @@ async function seed() {
     passwordHash: hash,
     role: 'officer',
     department: 'Water Supply & Sewage',
+    region: 'Tezpur',
   });
 
   const officerSanitation = await User.create({
@@ -73,6 +76,17 @@ async function seed() {
     passwordHash: hash,
     role: 'officer',
     department: 'Solid Waste Management',
+    region: 'Tezpur',
+  });
+
+  // Second officer in Tezpur SWM to demonstrate load-balancing split
+  const officerSanitation2 = await User.create({
+    name: 'Amit Baruah',
+    email: 'officer.sanitation2@loksamadhan.gov.in',
+    passwordHash: hash,
+    role: 'officer',
+    department: 'Solid Waste Management',
+    region: 'Tezpur',
   });
 
   const officerElectricity = await User.create({
@@ -81,6 +95,7 @@ async function seed() {
     passwordHash: hash,
     role: 'officer',
     department: 'Electricity & Lighting',
+    region: 'Tezpur',
   });
 
   const officerDrainage = await User.create({
@@ -89,6 +104,82 @@ async function seed() {
     passwordHash: hash,
     role: 'officer',
     department: 'Public Health & Drainage',
+    region: 'Tezpur',
+  });
+
+  // --- JORHAT OFFICERS ---
+  const officerRoadsJorhat = await User.create({
+    name: 'Pranjal Bora',
+    email: 'officer.roads.jorhat@loksamadhan.gov.in',
+    passwordHash: hash,
+    role: 'officer',
+    department: 'Roads & Infrastructure',
+    region: 'Jorhat',
+  });
+
+  const officerWaterJorhat = await User.create({
+    name: 'Rupjyoti Sarma',
+    email: 'officer.water.jorhat@loksamadhan.gov.in',
+    passwordHash: hash,
+    role: 'officer',
+    department: 'Water Supply & Sewage',
+    region: 'Jorhat',
+  });
+
+  const officerSanitationJorhat = await User.create({
+    name: 'Gitashree Mahanta',
+    email: 'officer.sanitation.jorhat@loksamadhan.gov.in',
+    passwordHash: hash,
+    role: 'officer',
+    department: 'Solid Waste Management',
+    region: 'Jorhat',
+  });
+
+  const officerElectricityJorhat = await User.create({
+    name: 'Dipak Medhi',
+    email: 'officer.electricity.jorhat@loksamadhan.gov.in',
+    passwordHash: hash,
+    role: 'officer',
+    department: 'Electricity & Lighting',
+    region: 'Jorhat',
+  });
+
+  // --- JORHAT WEST OFFICER ---
+  const officerRoadsJorhatWest = await User.create({
+    name: 'Biman Saikia',
+    email: 'officer.roads.jorhatwest@loksamadhan.gov.in',
+    passwordHash: hash,
+    role: 'officer',
+    department: 'Roads & Infrastructure',
+    region: 'Jorhat West',
+  });
+
+  // --- SIVASAGAR OFFICERS ---
+  const officerRoadsSivasagar = await User.create({
+    name: 'Debojit Chutia',
+    email: 'officer.roads.sivasagar@loksamadhan.gov.in',
+    passwordHash: hash,
+    role: 'officer',
+    department: 'Roads & Infrastructure',
+    region: 'Sivasagar',
+  });
+
+  const officerWaterSivasagar = await User.create({
+    name: 'Monoj Gogoi',
+    email: 'officer.water.sivasagar@loksamadhan.gov.in',
+    passwordHash: hash,
+    role: 'officer',
+    department: 'Water Supply & Sewage',
+    region: 'Sivasagar',
+  });
+
+  const officerDrainageSivasagar = await User.create({
+    name: 'Ananta Dutta',
+    email: 'officer.drainage.sivasagar@loksamadhan.gov.in',
+    passwordHash: hash,
+    role: 'officer',
+    department: 'Public Health & Drainage',
+    region: 'Sivasagar',
   });
 
   const citizen1 = await User.create({
@@ -112,7 +203,7 @@ async function seed() {
     role: 'citizen',
   });
 
-  console.log('✓ Created 9 users (1 Admin, 5 Department Officers, 3 Citizens)');
+  console.log('✓ Created users (1 Admin, 14 Regional Officers across Tezpur, Jorhat, Jorhat West & Sivasagar, 3 Citizens)');
 
   // ── 3. Seed Realistic Issues ──
   // Location coordinates: Tezpur, Assam [longitude, latitude]
@@ -558,35 +649,91 @@ async function seed() {
     createdAt: daysAgo(3),
   });
 
+  // ── JORHAT REGIONAL DEMO ISSUE ──
+  await Issue.create({
+    title: 'Severe waterlogging and damaged culvert near Gar-Ali market',
+    description:
+      'The drainage culvert on Gar-Ali road is clogged and cracked. Rainwater floods the commercial area and enters shop basements.',
+    category: 'Road',
+    location: { type: 'Point', coordinates: [94.2167, 26.7509] },
+    address: 'Gar-Ali Market Road, Jorhat',
+    area: 'Gar-Ali',
+    region: 'Jorhat',
+    reporter: citizen1._id,
+    department: 'Roads & Infrastructure',
+    assignedOfficer: officerRoadsJorhat._id,
+    priority: 'high',
+    status: 'In Progress',
+    photos: [
+      'https://images.unsplash.com/photo-1541888946425-d0fbb1861593?w=800&auto=format&fit=crop&q=80',
+    ],
+    statusHistory: [
+      { status: 'Submitted', note: 'Reported by citizen in Jorhat', by: citizen1._id, at: daysAgo(2) },
+      { status: 'Acknowledged', note: 'Auto-assigned to Roads & Infrastructure (Jorhat Region). Officer assigned via regional load-balancing.', by: citizen1._id, at: daysAgo(2) },
+      { status: 'In Progress', note: 'Jorhat Municipal engineering division initiated desilting.', by: officerRoadsJorhat._id, at: daysAgo(1) },
+    ],
+    createdAt: daysAgo(2),
+  });
+
+  // ── SIVASAGAR REGIONAL DEMO ISSUE ──
+  await Issue.create({
+    title: 'Drinking water pipeline leakage near historic Joysagar tank',
+    description:
+      'Main supply pipeline has sprung a high pressure leak. Clean water overflowing onto the public path while nearby wards face shortage.',
+    category: 'Water',
+    location: { type: 'Point', coordinates: [94.6300, 26.9800] },
+    address: 'Joysagar Tank Road, Sivasagar',
+    area: 'Joysagar',
+    region: 'Sivasagar',
+    reporter: citizen3._id,
+    department: 'Water Supply & Sewage',
+    assignedOfficer: officerWaterSivasagar._id,
+    priority: 'medium',
+    status: 'Acknowledged',
+    photos: [
+      'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?w=800&auto=format&fit=crop&q=80',
+    ],
+    statusHistory: [
+      { status: 'Submitted', note: 'Reported by citizen in Sivasagar', by: citizen3._id, at: daysAgo(1) },
+      { status: 'Acknowledged', note: 'Auto-assigned to Water Supply & Sewage (Sivasagar Region). Officer assigned via regional load-balancing.', by: citizen3._id, at: daysAgo(1) },
+    ],
+    createdAt: daysAgo(1),
+  });
+
   const totalIssues = await Issue.countDocuments();
   const rootIssues = await Issue.countDocuments({ duplicateOf: null });
   const similarIssues = await Issue.countDocuments({ duplicateOf: { $ne: null } });
 
-  console.log(`✓ Seeded ${totalIssues} issues total (${rootIssues} root issues + ${similarIssues} linked similar reports)`);
+  console.log(`✓ Seeded ${totalIssues} issues total (${rootIssues} root issues + ${similarIssues} linked similar reports across Tezpur, Jorhat & Sivasagar)`);
 
   // ── Print Credentials & Demo Map ──
   console.log('\n===============================================================');
   console.log('LokSamadhan Database Seed Complete! (Password: password123)');
   console.log('===============================================================');
   console.log('Roles & Demo Logins:');
-  console.log('  👑 Admin:        admin@loksamadhan.gov.in       (General Administration)');
-  console.log('  👷 Officer Roads: officer.roads@loksamadhan.gov.in   (Roads & Infrastructure)');
-  console.log('  💧 Officer Water: officer.water@loksamadhan.gov.in   (Water Supply & Sewage)');
-  console.log('  🗑️ Officer SWM:   officer.sanitation@loksamadhan.gov.in (Solid Waste Management)');
-  console.log('  ⚡ Officer Power: officer.electricity@loksamadhan.gov.in (Electricity & Lighting)');
-  console.log('  🚧 Officer Drain: officer.drainage@loksamadhan.gov.in (Public Health & Drainage)');
-  console.log('  👤 Citizen 1:     citizen1@example.com');
-  console.log('  👤 Citizen 2:     citizen2@example.com');
-  console.log('  👤 Citizen 3:     citizen3@example.com');
+  console.log('  👑 Admin:                admin@loksamadhan.gov.in                 (General Administration)');
+  console.log('  👷 Officer Roads (Tezpur): officer.roads@loksamadhan.gov.in       (Tezpur - Roads)');
+  console.log('  👷 Officer Roads (Jorhat): officer.roads.jorhat@loksamadhan.gov.in (Jorhat - Roads)');
+  console.log('  👷 Officer Roads (Jorhat W): officer.roads.jorhatwest@loksamadhan.gov.in (Jorhat West - Roads)');
+  console.log('  👷 Officer Roads (Sivasagar): officer.roads.sivasagar@loksamadhan.gov.in (Sivasagar - Roads)');
+  console.log('  💧 Officer Water (Tezpur): officer.water@loksamadhan.gov.in       (Tezpur - Water)');
+  console.log('  💧 Officer Water (Jorhat): officer.water.jorhat@loksamadhan.gov.in (Jorhat - Water)');
+  console.log('  💧 Officer Water (Sivasagar): officer.water.sivasagar@loksamadhan.gov.in (Sivasagar - Water)');
+  console.log('  🗑️ Officer SWM 1 (Tezpur): officer.sanitation@loksamadhan.gov.in (Tezpur - SWM)');
+  console.log('  🗑️ Officer SWM 2 (Tezpur): officer.sanitation2@loksamadhan.gov.in (Tezpur - SWM, Load-balance)');
+  console.log('  🗑️ Officer SWM (Jorhat):   officer.sanitation.jorhat@loksamadhan.gov.in (Jorhat - SWM)');
+  console.log('  ⚡ Officer Power (Tezpur): officer.electricity@loksamadhan.gov.in (Tezpur - Lighting)');
+  console.log('  ⚡ Officer Power (Jorhat): officer.electricity.jorhat@loksamadhan.gov.in (Jorhat - Lighting)');
+  console.log('  🚧 Officer Drain (Tezpur): officer.drainage@loksamadhan.gov.in    (Tezpur - Drainage)');
+  console.log('  🚧 Officer Drain (Sivasagar): officer.drainage.sivasagar@loksamadhan.gov.in (Sivasagar - Drainage)');
+  console.log('  👤 Citizen 1:             citizen1@example.com');
+  console.log('  👤 Citizen 2:             citizen2@example.com');
+  console.log('  👤 Citizen 3:             citizen3@example.com');
   console.log('---------------------------------------------------------------');
-  console.log('Featured Scenarios in Data:');
-  console.log('  • Similar reports cluster: #NH-15 Kolia Bhomora (1 Root + 2 Similar Reports)');
-  console.log('    -> Tests "1 shown by default + Show more (+1 more)" UI controls');
-  console.log('  • Pending Verification: Bamuni Maidan open manhole (ready for Admin verify)');
-  console.log('  • Resolved: Chowkidingi Market garbage (Admin verified proof attached)');
-  console.log('  • Unsatisfied / Disputed: Cardboard Factory Chariali divider');
-  console.log('  • Closed: Mahabhairab Streetlight #42 (Citizen confirmed satisfied)');
-  console.log('  • Unassigned Triage: Agnigarh Hill & Dekargaon bypass');
+  console.log('Regional Auto-Assignment Features:');
+  console.log('  • Region-based routing: Jorhat reports -> Jorhat Officers; Tezpur reports -> Tezpur Officers');
+  console.log('  • Same Dept + Same Region Load Balancing: e.g. Tezpur SWM officers (Mira vs Amit) split work evenly');
+  console.log('  • Admin Office Users Manager: Create/edit officers with district/region field');
   console.log('===============================================================\n');
 
   await mongoose.disconnect();

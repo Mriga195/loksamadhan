@@ -135,7 +135,7 @@ export default function OfficerDashboard() {
   // Filter predicates
   const TABS = useMemo(() => ({
     all: () => true,
-    unassigned: i => (!i.department || !i.assignedOfficer) && i.status !== 'Closed' && i.status !== 'Resolved',
+    unassigned: i => (!i.department || !i.assignedOfficer || (!i.assignedOfficer._id && !i.assignedOfficer.name)) && i.status !== 'Closed' && i.status !== 'Resolved',
     pending_verification: i => i.status === 'Pending Verification',
     unsatisfied: i => i.status === 'Unsatisfied',
     my_allotted: i => i.assignedOfficer && String(i.assignedOfficer?._id || i.assignedOfficer) === String(user?._id),
@@ -686,10 +686,21 @@ export default function OfficerDashboard() {
 
                                       <td className="px-4 py-3 text-ink-muted">
                                         {issue.department ? (
-                                          <span className="inline-flex items-center gap-1 text-ink">
-                                            <Icon name="building" className="size-3 text-slate-400" />
-                                            {issue.department}
-                                          </span>
+                                          <div>
+                                            <span className="inline-flex items-center gap-1 text-ink font-medium">
+                                              <Icon name="building" className="size-3 text-slate-400" />
+                                              {issue.department}
+                                            </span>
+                                            {issue.assignedOfficer?.name ? (
+                                              <span className="block text-[10px] text-slate-500 truncate">
+                                                🛡 {issue.assignedOfficer.name} {issue.assignedOfficer.region ? `(${issue.assignedOfficer.region})` : ''}
+                                              </span>
+                                            ) : (
+                                              <span className="block text-[10px] text-amber-600 font-medium">
+                                                ⚠ Unassigned Officer
+                                              </span>
+                                            )}
+                                          </div>
                                         ) : (
                                           <span className="italic text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px]">
                                             Unassigned
