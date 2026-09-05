@@ -68,7 +68,7 @@ export default function Home() {
       <section className="relative isolate overflow-hidden bg-gradient-to-b from-brand-50 via-brand-50/50 to-canvas">
         <CityScene className="absolute inset-x-0 bottom-0 -z-10 h-[300px] w-full" />
 
-        <div className="mx-auto max-w-3xl px-6 pt-20 text-center">
+        <div className="mx-auto max-w-3xl px-4 pt-20 text-center">
           <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-[2.5rem]">
             Report a civic issue.<br className="hidden sm:block" />{' '}
             Watch it get fixed — <span className="text-brand-600">in public.</span>
@@ -96,7 +96,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mx-auto max-w-4xl px-6 pb-20 pt-14">
+        <div className="mx-auto max-w-7xl px-4 pb-20 pt-14">
           {counts && (
             <dl className="grid grid-cols-2 gap-y-6 rounded-2xl border border-line bg-surface
               p-6 shadow-[0_10px_40px_rgba(15,23,42,0.08)] sm:grid-cols-5 sm:gap-0
@@ -116,7 +116,7 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section className="mx-auto max-w-5xl px-6 py-16">
+      <section className="mx-auto max-w-7xl px-4 py-16">
         <h2 className="text-center text-xl font-semibold">How it works</h2>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
@@ -148,7 +148,7 @@ export default function Home() {
       </section>
 
       {/* Trust / hard rules, in plain language */}
-      <section className="mx-auto max-w-5xl px-6 pb-20">
+      <section className="mx-auto max-w-7xl px-4 pb-20">
         <div className="grid items-center gap-8 rounded-2xl border border-line
           bg-gradient-to-r from-resolved-50 to-surface p-8 sm:grid-cols-[220px_1fr]">
           <ShieldScene className="mx-auto h-40 w-auto" />

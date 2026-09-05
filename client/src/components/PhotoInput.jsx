@@ -1,134 +1,101 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Icon from './Icon';
 
-const PhotoInput = ({ onPhotosChange }) => {
-  const [photos, setPhotos] = useState([]); // Array of File objects
-  const [previews, setPreviews] = useState([]); // Array of Object URLs
+// Three fixed slots, filled left to right. The empty slots are drawn rather than hidden so the
+// row never reflows as photos are added, and "how many can I still add" is answered by looking.
+const MAX = 3;
+const MAX_BYTES = 5 * 1024 * 1024;
+const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+export default function PhotoInput({ onPhotosChange }) {
+  const [photos, setPhotos] = useState([]);      // File[]
+  const [previews, setPreviews] = useState([]);  // object URLs, index-aligned with photos
   const [error, setError] = useState(null);
+  const latestPreviews = useRef(previews);
+  latestPreviews.current = previews;
+
+  // Revoke on unmount only — revoking per render would blank the images still on screen.
+  useEffect(() => () => latestPreviews.current.forEach(URL.revokeObjectURL), []);
+
+  const commit = (files, urls) => {
+    setPhotos(files);
+    setPreviews(urls);
+    onPhotosChange?.(files);
+  };
 
   const handleFileChange = (e) => {
-    const selectedFiles = Array.from(e.target.files || []);
+    const selected = Array.from(e.target.files || []);
+    e.target.value = '';
     setError(null);
 
-    if (photos.length + selectedFiles.length > 3) {
-      setError('Maximum 3 photos allowed');
-      e.target.value = '';
-      return;
+    if (photos.length + selected.length > MAX) return setError(`Maximum ${MAX} photos allowed.`);
+    if (selected.some(f => !TYPES.includes(f.type))) {
+      return setError('Only JPEG, PNG and WebP images are allowed.');
+    }
+    if (selected.some(f => f.size > MAX_BYTES)) {
+      return setError('Each photo must be 5MB or smaller.');
     }
 
-    const validFiles = [];
-    const newPreviews = [...previews];
-
-    for (const file of selectedFiles) {
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        setError('Only JPEG, PNG, and WebP images are allowed');
-        e.target.value = '';
-        return;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Each photo must be 5MB or smaller');
-        e.target.value = '';
-        return;
-      }
-
-      validFiles.push(file);
-      newPreviews.push(URL.createObjectURL(file));
-    }
-
-    const updatedPhotos = [...photos, ...validFiles];
-    setPhotos(updatedPhotos);
-    setPreviews(newPreviews);
-    e.target.value = '';
-
-    if (onPhotosChange) {
-      onPhotosChange(updatedPhotos);
-    }
+    commit([...photos, ...selected], [...previews, ...selected.map(f => URL.createObjectURL(f))]);
   };
 
-  const removePhoto = (index) => {
-    URL.revokeObjectURL(previews[index]);
-    const updatedPhotos = photos.filter((_, i) => i !== index);
-    const updatedPreviews = previews.filter((_, i) => i !== index);
-
-    setPhotos(updatedPhotos);
-    setPreviews(updatedPreviews);
-
-    if (onPhotosChange) {
-      onPhotosChange(updatedPhotos);
-    }
+  const removePhoto = (i) => {
+    URL.revokeObjectURL(previews[i]);
+    commit(photos.filter((_, n) => n !== i), previews.filter((_, n) => n !== i));
   };
-
-  useEffect(() => {
-    return () => {
-      previews.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, []);
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
-        Photos (optional, up to 3 photos, max 5MB each)
-      </label>
+    <div>
+      {error && <p role="alert" className="mb-2 text-xs font-medium text-rejected-600">{error}</p>}
 
-      {error && (
-        <p className="text-red-500 text-xs font-medium">{error}</p>
-      )}
-
-      <div className="flex flex-wrap gap-3">
-        {previews.map((url, index) => (
-          <div key={index} className="relative h-24 w-24">
-            <img
-              src={url}
-              alt={`Preview ${index + 1}`}
-              className="h-24 w-24 object-cover rounded-lg border border-gray-200 shadow-sm"
-            />
+      <div className="grid grid-cols-3 gap-3">
+        {previews.map((url, i) => (
+          <div key={url} className="relative aspect-[4/3] overflow-hidden rounded-lg border border-line">
+            <img src={url} alt={`Photo ${i + 1}`} className="size-full object-cover" />
             <button
               type="button"
-              onClick={() => removePhoto(index)}
-              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow hover:bg-red-600 focus:outline-none"
-              aria-label={`Remove photo ${index + 1}`}
+              onClick={() => removePhoto(i)}
+              aria-label={`Remove photo ${i + 1}`}
+              className="absolute right-1.5 top-1.5 grid size-7 cursor-pointer place-items-center
+                rounded-full bg-ink/70 text-white transition-colors hover:bg-rejected-600"
             >
-              &times;
+              <Icon name="close" className="size-4" />
             </button>
           </div>
         ))}
 
-        {photos.length < 3 && (
+        {photos.length < MAX && (
           <label
-            htmlFor="photo-input"
-            className="flex flex-col items-center justify-center h-24 w-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+            className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center
+              gap-1 rounded-lg border-2 border-dashed border-brand-200 bg-brand-50/60
+              text-brand-600 transition-colors hover:bg-brand-50"
           >
             <input
-              id="photo-input"
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept={TYPES.join(',')}
               multiple
               onChange={handleFileChange}
-              className="hidden"
+              className="sr-only"
             />
-            <svg
-              className="w-6 h-6 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span className="text-xs text-gray-500 mt-1">Add Photo</span>
+            <Icon name="plus" className="size-6" />
+            <span className="text-sm font-medium">Add photo</span>
+            <span className="text-xs text-ink-muted">Up to {MAX} photos</span>
           </label>
         )}
+
+        {/* Placeholders for the slots still free. */}
+        {Array.from({ length: Math.max(0, MAX - photos.length - 1) }, (_, i) => (
+          <div key={`empty-${i}`} aria-hidden="true"
+            className="grid aspect-[4/3] place-items-center rounded-lg border-2 border-dashed
+              border-line text-slate-300">
+            <Icon name="photo" className="size-7" />
+          </div>
+        ))}
       </div>
 
-      <p className="text-xs text-gray-400">
-        {photos.length}/3 photos selected
+      <p className="mt-3 text-xs text-ink-muted">
+        {photos.length} / {MAX} photos added &nbsp;•&nbsp; Max 5MB each &nbsp;•&nbsp; JPG, PNG
       </p>
     </div>
   );
-};
-
-export default PhotoInput;
+}

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import Icon from './Icon';
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -108,40 +109,21 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
 
   return (
     <div className="w-full space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-ink-muted">
-          Drag pin or click map to set location
-        </span>
+      <div className="flex justify-end">
         <button
           type="button"
           onClick={fetchCurrentLocation}
           disabled={geoStatus === 'locating'}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-brand-600 shadow-sm transition hover:bg-brand-50 hover:border-brand-300 disabled:opacity-50 cursor-pointer"
+          className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border
+            border-brand-200 bg-surface px-4 text-sm font-semibold text-brand-600 shadow-sm
+            transition-colors hover:bg-brand-50 disabled:opacity-50"
         >
-          {geoStatus === 'locating' ? (
-            <>
-              <svg className="size-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeLinecap="round" />
-              </svg>
-              <span>Locating...</span>
-            </>
-          ) : (
-            <>
-              <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <circle cx="12" cy="12" r="8"/>
-                <line x1="12" y1="2" x2="12" y2="4"/>
-                <line x1="12" y1="20" x2="12" y2="22"/>
-                <line x1="20" y1="12" x2="22" y2="12"/>
-                <line x1="2" y1="12" x2="4" y2="12"/>
-              </svg>
-              <span>Fetch Current Location</span>
-            </>
-          )}
+          <Icon name="locate" className={`size-4 ${geoStatus === 'locating' ? 'animate-spin' : ''}`} />
+          {geoStatus === 'locating' ? 'Locating…' : 'Use current location'}
         </button>
       </div>
 
-      <div className="h-72 w-full rounded-lg overflow-hidden border border-gray-300 relative">
+      <div className="relative h-72 w-full overflow-hidden rounded-lg border border-line">
         <MapContainer
           center={position}
           zoom={14}
@@ -165,7 +147,7 @@ const MapPicker = ({ onLocationChange, initialLocation }) => {
         </MapContainer>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="flex items-center justify-between gap-3 text-xs text-ink-muted">
         <span>
           {geoStatus === 'locating' && 'Locating your position...'}
           {geoStatus === 'fallback' && 'Geolocation unavailable. Centered to Tezpur, Assam (drag pin or click map to adjust).'}

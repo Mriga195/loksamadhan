@@ -98,7 +98,7 @@ export default function Departments() {
   const selectTab = (id) => setParams(id === DEPARTMENTS[0].id ? {} : { dept: id });
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
+    <div className="mx-auto max-w-7xl px-4 py-10">
       <h1 className="text-3xl font-extrabold">Departments</h1>
       <div className="mt-2 h-1 w-10 rounded-full bg-brand-600" />
       <p className="mt-4 max-w-2xl text-sm text-ink-muted">

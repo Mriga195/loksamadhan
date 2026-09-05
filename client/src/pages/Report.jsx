@@ -6,6 +6,7 @@ import MapPicker from '../components/MapPicker';
 import PhotoInput from '../components/PhotoInput';
 import DuplicatePanel from '../components/DuplicatePanel';
 import Spinner from '../components/Spinner';
+import Icon from '../components/Icon';
 import { field, primaryBtn } from '../formStyles';
 
 const CATEGORIES = ['Road', 'Water', 'Sanitation', 'Streetlight', 'Drainage', 'Other'];
@@ -198,24 +199,33 @@ const Report = () => {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
-      <header>
-        <h1 className="text-2xl font-semibold">Report a civic issue</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Help us identify and fix problems in your community. Provide details and location below.
-        </p>
+    <main className="mx-auto max-w-7xl px-4 py-10">
+      <header className="flex items-center gap-5">
+        <span aria-hidden="true"
+          className="hidden size-20 shrink-0 place-items-center rounded-2xl bg-brand-50
+            text-brand-600 sm:grid">
+          <Icon name="clipboard" className="size-10" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold">Report a civic issue</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Help us identify and fix problems in your community.<br className="hidden sm:inline" />
+            Provide details and location below.
+          </p>
+        </div>
       </header>
 
       {error && (
-        <p role="alert" className="mt-6 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
+        <p role="alert" className="mt-6 rounded-lg bg-rejected-50 px-4 py-3 text-sm text-rejected-600">
           {error}
         </p>
       )}
 
-      {/* Numbered steps: the form is long enough that "where am I" is a real question, and the
-          numbers give each block a heading without four competing bold titles. */}
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <Step n={1} label="Category" required>
+      {/* Each step is a card with its own label column: the number, an icon and one line of
+          guidance on the left, the controls on the right. Long form, four landmarks. */}
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <Step n={1} icon="grid" label="Category" required
+          hint="Choose the issue category that best fits your report.">
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -229,26 +239,28 @@ const Report = () => {
           </select>
         </Step>
 
-        <Step n={2} label="Location" required
-          hint="Drop a pin on the map, then add a landmark if it helps someone find the spot.">
-          <div className="overflow-hidden rounded-lg border border-line">
-            <MapPicker onLocationChange={setLocation} />
-          </div>
+        <Step n={2} icon="map" label="Location" required
+          hint="Drag the map or drop a pin on the exact location.">
+          <MapPicker onLocationChange={setLocation} />
           <input
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Landmark or street address (optional)"
-            className={`${field} mt-3`}
+            className={`${field} mt-4`}
           />
+          <p className="mt-1.5 text-right text-xs text-ink-muted">
+            e.g. Near Mission Chariali flyover
+          </p>
         </Step>
 
-        <Step n={3} label="What is wrong" required>
+        <Step n={3} icon="clipboard" label="Details" required
+          hint="Provide clear details so our team can understand and take action quickly.">
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Large pothole near central bus stand"
+            placeholder="Give it a short title — e.g. Large pothole near central bus stand"
             required
             minLength={5}
             className={field}
@@ -268,33 +280,42 @@ const Report = () => {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Provide details about the severity, exact spot, or any danger posed…"
+            placeholder="Describe the issue, severity, exact spot, or any danger posed…"
             rows={4}
             required
             minLength={10}
-            className={`${field} mt-3 py-2`}
+            className={`${field} mt-4 py-3`}
           />
         </Step>
 
-        <Step n={4} label="Photos" hint="Optional, but a photo is what gets an issue triaged fastest.">
+        <Step n={4} icon="camera" label="Photos" optional
+          hint="Add up to 3 photos to help us identify the issue better.">
           <PhotoInput onPhotosChange={setPhotos} />
         </Step>
+
+        {/* Sits outside the step grid so it spans the full card width, as in the design. */}
+        <aside className="flex items-start gap-3 rounded-card border border-brand-100 bg-brand-50
+          px-5 py-4 text-sm">
+          <Icon name="info" className="mt-0.5 size-5 shrink-0 text-brand-600" />
+          <span>
+            <span className="block font-semibold text-brand-700">Why photos help?</span>
+            <span className="block text-ink-muted">
+              Clear photos help our team triage and resolve issues faster.
+            </span>
+          </span>
+        </aside>
 
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={() => navigate('/feed')}
-            className="min-h-13 cursor-pointer rounded-lg border border-line bg-surface px-5
-              text-base font-medium text-ink transition-colors hover:bg-canvas"
+            className="min-h-13 cursor-pointer rounded-lg border border-line bg-surface px-6
+              text-base font-medium text-ink shadow-sm transition-colors hover:bg-canvas"
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className={primaryBtn}
-          >
-            {submitting && <Spinner label="Submitting" />}
+          <button type="submit" disabled={submitting} className={primaryBtn}>
+            {submitting ? <Spinner label="Submitting" /> : <Icon name="send" className="size-5" />}
             {submitting ? 'Submitting…' : 'Submit report'}
           </button>
         </div>
@@ -303,22 +324,33 @@ const Report = () => {
   );
 };
 
-// One card per step. `required` marks the asterisk; `hint` is the one line of guidance that
-// keeps the field placeholders short.
-function Step({ n, label, required, hint, children }) {
+// One card per step: number, icon and guidance in the label column, controls in the wide one.
+function Step({ n, icon, label, required, optional, hint, children }) {
   return (
-    <section className="rounded-card border border-line bg-surface p-5">
-      <h2 className="flex items-center gap-2 text-sm font-medium">
-        <span aria-hidden="true"
-          className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-50
-            text-xs font-semibold text-brand-600">
-          {n}
-        </span>
-        {label}
-        {required && <span className="text-rejected-600" aria-hidden="true">*</span>}
-      </h2>
-      {hint && <p className="mt-1 ml-8 text-xs text-ink-muted">{hint}</p>}
-      <div className="mt-3">{children}</div>
+    <section className="rounded-card border border-line bg-surface p-6 shadow-sm">
+      <div className="grid gap-5 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
+        <div className="flex gap-3">
+          <span aria-hidden="true"
+            className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-600
+              text-xs font-semibold text-white">
+            {n}
+          </span>
+          <span aria-hidden="true"
+            className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600">
+            <Icon name={icon} className="size-5" />
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold">
+              {label}
+              {required && <span className="ml-1 text-rejected-600" aria-hidden="true">*</span>}
+              {optional && <span className="ml-1 font-normal text-ink-muted">(optional)</span>}
+            </h2>
+            <p className="mt-1 text-xs text-ink-muted">{hint}</p>
+          </div>
+        </div>
+
+        <div>{children}</div>
+      </div>
     </section>
   );
 }

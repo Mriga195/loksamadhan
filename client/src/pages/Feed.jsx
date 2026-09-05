@@ -71,7 +71,7 @@ export default function Feed() {
   const hasFilters = KEYS.some(k => filters[k]);
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-6">
+    <main className="mx-auto max-w-7xl px-4 py-6">
       {/* The filter bar and the numbered map are the page's title in the design; the heading is
           kept for screen readers and the document outline. */}
       <h1 className="sr-only">Reported issues</h1>
