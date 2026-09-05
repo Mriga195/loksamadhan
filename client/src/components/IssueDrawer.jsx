@@ -83,19 +83,19 @@ function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
           type="button"
           disabled={actionLoading}
           onClick={markInProgress}
-          className="w-full rounded-xl border border-brand-300 bg-brand-50 px-4 py-2.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-50"
+          className="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-700 transition-colors disabled:opacity-50"
         >
           {actionLoading ? 'Updating…' : '▶ Mark as In Progress (Start Working)'}
         </button>
       )}
 
-      {(status === 'In Progress' || status === 'Acknowledged' || status === 'Submitted') && (
+      {status === 'In Progress' && (
         <button
           type="button"
           onClick={() => onUpdateStatus(issue)}
           className="w-full rounded-xl bg-brand-600 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-700 transition-colors cursor-pointer"
         >
-          📸 Report Resolution &amp; Upload Evidence
+          📸 Report Resolution &amp; Upload Proof
         </button>
       )}
 
@@ -316,10 +316,10 @@ export default function IssueDrawer({ issue, onClose, onSaved, onUpdateStatus })
             </Link>
             <StatusPill status={issue.status} size="sm" />
             {issue.priority && (
-              <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold capitalize ${PRIORITY_COLORS[issue.priority] || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                {issue.priority === 'high' && '🔴 '}
-                {issue.priority === 'medium' && '🟡 '}
-                {issue.priority === 'low' && '🟢 '}
+              <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold capitalize ${PRIORITY_COLORS[issue.priority] || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                {issue.priority === 'high' && <span className="size-1.5 rounded-full bg-red-500" />}
+                {issue.priority === 'medium' && <span className="size-1.5 rounded-full bg-amber-500" />}
+                {issue.priority === 'low' && <span className="size-1.5 rounded-full bg-slate-400" />}
                 {issue.priority}
               </span>
             )}

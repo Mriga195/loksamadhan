@@ -420,13 +420,15 @@ export default function IssueDetail() {
               </span>
               {/* Priority badge with color coding */}
               {issue.priority === 'high' && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-red-100 border border-red-200 px-2.5 py-0.5 text-xs font-bold text-red-700">
-                  🔴 High Priority
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 border border-red-200 px-2.5 py-0.5 text-xs font-bold text-red-700">
+                  <span className="size-2 rounded-full bg-red-600" />
+                  High Priority
                 </span>
               )}
               {issue.priority === 'medium' && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-                  🟡 Medium Priority
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                  <span className="size-2 rounded-full bg-amber-600" />
+                  Medium Priority
                 </span>
               )}
               {/* Supporter count */}
