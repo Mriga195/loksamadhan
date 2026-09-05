@@ -115,16 +115,26 @@ function Deck({ label, children }) {
   const [page, setPage] = useState(0);
   const count = Children.count(children);
 
+  // Measure the child, don't multiply by clientWidth: the gap-4 between cards means
+  // card N does not start at N * width.
   const goTo = (i) => {
-    const el = track.current;
-    if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+    const el = track.current?.children[i];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  };
+
+  const onScroll = (e) => {
+    const el = e.currentTarget;
+    const mid = el.scrollLeft + el.clientWidth / 2;
+    const kids = [...el.children];
+    const i = kids.findIndex(c => c.offsetLeft + c.offsetWidth > mid);
+    setPage(i < 0 ? kids.length - 1 : i);
   };
 
   return (
     <section aria-label={label}>
       <div
         ref={track}
-        onScroll={e => setPage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
+        onScroll={onScroll}
         className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto
           sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible xl:grid-cols-4"
       >
