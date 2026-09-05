@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Icon from './Icon';
+import { field } from '../formStyles';
 
 // Split-panel shell shared by /login and /register: pitch on the left, form on the right.
 // The left panel is decoration — it collapses away below md rather than pushing the form
@@ -44,18 +45,15 @@ export default function AuthShell({ tone = 'brand', icon, heading, blurb, points
   );
 }
 
-export const field = 'mt-1 w-full min-h-11 rounded-lg border border-line bg-surface px-3 text-base' +
-  ' focus:border-brand-600';
-
 // Same input, plus a reveal toggle. The toggle is a real button so it is reachable by keyboard.
-export function PasswordField({ label, hint, hintError, ...props }) {
+export function PasswordField({ label, hint, hintError, className = 'mt-4', ...props }) {
   const [shown, setShown] = useState(false);
   return (
     <>
-      <label className="mt-4 block text-sm font-medium">
+      <label className={`${className} block text-sm font-medium`}>
         {label}
         <span className="relative block">
-          <input type={shown ? 'text' : 'password'} required className={`${field} pr-11`} {...props} />
+          <input type={shown ? 'text' : 'password'} required className={`${field} mt-1 pr-11`} {...props} />
           <button
             type="button"
             onClick={() => setShown(!shown)}

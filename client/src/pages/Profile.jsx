@@ -6,7 +6,9 @@ import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 import IssueCard from '../components/IssueCard';
 import EmptyState from '../components/EmptyState';
-import { Skeleton } from '../components/Spinner';
+import Spinner, { Skeleton } from '../components/Spinner';
+import { PasswordField } from '../components/AuthShell';
+import { field, primaryBtn } from '../formStyles';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -164,7 +166,7 @@ export default function Profile() {
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       {/* ── Profile Header Card ── */}
       <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-        <div className="h-28 bg-gradient-to-r from-brand-600 to-indigo-700 sm:h-36" />
+        <div className="h-28 bg-gradient-to-r from-brand-600 to-brand-700 sm:h-36" />
         <div className="relative px-6 pb-6 pt-0">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between -mt-12 sm:-mt-14 mb-4">
             <div className="flex items-end gap-4">
@@ -180,10 +182,10 @@ export default function Profile() {
             <div className="flex items-center gap-2">
               <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${
                 user.role === 'admin'
-                  ? 'bg-purple-100 text-purple-700'
+                  ? 'bg-acknowledged-50 text-acknowledged-600'
                   : user.role === 'officer'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-emerald-100 text-emerald-700'
+                  ? 'bg-progress-50 text-progress-600'
+                  : 'bg-resolved-50 text-resolved-600'
               }`}>
                 {user.role}
               </span>
@@ -194,9 +196,7 @@ export default function Profile() {
                   onClick={() => { setEditing(true); setError(null); setSuccess(null); }}
                   className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas hover:border-slate-300"
                 >
-                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                  </svg>
+                  <Icon name="pencil" className="size-4" />
                   Edit Profile
                 </button>
               )}
@@ -235,7 +235,7 @@ export default function Profile() {
           </div>
 
           {error && (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="mt-4 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
               {error}
             </div>
           )}
@@ -252,7 +252,7 @@ export default function Profile() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-500 focus:outline-none"
+                  className={field}
                   placeholder="Your full name"
                 />
               </div>
@@ -267,7 +267,7 @@ export default function Profile() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-500 focus:outline-none"
+                  className={field}
                   placeholder="you@example.com"
                 />
               </div>
@@ -288,49 +288,21 @@ export default function Profile() {
 
             {changePassword && (
               <div className="grid gap-4 rounded-xl border border-line bg-surface p-4 sm:grid-cols-3">
-                <div>
-                  <label htmlFor="edit-current-pw" className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1">
-                    Current Password
-                  </label>
-                  <input
-                    id="edit-current-pw"
-                    type="password"
-                    required
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-500 focus:outline-none"
-                    placeholder="••••••••"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="edit-new-pw" className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1">
-                    New Password
-                  </label>
-                  <input
-                    id="edit-new-pw"
-                    type="password"
-                    required
-                    minLength={6}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-500 focus:outline-none"
-                    placeholder="Min. 6 chars"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="edit-confirm-pw" className="block text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    id="edit-confirm-pw"
-                    type="password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-500 focus:outline-none"
-                    placeholder="Repeat new password"
-                  />
-                </div>
+                <PasswordField
+                  className="" label="Current password" required
+                  value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+                <PasswordField
+                  className="" label="New password" required minLength={6}
+                  value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min. 6 chars"
+                />
+                <PasswordField
+                  className="" label="Confirm new password" required
+                  value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat new password"
+                />
               </div>
             )}
 
@@ -339,16 +311,17 @@ export default function Profile() {
                 type="button"
                 onClick={cancelEdit}
                 disabled={saving}
-                className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-canvas transition-colors cursor-pointer"
+                className="min-h-13 cursor-pointer rounded-lg border border-line bg-surface px-5 text-base font-medium text-ink transition-colors hover:bg-canvas"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 transition-colors disabled:opacity-60"
+                className={primaryBtn}
               >
-                {saving ? 'Saving…' : 'Save Changes'}
+                {saving && <Spinner label="Saving" />}
+                {saving ? 'Saving…' : 'Save changes'}
               </button>
             </div>
           </form>
@@ -356,8 +329,8 @@ export default function Profile() {
       )}
 
       {success && !editing && (
-        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800 flex items-center gap-2">
-          <Icon name="check" className="size-5 text-emerald-600" />
+        <div className="mt-4 rounded-card border border-line bg-resolved-50 p-4 text-sm font-medium text-resolved-600 flex items-center gap-2">
+          <Icon name="check" className="size-5 text-resolved-600" />
           {success}
         </div>
       )}
@@ -411,7 +384,7 @@ export default function Profile() {
             {complaintsLoading && <Skeleton count={3} className="h-28" />}
 
             {!complaintsLoading && complaintsError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <div className="rounded-card bg-rejected-50 px-4 py-3 text-sm text-rejected-600">
                 {complaintsError}
               </div>
             )}
