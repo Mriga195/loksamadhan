@@ -12,7 +12,8 @@ import Icon from '../components/Icon';
 // The id, icon, and category fields are never translated — they're sent to the server as-is.
 const EN_DEPTS = [
   {
-    id: 'water-supply', icon: 'droplet', category: 'Water',
+    id: 'water-supply',
+    image: '/dept/water-supply.webp',
     name: 'Water Supply',
     summary: 'Treats and distributes drinking water, and maintains the pipeline network.',
     functions: [
@@ -23,7 +24,8 @@ const EN_DEPTS = [
     fact: 'A single leaking tap can waste over 10,000 litres a year — reporting leaks quickly helps conserve supply.',
   },
   {
-    id: 'solid-waste', icon: 'trash', category: 'Sanitation',
+    id: 'solid-waste',
+    image: '/dept/solid-waste.webp',
     name: 'Solid Waste Management',
     summary: 'Collects, transports, and disposes of household and street waste.',
     functions: [
@@ -34,7 +36,8 @@ const EN_DEPTS = [
     fact: 'Segregating waste at source into wet and dry categories is mandatory under the Solid Waste Management Rules, 2016.',
   },
   {
-    id: 'roads', icon: 'map', category: 'Road',
+    id: 'roads',
+    image: '/dept/roads.webp',
     name: 'Roads & Infrastructure',
     summary: 'Builds and repairs roads, footpaths, and public infrastructure.',
     functions: [
@@ -45,7 +48,8 @@ const EN_DEPTS = [
     fact: 'A pothole left unrepaired through monsoon can double in size as water erodes the base layer beneath it.',
   },
   {
-    id: 'street-lighting', icon: 'bulb', category: 'Streetlight',
+    id: 'street-lighting',
+    image: '/dept/street-lighting.webp',
     name: 'Street Lighting',
     summary: 'Installs and maintains street lights for public safety.',
     functions: [
@@ -56,7 +60,8 @@ const EN_DEPTS = [
     fact: 'Well-lit streets are consistently linked to fewer night-time accidents and a stronger sense of public safety.',
   },
   {
-    id: 'drainage', icon: 'droplet', category: 'Drainage',
+    id: 'drainage',
+    image: '/dept/drainage.webp',
     name: 'Drainage & Sewerage',
     summary: 'Maintains storm-water drains and sewage lines to prevent flooding and overflow.',
     functions: [
@@ -69,6 +74,9 @@ const EN_DEPTS = [
   {
     id: 'parks', icon: 'tree', category: null,
     name: 'Parks & Gardens',
+    icon: 'tree',
+    image: '/dept/parks.webp',
+    category: null,
     summary: 'Maintains public parks, gardens, and green spaces.',
     functions: [
       'Upkeep of parks, gardens, and street trees',
@@ -150,7 +158,9 @@ export default function Departments() {
       <div className="mt-6 grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div role="tabpanel" className="flex flex-col gap-6 rounded-2xl border border-line bg-surface p-6 sm:flex-row">
           <div className="flex min-h-[220px] flex-1 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-50 to-sky-50 sm:max-w-xs">
-            <Icon name={active.icon} className="size-24 text-brand-200" />
+            {active.image
+              ? <img src={active.image} alt="" aria-hidden="true" className="size-full object-cover" />
+              : <Icon name={active.icon} className="size-24 text-brand-200" />}
           </div>
 
           <div className="flex-1">

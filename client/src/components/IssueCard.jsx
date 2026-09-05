@@ -42,6 +42,9 @@ const PRIORITY_COLORS = {
   low:    { cls: 'bg-slate-100 text-slate-600 border-slate-200' },
 };
 
+const metaPill = 'inline-flex max-w-full items-center gap-1.5 rounded-lg border border-line' +
+  ' bg-canvas px-2 py-1 font-medium';
+
 // `index` is the card's position in the feed, shown as the badge that ties the row to its pin
 // on the map beside it. 1-based, passed by Feed — the card does not know about the map.
 export default function IssueCard({ issue, index }) {
@@ -62,16 +65,18 @@ export default function IssueCard({ issue, index }) {
         transition-transform duration-200 ease-out group-hover:scale-x-100" />
 
       {/* One link wrapping the whole card: a single tab stop, and the entire row is a target. */}
-      <Link to={`/issues/${issue._id}`} className="flex items-start gap-3 p-4 pl-5 sm:gap-4 sm:p-5 sm:pl-6">
-        {/* Fixed size and shrink-0 so the row height never changes as images load or fail. */}
-        <div className={`relative grid size-16 shrink-0 place-items-center overflow-hidden
+      <Link to={`/issues/${issue._id}`}
+        className="flex flex-col gap-3 p-4 pl-5 sm:flex-row sm:items-start sm:gap-4 sm:p-5 sm:pl-6">
+        {/* Fixed size and shrink-0 from sm up, so the row height never changes as images
+            load or fail. */}
+        <div className={`relative grid h-32 w-full shrink-0 place-items-center overflow-hidden
           rounded-xl sm:size-24 ${art.tile}`}>
           {photo ? (
             <img src={photo} alt="" loading="lazy" className="size-full object-cover"
               onError={e => { e.currentTarget.hidden = true; }} />
           ) : (
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.5" className="size-7 sm:size-10">
+              strokeWidth="1.5" className="size-10">
               <path strokeLinecap="round" strokeLinejoin="round" d={art.d} />
             </svg>
           )}
@@ -85,25 +90,36 @@ export default function IssueCard({ issue, index }) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:justify-between sm:gap-3">
+          <div className="flex items-start justify-between gap-3">
             <h3 className="line-clamp-2 text-base font-semibold leading-snug sm:truncate sm:text-lg">
               {issue.title}
             </h3>
             <StatusPill status={issue.status} className="shrink-0" />
           </div>
 
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-ink-muted">
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.75" className="size-4 shrink-0">
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M12 21s7-5.2 7-10.5a7 7 0 1 0-14 0C5 15.8 12 21 12 21Z" />
-              <circle cx="12" cy="10.5" r="2.25" />
-            </svg>
-            {place || 'Location not given'}
-            <span aria-hidden="true">·</span>
-            <time dateTime={issue.createdAt} title={new Date(issue.createdAt).toLocaleString()}>
-              {timeAgo(issue.createdAt)}
-            </time>
+          {/* Two pills rather than a run-on line: the address is the long half and wraps on
+              its own, so the age never ends up orphaned on a line of its own. */}
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
+            <span className={metaPill}>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="1.75" className="size-3.5 shrink-0">
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M12 21s7-5.2 7-10.5a7 7 0 1 0-14 0C5 15.8 12 21 12 21Z" />
+                <circle cx="12" cy="10.5" r="2.25" />
+              </svg>
+              <span className="truncate">{place || 'Location not given'}</span>
+            </span>
+
+            <span className={metaPill}>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="1.75" className="size-3.5 shrink-0">
+                <circle cx="12" cy="12" r="9" />
+                <path strokeLinecap="round" d="M12 7.5V12l3 2" />
+              </svg>
+              <time dateTime={issue.createdAt} title={new Date(issue.createdAt).toLocaleString()}>
+                {timeAgo(issue.createdAt)}
+              </time>
+            </span>
           </p>
 
           {issue.description && (
