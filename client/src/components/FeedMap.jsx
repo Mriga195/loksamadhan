@@ -145,12 +145,12 @@ export default function FeedMap({ issues, numbered = true }) {
     .map(p => ({ ...p, at: [p.at[1], p.at[0]] }));
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative isolate z-0 h-full w-full">
       <MapContainer
         center={pins[0]?.at || DEFAULT_CENTER}
         zoom={13}
         scrollWheelZoom={false}
-        className="h-full w-full"
+        className="h-full w-full z-0"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
