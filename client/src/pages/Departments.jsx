@@ -12,6 +12,7 @@ import Icon from '../components/Icon';
 const DEPARTMENTS = [
   {
     id: 'water-supply',
+    image: '/dept/water-supply.webp',
     name: 'Water Supply',
     icon: 'droplet',
     category: 'Water',
@@ -25,6 +26,7 @@ const DEPARTMENTS = [
   },
   {
     id: 'solid-waste',
+    image: '/dept/solid-waste.webp',
     name: 'Solid Waste Management',
     icon: 'trash',
     category: 'Sanitation',
@@ -38,6 +40,7 @@ const DEPARTMENTS = [
   },
   {
     id: 'roads',
+    image: '/dept/roads.webp',
     name: 'Roads & Infrastructure',
     icon: 'map',
     category: 'Road',
@@ -51,6 +54,7 @@ const DEPARTMENTS = [
   },
   {
     id: 'street-lighting',
+    image: '/dept/street-lighting.webp',
     name: 'Street Lighting',
     icon: 'bulb',
     category: 'Streetlight',
@@ -64,6 +68,7 @@ const DEPARTMENTS = [
   },
   {
     id: 'drainage',
+    image: '/dept/drainage.webp',
     name: 'Drainage & Sewerage',
     icon: 'droplet',
     category: 'Drainage',
@@ -79,6 +84,7 @@ const DEPARTMENTS = [
     id: 'parks',
     name: 'Parks & Gardens',
     icon: 'tree',
+    image: '/dept/parks.webp',
     category: null,
     summary: 'Maintains public parks, gardens, and green spaces.',
     functions: [
@@ -135,7 +141,9 @@ export default function Departments() {
       <div className="mt-6 grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div role="tabpanel" className="flex flex-col gap-6 rounded-2xl border border-line bg-surface p-6 sm:flex-row">
           <div className="flex min-h-[220px] flex-1 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-50 to-sky-50 sm:max-w-xs">
-            <Icon name={active.icon} className="size-24 text-brand-200" />
+            {active.image
+              ? <img src={active.image} alt="" aria-hidden="true" className="size-full object-cover" />
+              : <Icon name={active.icon} className="size-24 text-brand-200" />}
           </div>
 
           <div className="flex-1">

@@ -90,15 +90,15 @@ export default function Nav() {
         className="pointer-events-auto mx-auto max-w-7xl rounded-2xl border border-line bg-surface px-3 py-2
           shadow-[0_2px_12px_rgba(15,23,42,0.06)] md:px-4 md:py-2.5"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 md:grid md:grid-cols-[1fr_auto_1fr]">
           <Link to="/" aria-label="LokSamadhan — home"
             className="inline-flex min-h-11 items-center md:mr-2">
             <Logo className="size-9 md:size-10" />
           </Link>
 
-          <div className="hidden items-center gap-2 md:flex">{links}</div>
+          <div className="hidden items-center gap-2 md:flex md:justify-self-center">{links}</div>
 
-          <div className="ml-auto hidden items-center gap-2 md:flex">
+          <div className="ml-auto hidden items-center gap-2 md:flex md:justify-self-end">
             {/* While the token is being validated, render nothing here rather than flashing
                 "Log in" at a user who is already signed in. The space is held by the row. */}
             {loading ? null : user ? (
