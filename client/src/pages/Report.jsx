@@ -5,6 +5,8 @@ import { useAuth } from '../AuthContext';
 import MapPicker from '../components/MapPicker';
 import PhotoInput from '../components/PhotoInput';
 import DuplicatePanel from '../components/DuplicatePanel';
+import Spinner from '../components/Spinner';
+import { field, primaryBtn } from '../formStyles';
 
 const CATEGORIES = ['Road', 'Water', 'Sanitation', 'Streetlight', 'Drainage', 'Other'];
 
@@ -196,63 +198,52 @@ const Report = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Report a Civic Issue</h1>
-        <p className="text-sm text-gray-600 mt-1">
+    <main className="mx-auto max-w-3xl px-6 py-8">
+      <header>
+        <h1 className="text-2xl font-semibold">Report a civic issue</h1>
+        <p className="mt-1 text-sm text-ink-muted">
           Help us identify and fix problems in your community. Provide details and location below.
         </p>
-      </div>
+      </header>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <p role="alert" className="mt-6 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
           {error}
-        </div>
+        </p>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        {/* 1. Category */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category <span className="text-red-500">*</span>
-          </label>
+      {/* Numbered steps: the form is long enough that "where am I" is a real question, and the
+          numbers give each block a heading without four competing bold titles. */}
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <Step n={1} label="Category" required>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            className={`${field} cursor-pointer`}
           >
-            <option value="">Select issue category...</option>
+            <option value="">Select issue category…</option>
             {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
+              <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-        </div>
+        </Step>
 
-        {/* 2. Map Picker + Address */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Location & Address <span className="text-red-500">*</span>
-          </label>
-          <MapPicker onLocationChange={setLocation} />
-          <div className="mt-3">
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Landmark or street address (optional)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            />
+        <Step n={2} label="Location" required
+          hint="Drop a pin on the map, then add a landmark if it helps someone find the spot.">
+          <div className="overflow-hidden rounded-lg border border-line">
+            <MapPicker onLocationChange={setLocation} />
           </div>
-        </div>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Landmark or street address (optional)"
+            className={`${field} mt-3`}
+          />
+        </Step>
 
-        {/* 3. Title */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Issue Title <span className="text-red-500">*</span>
-          </label>
+        <Step n={3} label="What is wrong" required>
           <input
             type="text"
             value={title}
@@ -260,68 +251,76 @@ const Report = () => {
             placeholder="e.g. Large pothole near central bus stand"
             required
             minLength={5}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className={field}
           />
-        </div>
 
-        {/* 4. Duplicate Detection Panel (Appears above description) */}
-        <DuplicatePanel
-          duplicates={duplicates}
-          isSearching={isSearching}
-          dismissedIds={dismissedIds}
-          onSupportIssue={handleSupportIssue}
-          onReportAsNew={handleReportAsNew}
-        />
+          {/* Duplicates surface here, between the title and the description: the title is what
+              the search runs on, and it is cheaper to join an existing report before writing
+              a paragraph than after. */}
+          <DuplicatePanel
+            duplicates={duplicates}
+            isSearching={isSearching}
+            dismissedIds={dismissedIds}
+            onSupportIssue={handleSupportIssue}
+            onReportAsNew={handleReportAsNew}
+          />
 
-        {/* 5. Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description <span className="text-red-500">*</span>
-          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Provide details about the severity, exact spot, or any danger posed..."
+            placeholder="Provide details about the severity, exact spot, or any danger posed…"
             rows={4}
             required
             minLength={10}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className={`${field} mt-3 py-2`}
           />
-        </div>
+        </Step>
 
-        {/* 6. Photos */}
-        <PhotoInput onPhotosChange={setPhotos} />
+        <Step n={4} label="Photos" hint="Optional, but a photo is what gets an issue triaged fastest.">
+          <PhotoInput onPhotosChange={setPhotos} />
+        </Step>
 
-        {/* 7. Submit Button */}
-        <div className="pt-4 border-t border-gray-100 flex items-center justify-end space-x-3">
+        <div className="flex items-center justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={() => navigate('/feed')}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+            className="min-h-13 cursor-pointer rounded-lg border border-line bg-surface px-5
+              text-base font-medium text-ink transition-colors hover:bg-canvas"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm focus:outline-none disabled:opacity-50 flex items-center space-x-2"
+            className={primaryBtn}
           >
-            {submitting ? (
-              <>
-                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Submitting...</span>
-              </>
-            ) : (
-              <span>Submit Report</span>
-            )}
+            {submitting && <Spinner label="Submitting" />}
+            {submitting ? 'Submitting…' : 'Submit report'}
           </button>
         </div>
       </form>
-    </div>
+    </main>
   );
 };
+
+// One card per step. `required` marks the asterisk; `hint` is the one line of guidance that
+// keeps the field placeholders short.
+function Step({ n, label, required, hint, children }) {
+  return (
+    <section className="rounded-card border border-line bg-surface p-5">
+      <h2 className="flex items-center gap-2 text-sm font-medium">
+        <span aria-hidden="true"
+          className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-50
+            text-xs font-semibold text-brand-600">
+          {n}
+        </span>
+        {label}
+        {required && <span className="text-rejected-600" aria-hidden="true">*</span>}
+      </h2>
+      {hint && <p className="mt-1 ml-8 text-xs text-ink-muted">{hint}</p>}
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
 
 export default Report;

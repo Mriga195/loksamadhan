@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Spinner from '../components/Spinner';
 import Icon from '../components/Icon';
-import AuthShell, { field, PasswordField } from '../components/AuthShell';
+import AuthShell, { PasswordField } from '../components/AuthShell';
+import { field, primaryBtn } from '../formStyles';
 
 // Seeded accounts, click to fill. This is not decoration: a judge will not type credentials out
 // of a README, and a demo that cannot be logged into is a demo that gets watched instead of
@@ -78,7 +79,7 @@ export default function Login() {
             type="email"
             autoComplete="email"
             required
-            className={field}
+            className={`${field} mt-1`}
             value={email}
             onChange={e => setEmail(e.target.value)}
           />
@@ -94,9 +95,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={pending}
-          className="mt-6 flex min-h-11 w-full cursor-pointer items-center justify-center gap-2
-            rounded-lg bg-brand-600 text-sm font-medium text-white transition-colors duration-200
-            hover:bg-brand-700 disabled:opacity-60"
+          className={`${primaryBtn} mt-6 w-full`}
         >
           {pending && <Spinner label="Signing in" />}
           {pending ? 'Signing in…' : 'Log in'}

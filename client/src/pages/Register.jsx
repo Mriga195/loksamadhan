@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Spinner from '../components/Spinner';
-import AuthShell, { field, PasswordField } from '../components/AuthShell';
+import AuthShell, { PasswordField } from '../components/AuthShell';
+import { field, primaryBtn } from '../formStyles';
 
 // Citizen sign-up only. There is deliberately no role selector: routes/auth.js hardcodes
 // role: 'citizen' and ignores anything else in the body, so a "sign up as officer" field would
@@ -67,7 +68,7 @@ export default function Register() {
           Full name
           <input
             type="text" autoComplete="name" required
-            className={field} value={form.name} onChange={set('name')}
+            className={`${field} mt-1`} value={form.name} onChange={set('name')}
           />
         </label>
 
@@ -75,7 +76,7 @@ export default function Register() {
           Email
           <input
             type="email" autoComplete="email" required
-            className={field} value={form.email} onChange={set('email')}
+            className={`${field} mt-1`} value={form.email} onChange={set('email')}
           />
         </label>
 
@@ -95,9 +96,7 @@ export default function Register() {
         <button
           type="submit"
           disabled={pending || tooShort}
-          className="mt-6 flex min-h-11 w-full cursor-pointer items-center justify-center gap-2
-            rounded-lg bg-brand-600 text-sm font-medium text-white transition-colors duration-200
-            hover:bg-brand-700 disabled:opacity-60"
+          className={`${primaryBtn} mt-6 w-full`}
         >
           {pending && <Spinner label="Creating account" />}
           {pending ? 'Creating account…' : 'Sign up'}
