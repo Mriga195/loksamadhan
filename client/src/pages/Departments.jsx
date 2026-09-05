@@ -27,6 +27,7 @@ const EN_DEPTS = [
     icon: 'droplet',
     image: '/dept/water-supply.webp',
     name: 'Water Supply',
+    category: 'Water',
     summary: 'Treats and distributes drinking water, and maintains the pipeline network.',
     functions: [
       'Sourcing, treating, and distributing potable water to households',
@@ -40,6 +41,7 @@ const EN_DEPTS = [
     icon: 'trash',
     image: '/dept/solid-waste.webp',
     name: 'Solid Waste Management',
+    category: 'Sanitation',
     summary: 'Collects, transports, and disposes of household and street waste.',
     functions: [
       'Door-to-door garbage collection and street sweeping',
@@ -53,6 +55,7 @@ const EN_DEPTS = [
     icon: 'wrench',
     image: '/dept/roads.webp',
     name: 'Roads & Infrastructure',
+    category: 'Road',
     summary: 'Builds and repairs roads, footpaths, and public infrastructure.',
     functions: [
       'Construction and repair of roads, footpaths, and flyovers',
@@ -66,6 +69,7 @@ const EN_DEPTS = [
     icon: 'bulb',
     image: '/dept/street-lighting.webp',
     name: 'Street Lighting',
+    category: 'Streetlight',
     summary: 'Installs and maintains street lights for public safety.',
     functions: [
       'Installing and repairing street lights',
@@ -79,6 +83,7 @@ const EN_DEPTS = [
     icon: 'droplet',
     image: '/dept/drainage.webp',
     name: 'Drainage & Sewerage',
+    category: 'Drainage',
     summary: 'Maintains storm-water drains and sewage lines to prevent flooding and overflow.',
     functions: [
       'Storm-water drain clearing, especially before monsoon',
@@ -91,7 +96,7 @@ const EN_DEPTS = [
     id: 'parks',
     icon: 'tree',
     image: '/dept/parks.webp',
-    category: null,
+    category: 'Other',
     name: 'Parks & Gardens',
     summary: 'Maintains public parks, gardens, and green spaces.',
     functions: [
@@ -106,7 +111,7 @@ const EN_DEPTS = [
 const EN_UI = {
   pageTitle: 'Departments',
   pageDesc: 'The civic departments that issues on LokSamadhan get routed to, and what each one is responsible for.',
-  reportIssue: 'Report an issue',
+  reportIssue: 'Report Issue',
   viewIssues: 'View issues',
   didYouKnow: 'Did you know?',
   learnMore: 'Learn more',
@@ -246,16 +251,17 @@ export default function Departments() {
             {/* Actions */}
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                to={active.category !== undefined && active.category !== null
-                  ? `/report?category=${activeEN.category}`
+                to={activeEN.category
+                  ? `/report?category=${encodeURIComponent(activeEN.category)}`
                   : '/report'}
+                state={activeEN.category ? { category: activeEN.category } : undefined}
                 className="inline-flex min-h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors duration-150"
                 style={{ backgroundColor: theme.tabBg, color: theme.tabText }}
                 onMouseEnter={e => { e.currentTarget.style.backgroundColor = theme.divider; }}
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = theme.tabBg; }}
               >
-                <Icon name={active.icon} className="size-4" />
-                {ui.learnMore}
+                <Icon name="plus" className="size-4" />
+                {ui.reportIssue}
                 <Icon name="right" className="size-4" />
               </Link>
               {active.category && (
