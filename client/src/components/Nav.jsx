@@ -7,26 +7,7 @@ import Icon from './Icon';
 import LangToggle from './LangToggle';
 import Logo from './Logo';
 
-// Site header. Routes match router.jsx exactly: '/' (landing), '/feed', '/departments',
-// '/report', '/issues/:id', '/login', '/register'; '/dashboard' is a top-level route with its
-// own shell.
-//
-// A floating rounded pill rather than a full-width bar — the requested look. Menu items are
-// icon+label to match it, but the item SET is unchanged: only routes that exist. Not present,
-// on purpose, because nothing behind them exists yet: "Track My Issue" (no per-reporter lookup
-// endpoint — the API never returns who filed a report, by hard rule 3), "About" (no page),
-// a notification bell (no notification system), and a city switcher (issues aren't scoped by
-// city anywhere in the API). Faking any of those is worse than leaving them out.
-//
-// The nav shows only what the visitor can actually do:
-//   signed out    — Feed, Departments, Report an issue, Log in, Sign up. Reporting is offered:
-//                   the form is fillable signed-out and the login wall sits at submit.
-//   citizen       — Feed, Departments, Report an issue, and who they are signed in as.
-//   officer/admin — Feed, Departments, Dashboard, and who they are signed in as.
-//
-// Below md the same set collapses behind a hamburger. The panel is a plain block inside the
-// nav card, not an overlay: it pushes the page down, so there is no scroll lock, no backdrop
-// and no focus trap to get wrong. Escape and any navigation close it.
+// Site header. Routes match router.jsx exactly.
 
 const item = ({ isActive }) =>
   'flex min-h-11 items-center gap-2 rounded-full px-4 text-sm transition-colors duration-200 ' +
@@ -68,7 +49,6 @@ export default function Nav() {
     });
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Any navigation closes the panel — otherwise tapping "Feed" leaves the menu covering it.
   useEffect(() => { setOpen(false); }, [pathname]);
 
   useEffect(() => {
@@ -84,7 +64,6 @@ export default function Nav() {
     navigate('/login');
   };
 
-  // The link set, rendered twice: inline on desktop, stacked in the panel.
   const links = (
     <>
       <NavLink to="/feed" className={item}>
@@ -113,11 +92,6 @@ export default function Nav() {
         className="mx-auto max-w-7xl rounded-2xl border border-line bg-surface px-3 py-2
           shadow-[0_2px_12px_rgba(15,23,42,0.06)] md:px-4 md:py-2.5"
       >
-        <div className="flex items-center gap-2">
-          <Link to="/" className="inline-flex min-h-11 items-center gap-2 text-base font-bold
-            md:mr-2 md:text-lg">
-            <Logo className="size-8 md:size-9" />
-            <span className="text-brand-600">Lok</span>Samadhan
         <div className="flex items-center gap-2 md:grid md:grid-cols-[1fr_auto_1fr]">
           <Link to="/" aria-label="LokSamadhan — home"
             className="inline-flex min-h-11 items-center md:mr-2">
@@ -127,8 +101,6 @@ export default function Nav() {
           <div className="hidden items-center gap-2 md:flex md:justify-self-center">{links}</div>
 
           <div className="ml-auto hidden items-center gap-2 md:flex md:justify-self-end">
-            {/* While the token is being validated, render nothing here rather than flashing
-                "Log in" at a user who is already signed in. The space is held by the row. */}
             {loading ? null : user ? (
               <>
                 {!isStaff && (
@@ -221,7 +193,6 @@ export default function Nav() {
                 </>
               )}
 
-              {/* Language toggle in mobile menu */}
               <div className="pt-1">
                 <LangToggle />
               </div>
