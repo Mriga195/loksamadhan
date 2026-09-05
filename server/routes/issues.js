@@ -17,6 +17,67 @@ const ah = fn => (req, res, next) => fn(req, res, next).catch(next);
 const bad = (res, error) => res.status(400).json({ error });
 const isId = v => mongoose.isValidObjectId(v);
 
+// ── Category → Department mapping ──
+const CATEGORY_DEPT_MAP = {
+  'Road':        'Roads & Infrastructure',
+  'Water':       'Water Supply & Sewage',
+  'Sanitation':  'Solid Waste Management',
+  'Streetlight': 'Electricity & Lighting',
+  'Drainage':    'Public Health & Drainage',
+  'Other':       'General Administration',
+};
+
+// ── Category urgency baseline (higher = more urgent) ──
+const CATEGORY_URGENCY = {
+  'Water': 3,       // public health
+  'Drainage': 3,    // flooding/health
+  'Sanitation': 2,  // disease risk
+  'Road': 2,        // accident risk
+  'Streetlight': 1, // safety
+  'Other': 1,
+};
+
+/**
+ * Auto-determine priority based on category urgency + supporter count.
+ * Thresholds: high >=10 supporters OR urgency 3; medium >=3 OR urgency 2; else low.
+ */
+function autoPriority(category, supporterCount = 0) {
+  const urgency = CATEGORY_URGENCY[category] || 1;
+  if (supporterCount >= 10 || urgency >= 3) return 'high';
+  if (supporterCount >= 3  || urgency >= 2) return 'medium';
+  return 'low';
+}
+
+/**
+ * Pick the officer in a department with the fewest active issues assigned to them
+ * (load-balancing round-robin by current workload).
+ */
+async function leastLoadedOfficer(department) {
+  const officers = await User.find({ role: 'officer', department }).lean();
+  if (!officers.length) return null;
+  if (officers.length === 1) return officers[0];
+
+  // Count active (non-closed, non-resolved) issues per officer
+  const counts = await Issue.aggregate([
+    {
+      $match: {
+        assignedOfficer: { $in: officers.map(o => o._id) },
+        status: { $nin: ['Closed', 'Resolved'] },
+      },
+    },
+    { $group: { _id: '$assignedOfficer', count: { $sum: 1 } } },
+  ]);
+
+  const countMap = Object.fromEntries(counts.map(c => [String(c._id), c.count]));
+  // Sort by fewest active issues, break ties by officer creation date (FIFO)
+  const sorted = [...officers].sort((a, b) => {
+    const ca = countMap[String(a._id)] || 0;
+    const cb = countMap[String(b._id)] || 0;
+    return ca - cb;
+  });
+  return sorted[0];
+}
+
 // Children of a duplicate cluster, counted for a page of issues in one query instead of N.
 async function duplicateCounts(issues) {
   const ids = issues.map(i => i._id);
@@ -182,28 +243,71 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
   const lat = Number(req.body.lat);
   if (!validLngLat(lng, lat)) return bad(res, 'Valid lng and lat are required.');
 
+  // ── Smart Duplicate Detection: auto-group if same category within 1 km ──
+  // Only link to a root issue that is still open (not Closed/Resolved)
   let duplicateOf = null;
   if (req.body.duplicateOfId) {
     const parent = await resolveParent(req.body.duplicateOfId);
     if (parent.error) return bad(res, parent.error);
     duplicateOf = parent.id;
+  } else {
+    // Search for an existing open issue of same category within 1km radius
+    const nearby = await Issue.findOne({
+      category,
+      duplicateOf: null,   // root issues only
+      status: { $nin: ['Closed', 'Resolved'] },
+      location: {
+        $geoWithin: { $centerSphere: [[lng, lat], 1000 / 6378100] },
+      },
+    }).sort({ createdAt: -1 }).lean();
+
+    if (nearby) duplicateOf = nearby._id;
   }
 
+  // ── Auto-determine department from category ──
+  const department = CATEGORY_DEPT_MAP[category] || null;
+
+  // ── Auto-assign to least-loaded officer in that department ──
+  let assignedOfficer = null;
+  let autoStatus = 'Submitted';
+  if (department) {
+    const officer = await leastLoadedOfficer(department);
+    if (officer) {
+      assignedOfficer = officer._id;
+      autoStatus = 'Acknowledged';
+    }
+  }
+
+  // ── Auto-priority based on category urgency (no supporters yet) ──
+  const priority = autoPriority(category, 0);
+
   const now = new Date();
+  const historyEntries = [{ status: 'Submitted', note: 'Issue submitted by citizen', evidence: null, by: req.user.id, at: now }];
+  if (autoStatus === 'Acknowledged') {
+    historyEntries.push({
+      status: 'Acknowledged',
+      note: `Auto-assigned to ${department} based on category. Officer assigned via load-balancing.`,
+      evidence: null,
+      by: req.user.id,
+      at: new Date(now.getTime() + 1),
+    });
+  }
+
   const issue = await Issue.create({
     title, description, category, address, area,
-    // [lng, lat] — GeoJSON order. Backwards puts every report in the ocean off Somalia and it
-    // is invisible until someone zooms out. Eyeball the first insert on the map.
     location: { type: 'Point', coordinates: [lng, lat] },
     photos: (req.files || []).map(photoPath),
     reporter: req.user.id,
-    status: 'Submitted',
+    status: autoStatus,
+    department,
+    assignedOfficer,
+    priority,
     duplicateOf,
     supporters: [],
-    // Seeded so the public timeline is never empty.
-    statusHistory: [{ status: 'Submitted', note: null, evidence: null, by: req.user.id, at: now }],
+    statusHistory: historyEntries,
   });
 
+  await issue.populate('assignedOfficer', 'name role department');
   res.status(201).json(publicIssue(issue, req.user.id));
 }));
 
@@ -230,41 +334,59 @@ router.post('/:id/support', auth(true), ah(async (req, res) => {
     targetId,
     { $addToSet: { supporters: req.user.id } },
     { new: true },
-  ).select('_id supporters');
+  ).select('_id supporters category priority');
+
+  // ── Re-evaluate priority based on updated supporter count ──
+  const newPriority = autoPriority(updated.category, updated.supporters.length);
+  if (newPriority !== updated.priority) {
+    await Issue.findByIdAndUpdate(targetId, { priority: newPriority });
+  }
 
   res.json({
     _id: updated._id,
     supporterCount: updated.supporters.length,
     hasSupported: true,
+    priority: newPriority,
   });
 }));
 
 /* ----------------------------------------------- B2. PATCH /api/issues/:id/assign */
 router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
   if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
-  const { department, priority, officerId } = req.body;
+  const { department, officerId } = req.body;
+  // Priority is now auto-determined; accept override from client if provided, else auto-calculate
+  const clientPriority = req.body.priority;
+
   if (!DEPARTMENTS.includes(department)) return bad(res, 'Unknown department.');
-  if (!PRIORITIES.includes(priority)) return bad(res, 'Unknown priority.');
 
   const issue = await Issue.findById(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Issue not found.' });
 
   issue.department = department;
-  issue.priority = priority;
 
-  // Auto-allotment logic: if only one officer exists in the department, auto-allot
-  const deptOfficers = await User.find({ role: 'officer', department });
+  // Auto-priority if not manually overridden
+  issue.priority = (clientPriority && PRIORITIES.includes(clientPriority))
+    ? clientPriority
+    : autoPriority(issue.category, issue.supporters?.length || 0);
+
+  // Load-balanced auto-allotment: pick least-loaded officer if no specific officer given
   let assignedOfficerName = null;
 
-  if (deptOfficers.length === 1) {
-    issue.assignedOfficer = deptOfficers[0]._id;
-    assignedOfficerName = deptOfficers[0].name;
-  } else if (officerId && deptOfficers.some(o => String(o._id) === String(officerId))) {
+  if (officerId && isId(officerId)) {
+    // Admin manually chose a specific officer
+    const deptOfficers = await User.find({ role: 'officer', department }).lean();
     const chosen = deptOfficers.find(o => String(o._id) === String(officerId));
-    issue.assignedOfficer = chosen._id;
-    assignedOfficerName = chosen.name;
-  } else if (officerId === null || officerId === '') {
-    issue.assignedOfficer = null;
+    if (chosen) {
+      issue.assignedOfficer = chosen._id;
+      assignedOfficerName = chosen.name;
+    }
+  } else {
+    // Auto-select least-loaded officer in department
+    const least = await leastLoadedOfficer(department);
+    if (least) {
+      issue.assignedOfficer = least._id;
+      assignedOfficerName = `${least.name} (auto load-balanced)`;
+    }
   }
 
   // Advance status from Submitted to Acknowledged upon triage/assignment
@@ -273,8 +395,8 @@ router.patch('/:id/assign', auth(true), officer, ah(async (req, res) => {
   }
 
   const noteText = assignedOfficerName
-    ? `Assigned to ${department} (priority: ${priority}) — Auto-allotted to Officer ${assignedOfficerName}`
-    : `Assigned to ${department} (priority: ${priority})`;
+    ? `Triaged to ${department} (priority: ${issue.priority}) — assigned to ${assignedOfficerName}`
+    : `Triaged to ${department} (priority: ${issue.priority})`;
 
   issue.statusHistory.push({
     status: issue.status,

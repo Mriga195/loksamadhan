@@ -83,7 +83,13 @@ export default function IssueDetail() {
     setSupporting(true);
     try {
       const res = await apiFetch(`/api/issues/${id}/support`, { method: 'POST' });
-      setIssue(prev => ({ ...prev, supporterCount: res.supporterCount, hasSupported: res.hasSupported }));
+      setIssue(prev => ({
+        ...prev,
+        supporterCount: res.supporterCount,
+        hasSupported: res.hasSupported,
+        // Priority may be bumped by server when supporter thresholds are hit
+        ...(res.priority ? { priority: res.priority } : {}),
+      }));
     } catch (e) {
       setIssue(before);
       setError(e.message);
@@ -412,6 +418,27 @@ export default function IssueDetail() {
               <span className="rounded-full bg-canvas px-2.5 py-1 text-sm text-ink-muted">
                 {issue.category}
               </span>
+              {/* Priority badge with color coding */}
+              {issue.priority === 'high' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-100 border border-red-200 px-2.5 py-0.5 text-xs font-bold text-red-700">
+                  🔴 High Priority
+                </span>
+              )}
+              {issue.priority === 'medium' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                  🟡 Medium Priority
+                </span>
+              )}
+              {/* Supporter count */}
+              {(issue.supporterCount > 0) && (
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                  issue.supporterCount >= 10 ? 'bg-red-100 text-red-700 border-red-200' :
+                  issue.supporterCount >= 5 ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                  'bg-brand-50 text-brand-700 border-brand-200'
+                }`}>
+                  👍 {issue.supporterCount} supporter{issue.supporterCount === 1 ? '' : 's'}
+                </span>
+              )}
               {issue.assignedOfficer && (
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
                   Officer: {issue.assignedOfficer.name}
@@ -435,10 +462,16 @@ export default function IssueDetail() {
               {issue.assignedOfficer?.name || <span className="text-ink-muted">Department Pool</span>}
             </Field>
             <Field icon="sliders" label="Priority">
-              {issue.priority || <span className="text-ink-muted">Not set</span>}
+              {issue.priority
+                ? <span className={`capitalize font-semibold ${
+                    issue.priority === 'high' ? 'text-red-600' :
+                    issue.priority === 'medium' ? 'text-amber-600' : 'text-slate-500'
+                  }`}>{issue.priority}</span>
+                : <span className="text-ink-muted">Auto-set</span>}
             </Field>
             <Field icon="map" label="Location">{issue.area || issue.address || 'Not given'}</Field>
           </dl>
+
 
           {/* ── BEFORE & AFTER RESOLUTION PHOTOS SECTION ── */}
           {resolutionPhotos.length > 0 && (

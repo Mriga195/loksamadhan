@@ -18,10 +18,7 @@ export function timeAgo(iso) {
   return 'just now';
 }
 
-// No photos exist on any seeded issue, so this placeholder is what a judge actually sees on
-// every card. It is a designed element, not a fallback — a broken-image icon would read as a
-// bug. The same glyph tags the department chip. Literal class strings: Tailwind cannot see
-// `bg-${category}-100`.
+// Literal class strings: Tailwind cannot see `bg-${category}-100`.
 const CATEGORY = {
   Road:        { tile: 'bg-amber-100 text-amber-700',     tag: 'bg-amber-50 text-amber-700',   dot: 'bg-amber-500',   d: 'M4 20 9 4h6l5 16M9.5 12h5' },
   Water:       { tile: 'bg-sky-100 text-sky-700',         tag: 'bg-sky-50 text-sky-700',       dot: 'bg-sky-500',     d: 'M12 3s6 6.6 6 10.5a6 6 0 0 1-12 0C6 9.6 12 3 12 3Z' },
@@ -31,12 +28,28 @@ const CATEGORY = {
   Other:       { tile: 'bg-violet-100 text-violet-700',   tag: 'bg-violet-50 text-violet-700', dot: 'bg-violet-500',  d: 'M12 8h.01M11 12h1v5h1' },
 };
 
+// Supporter heat color — higher supporter count = more vibrant
+function supporterBadge(count) {
+  if (count >= 10) return 'bg-red-100 text-red-700 border-red-200 font-bold';
+  if (count >= 5)  return 'bg-orange-100 text-orange-700 border-orange-200 font-semibold';
+  if (count >= 2)  return 'bg-brand-50 text-brand-700 border-brand-200 font-semibold';
+  return 'bg-slate-100 text-slate-600 border-slate-200 font-medium';
+}
+
+const PRIORITY_COLORS = {
+  high:   { cls: 'bg-red-50 text-red-700 border-red-200',     icon: '🔴' },
+  medium: { cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: '🟡' },
+  low:    { cls: 'bg-slate-100 text-slate-600 border-slate-200', icon: '🟢' },
+};
+
 // `index` is the card's position in the feed, shown as the badge that ties the row to its pin
 // on the map beside it. 1-based, passed by Feed — the card does not know about the map.
 export default function IssueCard({ issue, index }) {
   const art = CATEGORY[issue.category] || CATEGORY.Other;
   const photo = issue.photos?.[0];
   const place = issue.address || issue.area;
+  const supporters = issue.supporterCount || 0;
+  const priorityInfo = PRIORITY_COLORS[issue.priority];
 
   return (
     <article className="group relative overflow-hidden rounded-xl border border-slate-200/80
@@ -96,7 +109,7 @@ export default function IssueCard({ issue, index }) {
           )}
 
           {/* Bottom row: category tag left, me-too right */}
-          <div className="mt-2.5 flex items-center justify-between">
+          <div className="mt-2.5 flex items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs
                 font-medium ${art.tag}`}>
@@ -104,30 +117,41 @@ export default function IssueCard({ issue, index }) {
                 {issue.department || issue.category}
               </span>
 
-              {/* The visible proof of the duplicate-clustering feature. Given the accent colour
-                  rather than another grey line, because it is the thing to notice on this card. */}
+              {/* Cluster / geo-group indicator */}
               {issue.duplicateCount > 0 && (
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-2 py-1
-                  text-xs font-medium text-brand-700">
+                  text-xs font-medium text-brand-700 border border-brand-100">
                   <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     strokeWidth="1.75" className="size-4">
                     <rect x="9" y="9" width="11" height="11" rx="2" />
                     <path strokeLinecap="round" d="M15 5H6a2 2 0 0 0-2 2v9" />
                   </svg>
-                  {issue.duplicateCount} possible duplicate{issue.duplicateCount === 1 ? '' : 's'}
+                  {issue.duplicateCount} nearby report{issue.duplicateCount === 1 ? '' : 's'}
+                </span>
+              )}
+
+              {/* Priority badge — no emoji, just a colored dot + text */}
+              {issue.priority && issue.priority !== 'low' && (
+                <span className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold border capitalize ${
+                  issue.priority === 'high'
+                    ? 'bg-red-50 text-red-700 border-red-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  <span className={`size-1.5 rounded-full shrink-0 ${issue.priority === 'high' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                  {issue.priority}
                 </span>
               )}
             </div>
 
-            {/* Me too counter — display only, inline with category tag */}
-            <span className="flex items-center gap-1.5 text-ink-muted transition-colors
-              group-hover:text-brand-600">
+            {/* Supporter count — prominent heat badge */}
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all group-hover:scale-105 ${supporterBadge(supporters)}`}>
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                strokeWidth="1.75" className="size-[18px]">
+                strokeWidth="1.75" className="size-[16px]">
                 <path strokeLinecap="round" strokeLinejoin="round"
                   d="M7 11v9H4v-9h3Zm0 0 4.5-8a2 2 0 0 1 3.5 1.9L14 9h4.6a2 2 0 0 1 2 2.5l-1.7 6.5a2 2 0 0 1-2 1.5H7" />
               </svg>
-              <span className="text-sm font-semibold text-ink">{issue.supporterCount || 0}</span>
+              <span className="tabular-nums">{supporters}</span>
+              {supporters >= 5 && <span className="hidden sm:inline text-[10px] opacity-70">supporters</span>}
             </span>
           </div>
         </div>
