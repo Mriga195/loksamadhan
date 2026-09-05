@@ -7,18 +7,30 @@ export default function StatusModal({ issue, onClose, onSaved }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  // Mode: 'status' | 'report_resolution' | 'verify' | 'reopen'
-  const defaultMode =
-    issue.status === 'Pending Verification' && isAdmin
-      ? 'verify'
-      : issue.status === 'Unsatisfied' && isAdmin
-      ? 'reopen'
-      : 'report_resolution';
+  // Mode is determined strictly by role and current issue status:
+  // - Admin + Pending Verification  -> 'verify'
+  // - Admin + Unsatisfied           -> 'reopen'
+  // - Admin + other (e.g. Submitted)-> 'status'
+  // - Officer + In Progress         -> 'report_resolution'
+  // - Officer + Submitted/Ack       -> 'status' (start working)
+  // - Officer + pending/closed/etc  -> 'info' (read-only state)
+  const mode = (() => {
+    if (isAdmin) {
+      if (issue.status === 'Pending Verification') return 'verify';
+      if (issue.status === 'Unsatisfied') return 'reopen';
+      return 'status';
+    }
+    if (issue.status === 'In Progress') return 'report_resolution';
+    if (issue.status === 'Submitted' || issue.status === 'Acknowledged') return 'status';
+    return 'info';
+  })();
 
-  const [mode, setMode] = useState(defaultMode);
-  const [status, setStatus] = useState(
-    issue.status === 'Pending Verification' ? 'In Progress' : issue.status
-  );
+  const defaultStatus =
+    issue.status === 'Submitted' || issue.status === 'Acknowledged'
+      ? 'In Progress'
+      : issue.status;
+
+  const [status, setStatus] = useState(defaultStatus);
   const [note, setNote] = useState('');
   const [evidenceFiles, setEvidenceFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
@@ -34,6 +46,11 @@ export default function StatusModal({ issue, onClose, onSaved }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (mode === 'info') {
+      onClose();
+      return;
+    }
+
     setError(null);
     setSaving(true);
 
@@ -90,6 +107,19 @@ export default function StatusModal({ issue, onClose, onSaved }) {
     }
   }
 
+  const modalTitle =
+    mode === 'report_resolution'
+      ? 'Report Resolution & Submit Proof'
+      : mode === 'verify'
+      ? 'Admin: Verify Resolution Proof'
+      : mode === 'reopen'
+      ? 'Admin: Reopen Issue'
+      : mode === 'info'
+      ? 'Issue Status'
+      : isAdmin
+      ? 'Update Issue Status'
+      : 'Start Working on Issue';
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-xs"
@@ -101,54 +131,13 @@ export default function StatusModal({ issue, onClose, onSaved }) {
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-ink">
-              {mode === 'report_resolution'
-                ? 'Report Resolution & Submit Proof'
-                : mode === 'verify'
-                ? 'Admin: Verify Resolution Images'
-                : mode === 'reopen'
-                ? 'Admin: Reopen Issue'
-                : 'Update Issue Status'}
-            </h2>
+            <h2 className="text-xl font-bold text-ink">{modalTitle}</h2>
             <p className="mt-1 truncate text-xs text-ink-muted">{issue.title}</p>
           </div>
           <StatusPill status={issue.status} />
         </div>
 
-        {/* Mode Switcher if Officer/Admin has multiple options */}
-        <div className="mt-4 flex rounded-lg bg-canvas p-1 text-xs font-medium border border-line">
-          <button
-            type="button"
-            onClick={() => setMode('report_resolution')}
-            className={`flex-1 rounded-md py-1.5 transition-colors ${
-              mode === 'report_resolution' ? 'bg-surface text-brand-600 font-semibold shadow-xs' : 'text-ink-muted'
-            }`}
-          >
-            📸 Report Resolution
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('status')}
-            className={`flex-1 rounded-md py-1.5 transition-colors ${
-              mode === 'status' ? 'bg-surface text-brand-600 font-semibold shadow-xs' : 'text-ink-muted'
-            }`}
-          >
-            ⚙️ Regular Status
-          </button>
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setMode(issue.status === 'Unsatisfied' ? 'reopen' : 'verify')}
-              className={`flex-1 rounded-md py-1.5 transition-colors ${
-                mode === 'verify' || mode === 'reopen' ? 'bg-surface text-brand-600 font-semibold shadow-xs' : 'text-ink-muted'
-              }`}
-            >
-              🛡️ Admin Action
-            </button>
-          )}
-        </div>
-
-        {/* Status History Preview */}
+        {/* Recent Status Timeline (if any) */}
         {issue.statusHistory?.length > 0 && (
           <div className="mt-4 rounded-xl border border-line bg-canvas/40 p-3">
             <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-2">Recent Timeline</p>
@@ -164,11 +153,11 @@ export default function StatusModal({ issue, onClose, onSaved }) {
           </div>
         )}
 
-        {/* MODE: REPORT RESOLUTION */}
+        {/* 1. OFFICER: REPORT RESOLUTION */}
         {mode === 'report_resolution' && (
           <div className="mt-4 space-y-4">
             <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-xs text-blue-900 leading-relaxed">
-              <span className="font-semibold">Workflow Rule:</span> When you report resolution, attach photo evidence of the completed work. The issue moves to <strong className="font-bold">Pending Verification</strong> for municipal admin review before citizen sign-off.
+              <span className="font-semibold">Workflow Rule:</span> Attach photo evidence of the completed work. The issue moves to <strong className="font-bold">Pending Verification</strong> for municipal admin review before citizen sign-off.
             </div>
 
             <div>
@@ -209,7 +198,7 @@ export default function StatusModal({ issue, onClose, onSaved }) {
           </div>
         )}
 
-        {/* MODE: ADMIN VERIFICATION */}
+        {/* 2. ADMIN: VERIFY RESOLUTION */}
         {mode === 'verify' && (
           <div className="mt-4 space-y-4">
             <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 text-xs text-purple-900 leading-relaxed">
@@ -277,7 +266,7 @@ export default function StatusModal({ issue, onClose, onSaved }) {
           </div>
         )}
 
-        {/* MODE: ADMIN REOPEN */}
+        {/* 3. ADMIN: REOPEN */}
         {mode === 'reopen' && (
           <div className="mt-4 space-y-4">
             <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900 leading-relaxed">
@@ -304,18 +293,37 @@ export default function StatusModal({ issue, onClose, onSaved }) {
           </div>
         )}
 
-        {/* MODE: REGULAR STATUS */}
+        {/* 4. STATUS UPDATE: (Admin general update OR Officer starting work) */}
         {mode === 'status' && (
           <div className="mt-4 space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Change Status</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Status</label>
               <select
                 className="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-xs text-ink cursor-pointer focus:border-brand-500 focus:outline-none"
                 value={status}
                 onChange={e => setStatus(e.target.value)}
               >
-                <option value="Acknowledged">Acknowledged</option>
-                <option value="In Progress">In Progress (Working on issue)</option>
+                {issue.status === 'Submitted' && (
+                  <>
+                    <option value="In Progress">In Progress (Start Working)</option>
+                    <option value="Acknowledged">Acknowledged</option>
+                  </>
+                )}
+                {issue.status === 'Acknowledged' && (
+                  <>
+                    <option value="In Progress">In Progress (Start Working)</option>
+                    <option value="Acknowledged">Acknowledged</option>
+                  </>
+                )}
+                {issue.status === 'In Progress' && (
+                  <>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Acknowledged">Acknowledged</option>
+                  </>
+                )}
+                {issue.status !== 'Submitted' && issue.status !== 'Acknowledged' && issue.status !== 'In Progress' && (
+                  <option value={issue.status}>{issue.status}</option>
+                )}
               </select>
             </div>
 
@@ -326,9 +334,30 @@ export default function StatusModal({ issue, onClose, onSaved }) {
                 rows={2}
                 value={note}
                 onChange={e => setNote(e.target.value)}
-                placeholder="Optional status movement note..."
+                placeholder="Add an update note..."
               />
             </div>
+          </div>
+        )}
+
+        {/* 5. READ-ONLY / INFORMATIONAL STATUS */}
+        {mode === 'info' && (
+          <div className="mt-4 rounded-xl border border-line bg-canvas p-4 text-xs text-ink space-y-2">
+            {issue.status === 'Pending Verification' && (
+              <p>
+                <strong className="font-semibold text-purple-700">Awaiting Admin Verification:</strong> The resolution proof has been submitted. The municipal administrator must verify the proof before closure.
+              </p>
+            )}
+            {issue.status === 'Unsatisfied' && (
+              <p>
+                <strong className="font-semibold text-rose-700">Citizen Unsatisfied:</strong> The reporter was unsatisfied with the fix. Awaiting administrator review to reopen.
+              </p>
+            )}
+            {(issue.status === 'Resolved' || issue.status === 'Closed') && (
+              <p>
+                <strong className="font-semibold text-emerald-700">Issue Resolved / Closed:</strong> No further action is required.
+              </p>
+            )}
           </div>
         )}
 
@@ -346,13 +375,23 @@ export default function StatusModal({ issue, onClose, onSaved }) {
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 transition-colors"
-          >
-            {saving ? 'Processing…' : mode === 'report_resolution' ? 'Submit Resolution Proof' : mode === 'verify' ? 'Confirm Verification' : mode === 'reopen' ? 'Reopen Issue' : 'Update Status'}
-          </button>
+          {mode !== 'info' && (
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 transition-colors"
+            >
+              {saving
+                ? 'Processing…'
+                : mode === 'report_resolution'
+                ? 'Submit Resolution Proof'
+                : mode === 'verify'
+                ? 'Confirm Decision'
+                : mode === 'reopen'
+                ? 'Reopen Issue'
+                : 'Update Status'}
+            </button>
+          )}
         </div>
       </form>
     </div>
