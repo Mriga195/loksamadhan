@@ -5,4 +5,4 @@ Disallow: /register
 Disallow: /profile
 Disallow: /dashboard
 
-Sitemap: https://loksamadhan-three.vercel.app/sitemap.xml
+Sitemap: https://www.loksamadhan.online/sitemap.xml
