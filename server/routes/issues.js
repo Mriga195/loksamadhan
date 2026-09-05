@@ -7,6 +7,7 @@ const { auth, requireRole } = require('../middleware/auth');
 const { upload, uploadErrors, uploadToCloud, photoPath } = require('../lib/upload');
 const { publicIssue, publicIssueList } = require('../lib/serialize');
 const { CATEGORIES, DEPARTMENTS, STATUSES, PRIORITIES, inAssam } = require('../constants');
+const { sendIssueCreatedEmail, sendIssueStatusUpdateEmail } = require('../lib/mailer');
 
 const router = express.Router();
 const officer = requireRole('officer', 'admin');
@@ -186,6 +187,30 @@ async function duplicateCounts(issues) {
 }
 
 /**
+ * Asynchronously notify the citizen who reported the issue of a status change
+ */
+async function notifyReporterStatusUpdate(issue, newStatus, note = '', evidenceUrl = null) {
+  try {
+    let reporter = issue.reporter;
+    if (!reporter || !reporter.email) {
+      reporter = await User.findById(issue.reporter).select('name email');
+    }
+    if (reporter && reporter.email) {
+      await sendIssueStatusUpdateEmail({
+        to: reporter.email,
+        citizenName: reporter.name || 'Citizen',
+        issue,
+        newStatus,
+        note: note || '',
+        evidenceUrl: evidenceUrl || null,
+      });
+    }
+  } catch (err) {
+    console.error('[LokSamadhan Mailer] Error notifying reporter of status update:', err.message);
+  }
+}
+
+/**
  * Synchronize status, department, officer, and resolution/feedback details
  * to all duplicates linked to this issue cluster.
  */
@@ -214,6 +239,25 @@ async function syncDuplicatesStatus(issue, status, note, byUserId, evidence = nu
       $push: { statusHistory: historyEntry },
     }
   );
+
+  // Notify reporters of linked duplicate reports
+  try {
+    const duplicates = await Issue.find({ duplicateOf: rootId }).populate('reporter', 'name email');
+    for (const dup of duplicates) {
+      if (dup.reporter && dup.reporter.email) {
+        sendIssueStatusUpdateEmail({
+          to: dup.reporter.email,
+          citizenName: dup.reporter.name || 'Citizen',
+          issue: dup,
+          newStatus: status,
+          note: note ? `${note} (Synced with master report)` : `Status updated to ${status}.`,
+          evidenceUrl: evidence,
+        }).catch((err) => console.error('[LokSamadhan Mailer] Error emailing duplicate reporter:', err.message));
+      }
+    }
+  } catch (syncErr) {
+    console.error('[LokSamadhan Mailer] Failed to email duplicate reporters:', syncErr.message);
+  }
 }
 
 /* ---------------------------------------------------------------- A3. GET /api/issues */
@@ -574,6 +618,16 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
   });
 
   await issue.populate('assignedOfficer', 'name role department region');
+
+  // Dispatch official acknowledgement receipt with reference ID (e.g. LS-2026-61AB11)
+  if (req.user && req.user.email) {
+    sendIssueCreatedEmail({
+      to: req.user.email,
+      citizenName: req.user.name || 'Citizen',
+      issue,
+    }).catch(err => console.error('[LokSamadhan Mailer] Error sending receipt email:', err.message));
+  }
+
   res.status(201).json(publicIssue(issue, req.user.id));
 }));
 
@@ -688,6 +742,7 @@ router.patch('/:id/assign', auth(true), adminOnly, ah(async (req, res) => {
 
   // Sync department and assigned officer to any linked duplicates
   await syncDuplicatesStatus(issue, issue.status, noteText, req.user.id);
+  notifyReporterStatusUpdate(issue, issue.status, noteText);
 
   res.json(publicIssue(issue, req.user.id));
 }));
@@ -753,6 +808,13 @@ router.post('/:id/report-resolution', auth(true), officer, upload.array('evidenc
     allEvidence[0] || null
   );
 
+  notifyReporterStatusUpdate(
+    issue,
+    'Pending Verification',
+    `Resolution submitted by officer: ${note}`,
+    allEvidence[0] || null
+  );
+
   res.json(publicIssue(issue, req.user.id));
 }));
 
@@ -800,11 +862,19 @@ router.post('/:id/verify-resolution', auth(true), adminOnly, ah(async (req, res)
   await issue.save();
   await issue.populate('assignedOfficer', 'name role department region');
 
+  const verifyNote = adminNotes?.trim() || (action === 'approve' ? 'Admin approved resolution proof.' : 'Admin rejected resolution proof.');
   await syncDuplicatesStatus(
     issue,
     issue.status,
-    adminNotes?.trim() || (action === 'approve' ? 'Admin approved resolution proof.' : 'Admin rejected resolution proof.'),
+    verifyNote,
     req.user.id,
+    issue.resolution?.evidence?.[0] || null
+  );
+
+  notifyReporterStatusUpdate(
+    issue,
+    issue.status,
+    verifyNote,
     issue.resolution?.evidence?.[0] || null
   );
 
@@ -862,12 +932,15 @@ router.post('/:id/citizen-feedback', auth(true), ah(async (req, res) => {
   await issue.save();
   await issue.populate('assignedOfficer', 'name role department region');
 
+  const feedbackNote = notes?.trim() || (satisfied ? 'Citizen confirmed satisfied with solution.' : 'Citizen reported dissatisfaction with solution.');
   await syncDuplicatesStatus(
     issue,
     issue.status,
-    notes?.trim() || (satisfied ? 'Citizen confirmed satisfied with solution.' : 'Citizen reported dissatisfaction with solution.'),
+    feedbackNote,
     req.user.id
   );
+
+  notifyReporterStatusUpdate(issue, issue.status, feedbackNote);
 
   res.json(publicIssue(issue, req.user.id));
 }));
@@ -911,6 +984,8 @@ router.post('/:id/reopen', auth(true), adminOnly, ah(async (req, res) => {
     req.user.id
   );
 
+  notifyReporterStatusUpdate(issue, issue.status, note || defaultNote);
+
   res.json(publicIssue(issue, req.user.id));
 }));
 
@@ -950,6 +1025,7 @@ router.patch('/:id/status', auth(true), officer, upload.single('evidence'), uplo
     await issue.save();
 
     await syncDuplicatesStatus(issue, status, note, req.user.id, evidence);
+    notifyReporterStatusUpdate(issue, status, note, evidence);
 
     res.json(publicIssue(issue, req.user.id));
   }));

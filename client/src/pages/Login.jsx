@@ -6,6 +6,7 @@ import Spinner from '../components/Spinner';
 import Icon from '../components/Icon';
 import AuthShell, { PasswordField } from '../components/AuthShell';
 import GoogleAuthButton from '../components/GoogleAuthButton';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 import { field, primaryBtn } from '../formStyles';
 
 // Seeded accounts, click to fill. This is not decoration: a judge will not type credentials out
@@ -84,6 +85,7 @@ export default function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
 
@@ -152,8 +154,19 @@ export default function Login() {
             className={`${field} mt-1`} value={email} onChange={e => setEmail(e.target.value)} />
         </label>
 
-        <PasswordField label={t.passwordLabel} autoComplete="current-password"
-          value={password} onChange={e => setPassword(e.target.value)} />
+        <div className="mt-4">
+          <PasswordField label={t.passwordLabel} autoComplete="current-password"
+            value={password} onChange={e => setPassword(e.target.value)} />
+          <div className="mt-1 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline cursor-pointer"
+            >
+              Forgot password?
+            </button>
+          </div>
+        </div>
 
         <button type="submit" disabled={pending} className={`${primaryBtn} mt-6 w-full`}>
           {pending && <Spinner label="Signing in" />}
@@ -165,6 +178,16 @@ export default function Login() {
           <Link to="/register" state={location.state} className="text-brand-600 underline">{t.signUp}</Link>
         </p>
       </form>
+
+      <ForgotPasswordModal
+        isOpen={showForgot}
+        onClose={() => setShowForgot(false)}
+        initialEmail={email}
+        onSuccess={({ email: newEmail, password: newPassword }) => {
+          setEmail(newEmail);
+          setPassword(newPassword);
+        }}
+      />
 
       <section className="mt-8 rounded-card border border-dashed border-line p-4">
         <h2 className="text-sm font-medium">{t.demoTitle}</h2>

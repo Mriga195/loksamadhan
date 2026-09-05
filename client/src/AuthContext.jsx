@@ -36,10 +36,10 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const register = async (name, email, password) => {
+  const register = async (name, email, password, otp) => {
     const data = await apiFetch('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, otp }),
     });
     localStorage.setItem('token', data.token);
     setToken(data.token);

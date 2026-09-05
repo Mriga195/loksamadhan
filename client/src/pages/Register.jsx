@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useLang } from '../LangContext';
+import { apiFetch } from '../api';
 import Spinner from '../components/Spinner';
 import AuthShell, { PasswordField } from '../components/AuthShell';
 import GoogleAuthButton from '../components/GoogleAuthButton';
@@ -81,18 +82,74 @@ export default function Register() {
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
 
   const set = k => e => setForm({ ...form, [k]: e.target.value });
   const tooShort = form.password.length > 0 && form.password.length < MIN_PASSWORD;
 
+  // Countdown timer for OTP resend
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => setCountdown(c => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  async function handleSendSignupOtp(e) {
+    if (e) e.preventDefault();
+    const cleanName = form.name.trim();
+    const cleanEmail = form.email.trim().toLowerCase();
+
+    if (!cleanName || !cleanEmail || !form.password) {
+      setError('Please fill in your name, email, and password.');
+      return;
+    }
+    if (form.password.length < MIN_PASSWORD) {
+      setError(`Password must be at least ${MIN_PASSWORD} characters.`);
+      return;
+    }
+
+    setError(null);
+    setSendingOtp(true);
+    try {
+      await apiFetch('/api/auth/send-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: cleanName,
+          email: cleanEmail,
+          purpose: 'signup',
+        }),
+      });
+      setOtpSent(true);
+      setOtp('');
+      setCountdown(60);
+    } catch (err) {
+      setError(err.message || 'Failed to send verification code');
+    } finally {
+      setSendingOtp(false);
+    }
+  }
+
   async function submit(e) {
     e.preventDefault();
+    if (!otpSent) {
+      return handleSendSignupOtp(e);
+    }
+
+    const cleanOtp = otp.trim();
+    if (!cleanOtp || cleanOtp.length < 6) {
+      setError('Please enter the full 6-digit verification code sent to your email.');
+      return;
+    }
+
     setError(null);
     setPending(true);
     try {
-      const registeredUser = await register(form.name.trim(), form.email.trim(), form.password);
+      const registeredUser = await register(form.name.trim(), form.email.trim(), form.password, cleanOtp);
       const target = getRedirectTarget(registeredUser);
       navigate(target, { replace: true, state: draft ? { draft } : undefined });
     } catch (err) {
@@ -150,22 +207,86 @@ export default function Register() {
         <label className="block text-sm font-medium">
           {t.nameLabel}
           <input type="text" autoComplete="name" required
-            className={`${field} mt-1`} value={form.name} onChange={set('name')} />
+            disabled={otpSent}
+            className={`${field} mt-1 ${otpSent ? 'opacity-75 bg-canvas' : ''}`}
+            value={form.name} onChange={set('name')} />
         </label>
 
         <label className="mt-4 block text-sm font-medium">
           {t.emailLabel}
           <input type="email" autoComplete="email" required
-            className={`${field} mt-1`} value={form.email} onChange={set('email')} />
+            disabled={otpSent}
+            className={`${field} mt-1 ${otpSent ? 'opacity-75 bg-canvas' : ''}`}
+            value={form.email} onChange={set('email')} />
         </label>
 
-        <PasswordField label={t.passwordLabel} autoComplete="new-password"
-          minLength={MIN_PASSWORD} value={form.password} onChange={set('password')}
-          aria-describedby="pw-hint" hint={t.passwordHint} hintError={tooShort} />
+        <div className="mt-4">
+          <PasswordField label={t.passwordLabel} autoComplete="new-password"
+            minLength={MIN_PASSWORD} value={form.password} onChange={set('password')}
+            disabled={otpSent}
+            aria-describedby="pw-hint" hint={t.passwordHint} hintError={tooShort} />
+        </div>
 
-        <button type="submit" disabled={pending || tooShort} className={`${primaryBtn} mt-6 w-full`}>
-          {pending && <Spinner label="Creating account" />}
-          {pending ? t.submitting : t.submit}
+        {/* STEP 2: EMAIL OTP VERIFICATION */}
+        {otpSent && (
+          <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between text-xs">
+              <div className="truncate">
+                <span className="text-blue-900 font-semibold">Verification code sent to:</span>{' '}
+                <strong className="text-ink">{form.email}</strong>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setOtpSent(false); setOtp(''); setError(null); }}
+                className="text-brand-600 hover:underline font-semibold ml-2 shrink-0 cursor-pointer"
+              >
+                Change
+              </button>
+            </div>
+
+            <label className="mt-3 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
+              Enter 6-Digit Code
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                required
+                autoFocus
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                placeholder="123456"
+                className={`${field} mt-1.5 font-mono text-center tracking-[0.4em] text-lg font-bold placeholder:tracking-normal placeholder:font-sans bg-surface`}
+              />
+            </label>
+
+            <div className="mt-2.5 flex items-center justify-between text-xs">
+              <span className="text-ink-muted">Didn't get the code?</span>
+              {countdown > 0 ? (
+                <span className="text-ink-muted font-medium">Resend in {countdown}s</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={sendingOtp}
+                  onClick={handleSendSignupOtp}
+                  className="text-brand-600 font-semibold hover:underline cursor-pointer"
+                >
+                  Resend Code
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={pending || sendingOtp || tooShort || (otpSent && otp.length < 6)}
+          className={`${primaryBtn} mt-6 w-full`}
+        >
+          {(pending || sendingOtp) && <Spinner label={otpSent ? 'Creating account' : 'Sending code'} />}
+          {otpSent
+            ? (pending ? 'Verifying & creating account…' : 'Verify & Create Account →')
+            : (sendingOtp ? 'Sending verification code…' : 'Verify Email & Continue →')}
         </button>
 
         <p className="mt-4 text-center text-sm text-ink-muted">
