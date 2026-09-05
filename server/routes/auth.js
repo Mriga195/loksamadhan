@@ -1,12 +1,88 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const signToken = (user) =>
   jwt.sign({ sub: user._id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: '7d',
   });
+
+// ── POST /api/auth/google ──
+// Google OAuth verification.
+// Citizens can sign up or log in with a Google credential ID token.
+router.post('/google', async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ error: 'Google credential token is required' });
+    }
+
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(500).json({
+        error: 'Google OAuth is not configured on the server (GOOGLE_CLIENT_ID missing)',
+      });
+    }
+
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (verifyErr) {
+      return res.status(401).json({ error: 'Invalid or expired Google token' });
+    }
+
+    if (!payload || !payload.email) {
+      return res.status(400).json({ error: 'Google token does not contain a valid email' });
+    }
+
+    const email = payload.email.toLowerCase();
+    const googleId = payload.sub;
+    const name = payload.name || payload.given_name || email.split('@')[0];
+    const avatar = payload.picture || null;
+
+    // Check if user already exists with this googleId OR this email
+    let user = await User.findOne({
+      $or: [{ googleId }, { email }],
+    });
+
+    if (user) {
+      // If user exists by email but doesn't have googleId linked, link it
+      let modified = false;
+      if (!user.googleId) {
+        user.googleId = googleId;
+        modified = true;
+      }
+      if (!user.avatar && avatar) {
+        user.avatar = avatar;
+        modified = true;
+      }
+      if (modified) {
+        await user.save();
+      }
+    } else {
+      // Create new citizen user
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        authProvider: 'google',
+        avatar,
+        role: 'citizen',
+      });
+    }
+
+    res.json({ token: signToken(user), user: user.toPublic() });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ── POST /api/auth/register ──
 // Citizens self-register. Officers/admins are seeded or promoted manually.
@@ -103,12 +179,14 @@ router.patch('/me', auth(true), async (req, res, next) => {
     }
 
     if (newPassword) {
-      if (!currentPassword) {
-        return res.status(400).json({ error: 'Current password is required to set a new password' });
-      }
-      const valid = await user.comparePassword(currentPassword);
-      if (!valid) {
-        return res.status(400).json({ error: 'Current password is incorrect' });
+      if (user.passwordHash) {
+        if (!currentPassword) {
+          return res.status(400).json({ error: 'Current password is required to set a new password' });
+        }
+        const valid = await user.comparePassword(currentPassword);
+        if (!valid) {
+          return res.status(400).json({ error: 'Current password is incorrect' });
+        }
       }
       if (newPassword.length < 6) {
         return res.status(400).json({ error: 'New password must be at least 6 characters' });

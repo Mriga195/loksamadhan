@@ -12,7 +12,15 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    passwordHash: { type: String, required: true },
+    passwordHash: {
+      type: String,
+      required: function () {
+        return !this.googleId && this.authProvider === 'local';
+      },
+    },
+    googleId: { type: String, sparse: true, index: true },
+    authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+    avatar: { type: String, default: null },
     role: { type: String, enum: ROLES, default: 'citizen' },
     department: { type: String, default: null },
   },
@@ -24,6 +32,7 @@ const userSchema = new mongoose.Schema(
 
 /** Compare plaintext password against stored hash */
 userSchema.methods.comparePassword = function (plaintext) {
+  if (!this.passwordHash) return Promise.resolve(false);
   return bcrypt.compare(plaintext, this.passwordHash);
 };
 
@@ -37,6 +46,8 @@ userSchema.methods.toPublic = function () {
     name: this.name,
     role: this.role,
     department: this.department,
+    avatar: this.avatar,
+    authProvider: this.authProvider,
   };
 };
 
@@ -50,6 +61,8 @@ userSchema.methods.toProfile = function () {
     email: this.email,
     role: this.role,
     department: this.department,
+    avatar: this.avatar,
+    authProvider: this.authProvider,
     createdAt: this.createdAt,
   };
 };
