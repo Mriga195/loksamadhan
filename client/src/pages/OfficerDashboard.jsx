@@ -117,15 +117,20 @@ export default function OfficerDashboard() {
     return map;
   }, [issues]);
 
-  // Sync tab default once auth state / role loads
+  // Sync tab and view mode default once auth state / role loads
   useEffect(() => {
     if (!user) return;
-    if (!isAdmin && (tab === 'all' || tab === 'unassigned' || tab === 'pending_verification' && false)) {
-      setTab('my_allotted');
+    if (!isAdmin) {
+      if (viewMode === 'analytics' || viewMode === 'users') {
+        setViewMode('issues');
+      }
+      if (tab === 'all' || tab === 'unassigned' || tab === 'pending_verification' && false) {
+        setTab('my_allotted');
+      }
     } else if (isAdmin && (tab === 'my_allotted' || tab === 'issues')) {
       setTab('unassigned'); // admin sees unassigned first — that's the primary triage job
     }
-  }, [isAdmin, user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAdmin, user, viewMode]);
 
   const load = useCallback(async (isManualRefresh = false) => {
     if (!user || (user.role !== 'officer' && user.role !== 'admin')) return;
@@ -395,25 +400,27 @@ export default function OfficerDashboard() {
                   </span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setViewMode('analytics')}
-                  className={`flex w-full min-h-10 items-center justify-between rounded-xl px-3 text-sm font-medium transition-all duration-200 cursor-pointer ${
-                    viewMode === 'analytics'
-                      ? 'bg-brand-600 text-white shadow-sm shadow-brand-500/20'
-                      : 'text-ink-muted hover:bg-canvas hover:text-ink'
-                  }`}
-                >
-                  <span className="flex items-center gap-2.5 min-w-0">
-                    <Icon name="chart" className="size-4 shrink-0" />
-                    <span className="truncate whitespace-nowrap">Analytics</span>
-                  </span>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 ${
-                    viewMode === 'analytics' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
-                  }`}>
-                    Live
-                  </span>
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('analytics')}
+                    className={`flex w-full min-h-10 items-center justify-between rounded-xl px-3 text-sm font-medium transition-all duration-200 cursor-pointer ${
+                      viewMode === 'analytics'
+                        ? 'bg-brand-600 text-white shadow-sm shadow-brand-500/20'
+                        : 'text-ink-muted hover:bg-canvas hover:text-ink'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5 min-w-0">
+                      <Icon name="chart" className="size-4 shrink-0" />
+                      <span className="truncate whitespace-nowrap">Analytics</span>
+                    </span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 ${
+                      viewMode === 'analytics' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      Live
+                    </span>
+                  </button>
+                )}
               </nav>
             </div>
 
@@ -483,16 +490,18 @@ export default function OfficerDashboard() {
               <Icon name="dashboard" className="size-3.5" />
               Issues
             </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('analytics')}
-              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                viewMode === 'analytics' ? 'bg-brand-600 text-white' : 'bg-surface text-ink-muted border border-line'
-              }`}
-            >
-              <Icon name="chart" className="size-3.5" />
-              Analytics
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setViewMode('analytics')}
+                className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                  viewMode === 'analytics' ? 'bg-brand-600 text-white' : 'bg-surface text-ink-muted border border-line'
+                }`}
+              >
+                <Icon name="chart" className="size-3.5" />
+                Analytics
+              </button>
+            )}
             {isAdmin && (
               <button
                 type="button"
@@ -513,7 +522,7 @@ export default function OfficerDashboard() {
           )}
 
           {/* VIEW MODE: ANALYTICS */}
-          {viewMode === 'analytics' && (
+          {viewMode === 'analytics' && isAdmin && (
             <AnalyticsView issues={issues} />
           )}
 
