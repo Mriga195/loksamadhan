@@ -23,7 +23,10 @@ const STATUSES = [
   'Submitted',
   'Acknowledged',
   'In Progress',
+  'Pending Verification',
   'Resolved',
+  'Closed',
+  'Unsatisfied',
 ];
 
 const PRIORITIES = ['low', 'medium', 'high'];

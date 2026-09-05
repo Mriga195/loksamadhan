@@ -109,12 +109,16 @@ export default function OfficerDashboard() {
   const TABS = useMemo(() => ({
     all: () => true,
     unassigned: i => !i.department,
+    pending_verification: i => i.status === 'Pending Verification',
+    unsatisfied: i => i.status === 'Unsatisfied',
+    my_allotted: i => i.assignedOfficer && String(i.assignedOfficer?._id || i.assignedOfficer) === String(user?._id),
     issues: i => i.department === department,
-    submitted: i => i.department === department && i.status === 'Submitted',
-    in_progress: i => i.department === department && (i.status === 'In Progress' || i.status === 'Acknowledged'),
-    resolved: i => i.department === department && i.status === 'Resolved',
+    submitted: i => (isAdmin ? true : i.department === department) && (i.status === 'Submitted' || i.status === 'Acknowledged'),
+    in_progress: i => (isAdmin ? true : i.department === department) && i.status === 'In Progress',
+    resolved: i => (isAdmin ? true : i.department === department) && i.status === 'Resolved',
+    closed: i => (isAdmin ? true : i.department === department) && i.status === 'Closed',
     overdue: i => (isAdmin ? true : i.department === department) && isOverdue(i),
-  }), [department, isAdmin]);
+  }), [department, isAdmin, user?._id]);
 
   // Computed issues table rows
   const rows = useMemo(() => {
@@ -171,24 +175,34 @@ export default function OfficerDashboard() {
   const counts = {
     all: issues.length,
     unassigned: issues.filter(TABS.unassigned).length,
+    pending_verification: issues.filter(TABS.pending_verification).length,
+    unsatisfied: issues.filter(TABS.unsatisfied).length,
+    my_allotted: issues.filter(TABS.my_allotted).length,
     issues: issues.filter(TABS.issues).length,
     submitted: issues.filter(TABS.submitted).length,
     in_progress: issues.filter(TABS.in_progress).length,
     resolved: issues.filter(TABS.resolved).length,
+    closed: issues.filter(TABS.closed).length,
     overdue: issues.filter(TABS.overdue).length,
   };
 
   const tabs = isAdmin
     ? [
-        ['all', 'All issues'],
+        ['all', 'All Issues'],
         ['unassigned', 'Unassigned'],
+        ['pending_verification', 'Needs Verification'],
+        ['unsatisfied', 'Citizen Unsatisfied'],
+        ['resolved', 'Resolved'],
+        ['closed', 'Closed'],
         ['overdue', 'Overdue SLA'],
       ]
     : [
+        ['my_allotted', 'Allotted to Me'],
         ['issues', 'My Dept Queue'],
-        ['submitted', 'Pending Triage'],
         ['in_progress', 'In Progress'],
+        ['pending_verification', 'Pending Verification'],
         ['resolved', 'Resolved'],
+        ['closed', 'Closed'],
         ['overdue', 'Overdue SLA'],
       ];
 
