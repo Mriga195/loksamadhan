@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Spinner from '../components/Spinner';
+import AuthShell, { field, PasswordField } from '../components/AuthShell';
 
 // Citizen sign-up only. There is deliberately no role selector: routes/auth.js hardcodes
 // role: 'citizen' and ignores anything else in the body, so a "sign up as officer" field would
@@ -12,8 +13,11 @@ import Spinner from '../components/Spinner';
 // so the citizen finds out before a round trip.
 const MIN_PASSWORD = 6;
 
-const field = 'mt-1 w-full min-h-11 rounded-lg border border-line bg-surface px-3 text-base' +
-  ' focus:border-brand-600';
+const POINTS = [
+  { icon: 'sparkles', title: 'Make a difference', body: 'Your reports help improve public services.' },
+  { icon: 'chart', title: 'Track progress', body: 'Stay informed about the status of your reports.' },
+  { icon: 'shield', title: 'Secure & private', body: 'We protect your information and respect your privacy.' },
+];
 
 export default function Register() {
   const { register } = useAuth();
@@ -40,13 +44,19 @@ export default function Register() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
+    <AuthShell
+      tone="green"
+      icon="userPlus"
+      heading="Create an account"
+      blurb="Join LokSamadhan and help build a better, safer community."
+      points={POINTS}
+    >
       <h1 className="text-2xl font-semibold">Create an account</h1>
       <p className="mt-1 text-sm text-ink-muted">
         An account lets you report issues and support reports filed by others.
       </p>
 
-      <form onSubmit={submit} className="mt-6 rounded-card border border-line bg-surface p-5">
+      <form onSubmit={submit} className="mt-6">
         {error && (
           <p role="alert" className="mb-4 rounded-lg bg-rejected-50 px-3 py-2 text-sm text-rejected-600">
             {error}
@@ -69,22 +79,18 @@ export default function Register() {
           />
         </label>
 
-        <label className="mt-4 block text-sm font-medium">
-          Password
-          <input
-            type="password" autoComplete="new-password" required minLength={MIN_PASSWORD}
-            className={field} value={form.password} onChange={set('password')}
-            aria-describedby="pw-hint"
-          />
-        </label>
-        {/* Hint text always occupies this slot, so turning it into an error does not shift
+        {/* Hint text always occupies its slot, so turning it into an error does not shift
             the button down the page. */}
-        <p
-          id="pw-hint"
-          className={`mt-1 text-xs ${tooShort ? 'text-rejected-600' : 'text-ink-muted'}`}
-        >
-          At least {MIN_PASSWORD} characters.
-        </p>
+        <PasswordField
+          label="Password"
+          autoComplete="new-password"
+          minLength={MIN_PASSWORD}
+          value={form.password}
+          onChange={set('password')}
+          aria-describedby="pw-hint"
+          hint={`At least ${MIN_PASSWORD} characters.`}
+          hintError={tooShort}
+        />
 
         <button
           type="submit"
@@ -101,6 +107,6 @@ export default function Register() {
           Already registered? <Link to="/login" className="text-brand-600 underline">Log in</Link>
         </p>
       </form>
-    </main>
+    </AuthShell>
   );
 }
