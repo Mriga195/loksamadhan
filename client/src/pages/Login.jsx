@@ -87,7 +87,7 @@ export default function Login() {
       )}
 
       <div className="mt-6">
-        <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signin_with" onError={(err) => setError(err.message)} />
+        <GoogleAuthButton onSuccess={handleGoogleSuccess} label="Sign in with Google" onError={(err) => setError(err.message)} />
       </div>
 
       <div className="relative my-6 text-center">
