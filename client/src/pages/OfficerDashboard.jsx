@@ -11,6 +11,7 @@ import StatusPill from '../components/StatusPill';
 import OfficeUsersManager from '../components/OfficeUsersManager';
 import AnalyticsView from '../components/AnalyticsView';
 import ConfirmDialog from '../components/ConfirmDialog';
+import NotificationBell from '../components/NotificationBell';
 import { Skeleton } from '../components/Spinner';
 import { useSeo } from '../seo';
 
@@ -337,6 +338,8 @@ export default function OfficerDashboard() {
             <Icon name="refresh" className={`size-3.5 ${refreshing ? 'animate-spin text-brand-600' : ''}`} />
             <span className="hidden sm:inline">{refreshing ? 'Syncing…' : 'Refresh'}</span>
           </button>
+
+          <NotificationBell />
 
           <div className="h-5 w-px bg-line hidden sm:block" />
 
