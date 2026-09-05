@@ -421,11 +421,31 @@ export default function IssueDrawer({ issue, onClose, onSaved, onUpdateStatus })
       {/* Footer: Role-specific Actions */}
       <footer className="space-y-3 border-t border-line bg-surface p-4">
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Actions</h3>
-        {isAdmin && (
-          <AdminActions issue={issue} onSaved={onSaved} onUpdateStatus={onUpdateStatus} />
-        )}
-        {isOfficer && (
-          <OfficerActions issue={issue} onSaved={onSaved} onClose={onClose} onUpdateStatus={onUpdateStatus} />
+        {issue.duplicateOf ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-1.5">
+            <div className="font-bold flex items-center gap-1.5 text-amber-900">
+              <span>🔗</span> Linked Duplicate Report
+            </div>
+            <p className="text-[11px] text-amber-800 leading-relaxed">
+              This issue is linked to the original report #{String(issue.duplicateOf).slice(-6).toUpperCase()}. All investigation, officer resolution, and verification are tracked on the original report.
+            </p>
+            <Link
+              to={`/issues/${issue.duplicateOf}`}
+              target="_blank"
+              className="inline-flex items-center gap-1 font-semibold text-brand-600 hover:underline text-xs mt-1"
+            >
+              Open Original Report &rarr;
+            </Link>
+          </div>
+        ) : (
+          <>
+            {isAdmin && (
+              <AdminActions issue={issue} onSaved={onSaved} onUpdateStatus={onUpdateStatus} />
+            )}
+            {isOfficer && (
+              <OfficerActions issue={issue} onSaved={onSaved} onClose={onClose} onUpdateStatus={onUpdateStatus} />
+            )}
+          </>
         )}
       </footer>
     </aside>

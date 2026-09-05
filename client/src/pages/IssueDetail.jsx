@@ -443,7 +443,7 @@ export default function IssueDetail() {
               )}
               {issue.assignedOfficer && (
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
-                  Officer: {issue.assignedOfficer.name}
+                  Officer: {issue.assignedOfficer.name}{issue.duplicateOf ? ' (Original)' : ''}
                 </span>
               )}
               {isMine && (
@@ -461,7 +461,14 @@ export default function IssueDetail() {
               {issue.department || <span className="text-ink-muted">Not yet assigned</span>}
             </Field>
             <Field icon="shield" label="Officer">
-              {issue.assignedOfficer?.name || <span className="text-ink-muted">Department Pool</span>}
+              {issue.assignedOfficer?.name ? (
+                <span>
+                  {issue.assignedOfficer.name}
+                  {issue.duplicateOf && <span className="ml-1 text-[11px] text-ink-muted">(via original report)</span>}
+                </span>
+              ) : (
+                <span className="text-ink-muted">Department Pool</span>
+              )}
             </Field>
             <Field icon="sliders" label="Priority">
               {issue.priority
