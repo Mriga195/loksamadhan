@@ -102,7 +102,6 @@ export default function Feed() {
     <main className="mx-auto max-w-7xl px-4 py-6">
       {/* The filter bar and the numbered map are the page's title in the design; the heading is
           kept for screen readers and the document outline. */}
-      <h1 className="sr-only">Reported issues</h1>
       <h1 className="sr-only">{t.heading}</h1>
 
       <StatsCards />
@@ -119,11 +118,6 @@ export default function Feed() {
 
           {!loading && !error && issues.length === 0 && (
             <EmptyState
-              title={hasFilters ? 'No reports match these filters' : 'No reports yet'}
-              hint={hasFilters
-                ? 'Try a broader search, or clear the filters to see everything.'
-                : 'When someone files the first report, it will appear here.'}
-              actionLabel={hasFilters ? 'Clear filters' : undefined}
               title={hasFilters ? t.noMatchTitle : t.noReportsTitle}
               hint={hasFilters ? t.noMatchHint : t.noReportsHint}
               actionLabel={hasFilters ? t.clearFilters : undefined}
@@ -147,7 +141,6 @@ export default function Feed() {
                   <button type="button" onClick={loadMore} disabled={loadingMore}
                     className="inline-flex cursor-pointer items-center gap-1.5 font-medium
                       text-brand-600 hover:text-brand-700 disabled:opacity-60 transition-colors">
-                    {loadingMore ? 'Loading…' : 'Show more'}
                     {loadingMore ? t.loading : t.showMore}
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                       strokeWidth="2" className="size-4">

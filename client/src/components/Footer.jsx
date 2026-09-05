@@ -67,29 +67,24 @@ export default function Footer() {
               <span className="text-brand-600">Lok</span>Samadhan
             </Link>
             <p className="mt-3 max-w-xs text-sm text-ink-muted">
-              LokSamadhan is an initiative to empower citizens and strengthen civic services
-              through technology and transparency.
               {t.tagline}
             </p>
           </div>
 
           <nav aria-label="Explore">
             <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-              Explore
               {t.explore}
             </h3>
             <ul className="mt-4 space-y-3 text-sm">
               <li>
                 <Link to="/feed" className={linkClass}>
                   <Icon name="home" className="size-[18px]" />
-                  Feed
                   {t.feed}
                 </Link>
               </li>
               <li>
                 <Link to="/report" className={linkClass}>
                   <Icon name="plus" className="size-[18px]" />
-                  Report an Issue
                   {t.reportIssue}
                 </Link>
               </li>
@@ -112,7 +107,6 @@ export default function Footer() {
               <li>
                 <Link to="/departments" className={linkClass}>
                   <Icon name="building" className="size-[18px]" />
-                  View all departments
                   {t.viewAll}
                 </Link>
               </li>
@@ -121,13 +115,9 @@ export default function Footer() {
 
           <div>
             <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-              What we promise
               {t.promise}
             </h3>
             <ul className="mt-4 space-y-3 text-sm text-ink-muted">
-              <li>Similar reports are linked, never deleted.</li>
-              <li>Resolution requires a note or evidence.</li>
-              <li>Your personal info is never made public.</li>
               <li>{t.p1}</li>
               <li>{t.p2}</li>
               <li>{t.p3}</li>
@@ -136,8 +126,6 @@ export default function Footer() {
         </div>
 
         <p className="mt-10 border-t border-line pt-6 text-xs text-ink-muted">
-          &copy; {new Date().getFullYear()} LokSamadhan. Built for public accountability, not
-          real municipal integration.
           {t.copyright}
         </p>
       </div>
