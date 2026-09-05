@@ -65,6 +65,9 @@ export default function IssueDetail() {
   const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [showAdminRejectInput, setShowAdminRejectInput] = useState(false);
   const [showAttachModal, setShowAttachModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectLoading, setRejectLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,7 +103,38 @@ export default function IssueDetail() {
     ))
   );
   const isStaff = user?.role === 'officer' || user?.role === 'admin';
-  const canSupport = !isMine && !isStaff;
+  const isAssignedOfficer = Boolean(
+    issue?.assignedOfficer &&
+    String(issue.assignedOfficer?._id || issue.assignedOfficer) === String(user?._id)
+  );
+  const canStaffReject =
+    (isAdmin || isAssignedOfficer) &&
+    issue?.status !== 'Rejected' &&
+    issue?.status !== 'Resolved' &&
+    issue?.status !== 'Closed' &&
+    issue?.status !== 'Pending Verification' &&
+    (issue?.status === 'Submitted' || issue?.status === 'Acknowledged' || !issue?.assignedOfficer);
+  const canSupport = !isMine && !isStaff && issue?.status !== 'Rejected' && issue?.status !== 'Closed';
+
+  async function handleStaffReject(e) {
+    e?.preventDefault();
+    if (!rejectReason.trim() || rejectReason.trim().length < 5) return;
+    setRejectLoading(true);
+    setActionError(null);
+    try {
+      const updated = await apiFetch(`/api/issues/${id}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: rejectReason.trim() }),
+      });
+      setIssue(updated);
+      setShowRejectModal(false);
+      setRejectReason('');
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setRejectLoading(false);
+    }
+  }
 
   const [refCopied, setRefCopied] = useState(false);
   const copyRef = async () => {
@@ -475,6 +509,39 @@ export default function IssueDetail() {
         </div>
       )}
 
+      {/* ── WORKFLOW BANNER 5: REJECTED (FAKE / INVALID REPORT) ── */}
+      {issue.status === 'Rejected' && (
+        <div className="mt-4 rounded-2xl border border-rose-300 bg-rose-50/90 p-5 shadow-xs">
+          <div className="flex items-start gap-3">
+            <span className="grid size-9 place-items-center rounded-full bg-rose-600 text-white font-bold text-sm shrink-0">
+              ✕
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-rose-200 px-2.5 py-0.5 text-xs font-bold text-rose-900">
+                  Grievance Rejected
+                </span>
+              </div>
+              <h3 className="mt-1 text-base font-bold text-rose-950">Report Flagged &amp; Rejected as Fake / Invalid</h3>
+              <p className="mt-1 text-xs sm:text-sm text-rose-900 leading-relaxed">
+                This grievance was formally reviewed during municipal triage and determined to be illegitimate, fictitious, or ineligible for municipal redressal.
+              </p>
+              {(() => {
+                const rejectEntry = [...(issue.statusHistory || [])].reverse().find(h => h.status === 'Rejected');
+                return rejectEntry?.note ? (
+                  <div className="mt-2.5 rounded-xl border border-rose-200 bg-white/90 p-3 text-xs text-rose-950">
+                    <span className="font-semibold text-rose-800 uppercase tracking-wider text-[10px] block mb-1">
+                      Official Rejection Remark
+                    </span>
+                    <p className="italic">"{rejectEntry.note}"</p>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {actionError && (
         <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 font-medium">
           {actionError}
@@ -523,7 +590,7 @@ export default function IssueDetail() {
                   Submitted by you
                 </span>
               )}
-              {isAdmin && !issue.duplicateOf && issue.status !== 'Resolved' && issue.status !== 'Closed' && (
+              {isAdmin && !issue.duplicateOf && issue.status !== 'Resolved' && issue.status !== 'Closed' && issue.status !== 'Rejected' && (
                 <button
                   type="button"
                   onClick={() => setShowAttachModal(true)}
@@ -532,6 +599,17 @@ export default function IssueDetail() {
                 >
                   <Icon name="link" className="size-3 text-brand-600" />
                   Attach as Similar Report
+                </button>
+              )}
+              {canStaffReject && (
+                <button
+                  type="button"
+                  onClick={() => setShowRejectModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+                  title="Reject this report as fake, duplicate, or invalid"
+                >
+                  <span>✕</span>
+                  <span>Reject Report (Fake / Invalid)</span>
                 </button>
               )}
             </div>
@@ -809,6 +887,86 @@ export default function IssueDetail() {
             await load();
           }}
         />
+      )}
+
+      {/* Staff Rejection Modal */}
+      {showRejectModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-xs"
+          onClick={e => e.target === e.currentTarget && setShowRejectModal(false)}
+        >
+          <div className="w-full max-w-md rounded-2xl border border-rose-200 bg-surface p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-rose-900 flex items-center gap-2">
+                <span className="size-2 rounded-full bg-rose-600" />
+                Reject Report as Fake / Invalid
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowRejectModal(false)}
+                className="text-ink-muted hover:text-ink text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="mt-2 text-xs text-ink-muted leading-relaxed">
+              Select or enter the reason for rejection. This remark will be permanently logged in the public audit trail and sent to the reporter via email and in-app notification.
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {[
+                'Fake / Spam Report',
+                'Fictitious Location / Address',
+                'Non-Civic / Private Dispute',
+                'Unverifiable / Irrelevant Media',
+              ].map(preset => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setRejectReason(preset)}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-medium border transition-colors cursor-pointer ${
+                    rejectReason === preset
+                      ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                      : 'bg-canvas text-rose-900 border-rose-200 hover:bg-rose-50'
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              className="mt-3 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-xs text-ink focus:border-rose-500 focus:bg-surface focus:outline-none"
+              rows={3}
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              placeholder="State why this report is fake or invalid (minimum 5 characters)..."
+            />
+
+            {actionError && (
+              <p className="mt-2 text-xs font-medium text-rose-600">{actionError}</p>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2 border-t border-line pt-4">
+              <button
+                type="button"
+                onClick={() => { setShowRejectModal(false); setRejectReason(''); }}
+                className="rounded-xl px-4 py-2 text-xs font-medium text-ink-muted hover:bg-canvas transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={rejectLoading || !rejectReason.trim() || rejectReason.trim().length < 5}
+                onClick={handleStaffReject}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                {rejectLoading ? 'Rejecting…' : 'Confirm Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

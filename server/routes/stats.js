@@ -86,7 +86,7 @@ router.get('/', auth(false), async (req, res, next) => {
 
     const openSeries = series(t => allIssues.filter(i => {
       const s = statusAt(i, t);
-      return s && s !== 'Resolved' && s !== 'Closed';
+      return s && s !== 'Resolved' && s !== 'Closed' && s !== 'Rejected';
     }).length);
 
     const progressSeries = series(t => allIssues.filter(i => statusAt(i, t) === 'In Progress').length);

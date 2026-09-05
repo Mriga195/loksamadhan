@@ -30,6 +30,121 @@ const PRIORITY_COLORS = {
   low:    'bg-slate-100 text-slate-700 border-slate-200',
 };
 
+// ── Reject fake/invalid issue control for Admin & Assigned Officer ──
+function RejectIssueControl({ issue, onSaved }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const presets = [
+    'Fake / Spam Report',
+    'Fictitious Location / Address',
+    'Non-Civic / Private Dispute',
+    'Unverifiable / Irrelevant Media',
+  ];
+
+  async function handleSubmit(e) {
+    e?.preventDefault();
+    if (!reason.trim() || reason.trim().length < 5) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const updated = await apiFetch(`/api/issues/${issue._id}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      setOpen(false);
+      setReason('');
+      onSaved?.(updated);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full rounded-xl border border-rose-200 bg-rose-50/70 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+      >
+        <span className="font-bold">✕</span>
+        <span>Reject as Fake / Invalid</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-rose-300 bg-rose-50/90 p-3 space-y-2.5 text-xs animate-in fade-in">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-rose-900 flex items-center gap-1">
+          <span className="size-1.5 rounded-full bg-rose-600" />
+          Reject Report (Fake / Invalid)
+        </p>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setReason(''); setError(null); }}
+          className="text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      <p className="text-[11px] text-rose-900 leading-snug">
+        Provide an official reason. The reporter will be notified and this report will be formally marked as <strong className="font-bold text-rose-800">Rejected</strong>.
+      </p>
+
+      <div className="flex flex-wrap gap-1.5">
+        {presets.map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setReason(p)}
+            className={`rounded-md px-2 py-0.5 text-[10px] font-medium border transition-colors cursor-pointer ${
+              reason === p
+                ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                : 'bg-white text-rose-800 border-rose-200 hover:bg-rose-100'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+
+      <textarea
+        className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rose-400"
+        rows={2}
+        value={reason}
+        onChange={e => setReason(e.target.value)}
+        placeholder="Type or select reason for rejection (min 5 chars)..."
+      />
+
+      {error && <p className="text-[11px] font-medium text-rose-600">{error}</p>}
+
+      <div className="flex gap-2 pt-0.5">
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setReason(''); setError(null); }}
+          className="text-xs text-ink-muted px-2.5 py-1.5 hover:bg-canvas rounded cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={loading || !reason.trim() || reason.trim().length < 5}
+          onClick={handleSubmit}
+          className="flex-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer shadow-xs"
+        >
+          {loading ? 'Rejecting…' : 'Confirm Rejection'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Officer-Specific Actions based on issue state ──
 function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
   const { user } = useAuth();
@@ -90,6 +205,20 @@ function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
     );
   }
 
+  if (status === 'Rejected') {
+    return (
+      <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900 space-y-1">
+        <div className="flex items-center gap-1.5 font-bold text-rose-800">
+          <span className="grid size-4 place-items-center rounded-full bg-rose-600 text-[10px] text-white">✕</span>
+          <span>Report Formally Rejected</span>
+        </div>
+        <p className="text-slate-600 leading-relaxed text-[11px]">
+          This grievance was flagged and rejected as fake, duplicate, or invalid.
+        </p>
+      </div>
+    );
+  }
+
   if (status === 'Pending Verification') {
     return (
       <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 text-xs text-purple-900">
@@ -116,14 +245,17 @@ function OfficerActions({ issue, onSaved, onClose, onUpdateStatus }) {
       {actionError && <p className="text-xs text-rose-600 font-medium">{actionError}</p>}
 
       {(status === 'Submitted' || status === 'Acknowledged') && (
-        <button
-          type="button"
-          disabled={actionLoading}
-          onClick={markInProgress}
-          className="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-700 transition-colors disabled:opacity-50"
-        >
-          {actionLoading ? 'Updating…' : 'Mark as In Progress (Start Working)'}
-        </button>
+        <div className="space-y-2">
+          <button
+            type="button"
+            disabled={actionLoading}
+            onClick={markInProgress}
+            className="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-700 transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {actionLoading ? 'Updating…' : 'Mark as In Progress (Start Working)'}
+          </button>
+          <RejectIssueControl issue={issue} onSaved={onSaved} />
+        </div>
       )}
 
       {status === 'In Progress' && (
@@ -437,6 +569,23 @@ function AdminActions({ issue, onSaved, onUpdateStatus, onOpenAttachModal }) {
           <Icon name="shield" className="size-3.5 text-brand-600" />
           Reassign Officer
         </button>
+      )}
+
+      {status === 'Rejected' && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900 space-y-1">
+          <div className="flex items-center gap-1.5 font-bold text-rose-800">
+            <span className="grid size-4 place-items-center rounded-full bg-rose-600 text-[10px] text-white">✕</span>
+            <span>Report Formally Rejected</span>
+          </div>
+          <p className="text-slate-600 leading-relaxed text-[11px]">
+            This grievance was flagged and rejected as fake, duplicate, or invalid during municipal triage.
+          </p>
+        </div>
+      )}
+
+      {/* Rejection action for Admin when unassigned or in Submitted / Acknowledged status */}
+      {!isClosedOrResolved && status !== 'Rejected' && (status === 'Submitted' || status === 'Acknowledged' || !isAssigned) && (
+        <RejectIssueControl issue={issue} onSaved={onSaved} />
       )}
 
       {(status === 'Submitted' || status === 'Acknowledged' || status === 'In Progress') && (

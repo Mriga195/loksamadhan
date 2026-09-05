@@ -141,6 +141,7 @@ export default function NotificationBell({ className = '' }) {
                         <span className={`ml-auto rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
                           n.reason === 'verification_needed' ? 'bg-purple-100 text-purple-800' :
                           n.reason === 'citizen_unsatisfied' ? 'bg-rose-100 text-rose-800' :
+                          n.reason === 'rejected' ? 'bg-rose-100 text-rose-800 font-bold border border-rose-200' :
                           n.reason === 'unassigned' ? 'bg-amber-100 text-amber-800' :
                           n.reason === 'ward_alert' ? 'bg-indigo-100 text-indigo-800' :
                           n.reason === 'assigned' ? 'bg-blue-100 text-blue-800' :

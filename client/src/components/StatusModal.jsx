@@ -97,6 +97,14 @@ export default function StatusModal({ issue, onClose, onSaved }) {
           method: 'POST',
           body: JSON.stringify({ note: note.trim() }),
         });
+      } else if (status === 'Rejected') {
+        if (!note.trim() || note.trim().length < 5) {
+          throw new Error('A clear rejection reason is required (minimum 5 characters).');
+        }
+        updated = await apiFetch(`/api/issues/${issue._id}/reject`, {
+          method: 'POST',
+          body: JSON.stringify({ reason: note.trim() }),
+        });
       } else {
         // Standard status update
         const form = new FormData();
@@ -317,12 +325,14 @@ export default function StatusModal({ issue, onClose, onSaved }) {
                   <>
                     <option value="In Progress">In Progress (Start Working)</option>
                     <option value="Acknowledged">Acknowledged</option>
+                    <option value="Rejected">Rejected (Fake / Invalid)</option>
                   </>
                 )}
                 {issue.status === 'Acknowledged' && (
                   <>
                     <option value="In Progress">In Progress (Start Working)</option>
                     <option value="Acknowledged">Acknowledged</option>
+                    <option value="Rejected">Rejected (Fake / Invalid)</option>
                   </>
                 )}
                 {issue.status === 'In Progress' && (
@@ -338,13 +348,18 @@ export default function StatusModal({ issue, onClose, onSaved }) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">Progress Note</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                {status === 'Rejected' ? (
+                  <>Rejection Reason <span className="text-rose-600">*</span></>
+                ) : 'Progress Note'}
+              </label>
               <textarea
                 className="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-500 focus:bg-surface focus:outline-none"
                 rows={2}
+                required={status === 'Rejected'}
                 value={note}
                 onChange={e => setNote(e.target.value)}
-                placeholder="Add an update note..."
+                placeholder={status === 'Rejected' ? 'State why this report is fake, duplicate, or invalid (min 5 chars)...' : 'Add an update note...'}
               />
             </div>
           </div>
@@ -403,7 +418,9 @@ export default function StatusModal({ issue, onClose, onSaved }) {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50 transition-colors"
+              className={`rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50 transition-colors ${
+                status === 'Rejected' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand-600 hover:bg-brand-700'
+              }`}
             >
               {saving
                 ? 'Processing…'
@@ -413,6 +430,8 @@ export default function StatusModal({ issue, onClose, onSaved }) {
                 ? 'Confirm Decision'
                 : mode === 'reopen'
                 ? 'Reopen Issue'
+                : status === 'Rejected'
+                ? 'Confirm Rejection'
                 : 'Update Status'}
             </button>
           )}

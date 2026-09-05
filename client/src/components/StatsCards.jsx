@@ -190,7 +190,7 @@ export default function StatsCards({ issues }) {
 
     const open = series(t => issues.filter(i => {
       const s = statusAt(i, t);
-      return s && s !== 'Resolved' && s !== 'Closed';
+      return s && s !== 'Resolved' && s !== 'Closed' && s !== 'Rejected';
     }).length);
 
     const progress = series(t => issues.filter(i => statusAt(i, t) === 'In Progress').length);

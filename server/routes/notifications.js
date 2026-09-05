@@ -71,6 +71,10 @@ function eventsFor(issue, userOrId, options = {}) {
         shouldInclude = true;
         reason = 'unassigned';
         label = 'Triage Queue';
+      } else if (h.status === 'Rejected') {
+        shouldInclude = !isSelfAction;
+        reason = 'rejected';
+        label = 'Report Rejected';
       } else if (isAssignee || isReporter) {
         shouldInclude = !(i === 0 && isReporter);
         reason = isReporter ? 'reported' : 'assigned';
@@ -98,14 +102,17 @@ function eventsFor(issue, userOrId, options = {}) {
             label = 'Citizen Unsatisfied';
           } else if (h.status === 'Closed') {
             label = 'Citizen Satisfied';
+          } else if (h.status === 'Rejected') {
+            label = 'Report Rejected';
+            reason = 'rejected';
           } else {
             label = 'Assigned';
           }
         }
       } else if (isReporter) {
         shouldInclude = !(i === 0 && isReporter);
-        reason = 'reported';
-        label = 'Your Report';
+        reason = h.status === 'Rejected' ? 'rejected' : 'reported';
+        label = h.status === 'Rejected' ? 'Report Rejected' : 'Your Report';
       } else if (!assignedId && issue.department === user.department && (!user.region || issue.region === user.region)) {
         if (h.status === 'Submitted') {
           shouldInclude = true;
@@ -121,8 +128,8 @@ function eventsFor(issue, userOrId, options = {}) {
           shouldInclude = false;
         } else {
           shouldInclude = true;
-          reason = 'reported';
-          label = 'Status Update';
+          reason = h.status === 'Rejected' ? 'rejected' : 'reported';
+          label = h.status === 'Rejected' ? 'Report Rejected' : 'Status Update';
         }
       }
     }

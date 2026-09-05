@@ -51,6 +51,17 @@ function slaFor(issue, now = Date.now()) {
   const dueAt = created + targetDays * DAY;
   const fixedAt = resolvedAt(issue);
 
+  // Rejected issues (fake/invalid reports) are closed out without SLA penalties
+  if (issue.status === 'Rejected') {
+    return {
+      targetDays,
+      dueAt: new Date(dueAt),
+      daysLeft: null,
+      state: 'rejected',
+      breachDays: 0,
+    };
+  }
+
   // Settled issues (Resolved or Closed) are evaluated based on when resolution was achieved
   const settled = fixedAt !== null && (issue.status === 'Resolved' || issue.status === 'Closed');
 

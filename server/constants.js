@@ -27,6 +27,7 @@ const STATUSES = [
   'Resolved',
   'Closed',
   'Unsatisfied',
+  'Rejected',
 ];
 
 const PRIORITIES = ['low', 'medium', 'high'];

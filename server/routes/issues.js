@@ -157,7 +157,7 @@ async function leastLoadedOfficer(department, region = null) {
     {
       $match: {
         assignedOfficer: { $in: officers.map(o => o._id) },
-        status: { $nin: ['Closed', 'Resolved'] },
+        status: { $nin: ['Closed', 'Resolved', 'Rejected'] },
         duplicateOf: null, // Duplicates do not inflate officer workload
       },
     },
@@ -518,7 +518,7 @@ router.post('/', auth(true), upload.array('photos', 3), uploadErrors, uploadToCl
     const nearby = await Issue.findOne({
       category,
       duplicateOf: null,   // root issues only
-      status: { $nin: ['Closed', 'Resolved'] },
+      status: { $nin: ['Closed', 'Resolved', 'Rejected'] },
       location: {
         $geoWithin: { $centerSphere: [[lng, lat], 1000 / 6378100] },
       },
@@ -1011,6 +1011,59 @@ router.post('/:id/reopen', auth(true), adminOnly, ah(async (req, res) => {
   res.json(publicIssue(issue, req.user.id));
 }));
 
+/* ---------------------------------- B2e. POST /api/issues/:id/reject */
+// Admin and assigned officer can reject fake, spam, or invalid reports during early triage
+router.post('/:id/reject', auth(true), officer, ah(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, 'Invalid issue id.');
+  const reason = String(req.body.reason || req.body.note || '').trim();
+
+  if (!reason || reason.length < 5) {
+    return bad(res, 'A clear reason for rejection is required (minimum 5 characters).');
+  }
+
+  const issue = await Issue.findById(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+  // Terminal or late lifecycle stages cannot be rejected
+  if (['In Progress', 'Pending Verification', 'Resolved', 'Closed', 'Rejected'].includes(issue.status)) {
+    return bad(res, `Cannot reject issue in "${issue.status}" status. Rejection is only permitted for unassigned or acknowledged reports before work begins.`);
+  }
+
+  // An officer can only reject issues assigned to them
+  if (req.user.role === 'officer') {
+    const isAssigned = String(issue.assignedOfficer) === String(req.user.id);
+    if (!isAssigned) {
+      return res.status(403).json({ error: 'Forbidden: You can only reject reports that are assigned to you.' });
+    }
+  }
+
+  issue.status = 'Rejected';
+
+  const rejectNote = `Rejected as fake/invalid report by ${req.user.name || (req.user.role === 'admin' ? 'Administrator' : 'Assigned Officer')}: "${reason}"`;
+
+  issue.statusHistory.push({
+    status: 'Rejected',
+    note: rejectNote,
+    evidence: null,
+    by: req.user.id,
+    at: new Date(),
+  });
+
+  await issue.save();
+  await issue.populate('assignedOfficer', 'name role department region');
+
+  await syncDuplicatesStatus(
+    issue,
+    'Rejected',
+    rejectNote,
+    req.user.id
+  );
+
+  notifyReporterStatusUpdate(issue, 'Rejected', rejectNote);
+
+  res.json(publicIssue(issue, req.user.id));
+}));
+
 /* ------------------------ B3. PATCH /api/issues/:id/status — hard rule 2, graded */
 router.patch('/:id/status', auth(true), officer, upload.single('evidence'), uploadErrors, uploadToCloud,
   ah(async (req, res) => {
@@ -1027,8 +1080,17 @@ router.patch('/:id/status', auth(true), officer, upload.single('evidence'), uplo
       return bad(res, 'A resolution note or evidence is required.');
     }
 
+    if (status === 'Rejected' && (!note || note.length < 5)) {
+      return bad(res, 'A rejection reason is required (minimum 5 characters).');
+    }
+
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+    // Status-specific constraints for Rejected
+    if (status === 'Rejected' && ['In Progress', 'Pending Verification', 'Resolved', 'Closed', 'Rejected'].includes(issue.status)) {
+      return bad(res, `Cannot reject issue in "${issue.status}" status. Rejection is only permitted for unassigned or acknowledged reports before work begins.`);
+    }
 
     // An officer can only change status on issues assigned to them
     if (req.user.role === 'officer') {

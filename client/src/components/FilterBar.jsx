@@ -15,6 +15,7 @@ const STATUSES = [
   ['Pending Verification', 'Verification', 'bg-purple-600'],
   ['Resolved', 'Resolved', 'bg-resolved-600'],
   ['Closed', 'Closed', 'bg-emerald-600'],
+  ['Rejected', 'Rejected', 'bg-red-600'],
 ];
 
 const EN = {

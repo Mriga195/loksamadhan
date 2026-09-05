@@ -31,6 +31,7 @@ const isOverdue = issue =>
   issue.sla?.state === 'overdue' &&
   issue.status !== 'Resolved' &&
   issue.status !== 'Closed' &&
+  issue.status !== 'Rejected' &&
   issue.status !== 'Pending Verification';
 
 
@@ -149,7 +150,7 @@ export default function OfficerDashboard() {
   // Filter predicates
   const TABS = useMemo(() => ({
     all: () => true,
-    unassigned: i => (!i.department || !i.assignedOfficer || (!i.assignedOfficer._id && !i.assignedOfficer.name)) && i.status !== 'Closed' && i.status !== 'Resolved',
+    unassigned: i => (!i.department || !i.assignedOfficer || (!i.assignedOfficer._id && !i.assignedOfficer.name)) && i.status !== 'Closed' && i.status !== 'Resolved' && i.status !== 'Rejected',
     pending_verification: i => i.status === 'Pending Verification',
     unsatisfied: i => i.status === 'Unsatisfied',
     my_allotted: i => i.assignedOfficer && String(i.assignedOfficer?._id || i.assignedOfficer) === String(user?._id),
@@ -158,6 +159,7 @@ export default function OfficerDashboard() {
     in_progress: i => (isAdmin ? true : i.department === department) && i.status === 'In Progress',
     resolved: i => (isAdmin ? true : i.department === department) && i.status === 'Resolved',
     closed: i => (isAdmin ? true : i.department === department) && i.status === 'Closed',
+    rejected: i => (isAdmin ? true : i.department === department) && i.status === 'Rejected',
     overdue: i => (isAdmin ? true : i.department === department) && isOverdue(i),
   }), [department, isAdmin, user?._id]);
 
@@ -274,6 +276,7 @@ export default function OfficerDashboard() {
     in_progress: rootIssues.filter(TABS.in_progress).length,
     resolved: rootIssues.filter(TABS.resolved).length,
     closed: rootIssues.filter(TABS.closed).length,
+    rejected: rootIssues.filter(TABS.rejected).length,
     overdue: rootIssues.filter(TABS.overdue).length,
   };
 
@@ -286,6 +289,7 @@ export default function OfficerDashboard() {
         ['unsatisfied', 'Citizen Unsatisfied'],
         ['resolved', 'Resolved'],
         ['closed', 'Closed'],
+        ['rejected', 'Rejected'],
         ['overdue', 'Overdue SLA'],
       ]
     : [
@@ -295,6 +299,7 @@ export default function OfficerDashboard() {
         ['pending_verification', 'Pending Verification'],
         ['resolved', 'Resolved'],
         ['closed', 'Closed'],
+        ['rejected', 'Rejected'],
         ['overdue', 'Overdue SLA'],
       ];
 
