@@ -7,6 +7,7 @@ import MapPicker from '../components/MapPicker';
 import PhotoInput from '../components/PhotoInput';
 import Spinner from '../components/Spinner';
 import Icon from '../components/Icon';
+import { CATEGORY as CATEGORY_ART } from '../components/IssueCard';
 import { field, primaryBtn } from '../formStyles';
 
 const CATEGORIES = ['Road', 'Water', 'Sanitation', 'Streetlight', 'Drainage', 'Other'];
@@ -45,7 +46,6 @@ const EN = {
   pageSub: 'Help us identify and fix problems in your community. Provide details and location below.',
   loginBanner: 'You can fill this in now \u2014 we will ask you to log in when you submit, and bring you straight back here with everything you have entered.',
   step1Label: 'Category', step1Hint: 'Choose the issue category that best fits your report.',
-  step1Placeholder: 'Select issue category\u2026',
   step2Label: 'Location', step2Hint: 'Drag the map or drop a pin on the exact location.',
   step2AddressPlaceholder: 'Landmark or street address (optional)',
   step2AddressHint: 'e.g. Near Mission Chariali flyover',
@@ -53,7 +53,6 @@ const EN = {
   titlePlaceholder: 'Give it a short title \u2014 e.g. Large pothole near central bus stand',
   descPlaceholder: 'Describe the issue, severity, exact spot, or any danger posed\u2026',
   step4Label: 'Photos', step4Hint: 'Add up to 3 photos to help us identify the issue better.',
-  photoNote: 'Why photos help?', photoNoteBody: 'Clear photos help our team triage and resolve issues faster.',
   cancel: 'Cancel', submit: 'Submit report', submitting: 'Submitting\u2026',
   errCategory: 'Please select a category', errLocation: 'Please select a location on the map',
   errTitle: 'Title must be at least 5 characters', errDesc: 'Description must be at least 10 characters',
@@ -186,37 +185,57 @@ const Report = () => {
   };
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10">
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:py-10">
       <header className="flex items-center gap-5">
         <span aria-hidden="true" className="hidden size-20 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600 sm:grid">
           <Icon name="clipboard" className="size-10" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">{t.pageTitle}</h1>
           <p className="mt-1 text-sm text-ink-muted">{t.pageSub}</p>
         </div>
       </header>
 
       {!authLoading && !user && (
-        <p className="mt-6 flex items-start gap-3 rounded-card border border-brand-100 bg-brand-50 px-5 py-4 text-sm">
+        <p className="mt-5 flex items-start gap-3 rounded-card border border-brand-100 bg-brand-50 px-4 py-3 text-sm sm:mt-6 sm:px-5 sm:py-4">
           <Icon name="info" className="mt-0.5 size-5 shrink-0 text-brand-600" />
           <span className="text-ink-muted">{t.loginBanner}</span>
         </p>
       )}
 
       {error && (
-        <p role="alert" className="mt-6 rounded-lg bg-rejected-50 px-4 py-3 text-sm text-rejected-600">{error}</p>
+        <p role="alert" className="mt-5 rounded-lg bg-rejected-50 px-4 py-3 text-sm text-rejected-600 sm:mt-6">{error}</p>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-        <Step n={1} icon="grid" label={t.step1Label} required hint={t.step1Hint}>
-          <select value={category} onChange={e => setCategory(e.target.value)} required className={`${field} cursor-pointer`}>
-            <option value="">{t.step1Placeholder}</option>
-            {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-          </select>
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
+        <Step n={1} icon="grid" label={t.step1Label} required hint={t.step1Hint} done={!!category}>
+          {/* Tiles, not a <select>. A native picker on a phone is tap, spin a wheel, tap again,
+              and it hides five of the six options while you do it. Six is few enough to show. */}
+          <div role="radiogroup" aria-label={t.step1Label} className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {CATEGORIES.map(cat => {
+              const art = CATEGORY_ART[cat] || CATEGORY_ART.Other;
+              const on = category === cat;
+              return (
+                <button key={cat} type="button" role="radio" aria-checked={on}
+                  onClick={() => setCategory(cat)}
+                  className={`flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5
+                    rounded-xl border-2 px-1 py-2.5 text-xs font-medium transition-colors
+                    ${on ? 'border-brand-600 bg-brand-50 text-brand-700'
+                         : 'border-line bg-surface text-ink-muted hover:border-brand-200 hover:bg-brand-50/40'}`}>
+                  <span aria-hidden="true" className={`grid size-9 place-items-center rounded-lg ${art.tile}`}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
+                      strokeLinecap="round" strokeLinejoin="round" className="size-5">
+                      <path d={art.d} />
+                    </svg>
+                  </span>
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
         </Step>
 
-        <Step n={2} icon="map" label={t.step2Label} required hint={t.step2Hint}>
+        <Step n={2} icon="map" label={t.step2Label} required hint={t.step2Hint} done={!!pinAddress}>
           <MapPicker onLocationChange={handleLocationChange} initialLocation={location} />
           <input
             type="text"
@@ -234,31 +253,29 @@ const Report = () => {
           </div>
         </Step>
 
-        <Step n={3} icon="clipboard" label={t.step3Label} required hint={t.step3Hint}>
+        <Step n={3} icon="clipboard" label={t.step3Label} required hint={t.step3Hint}
+          done={title.trim().length >= 5 && description.trim().length >= 10}>
           <input type="text" value={title} onChange={e => setTitle(e.target.value)}
             placeholder={t.titlePlaceholder} required minLength={5} className={field} />
           <textarea value={description} onChange={e => setDescription(e.target.value)}
             placeholder={t.descPlaceholder} rows={4} required minLength={10} className={`${field} mt-4 py-3`} />
         </Step>
 
-        <Step n={4} icon="camera" label={t.step4Label} optional hint={t.step4Hint}>
+        <Step n={4} icon="camera" label={t.step4Label} optional hint={t.step4Hint} done={photos.length > 0}>
           <PhotoInput onPhotosChange={setPhotos} initialPhotos={photos} />
         </Step>
 
-        <aside className="flex items-start gap-3 rounded-card border border-brand-100 bg-brand-50 px-5 py-4 text-sm">
-          <Icon name="info" className="mt-0.5 size-5 shrink-0 text-brand-600" />
-          <span>
-            <span className="block font-semibold text-brand-700">{t.photoNote}</span>
-            <span className="block text-ink-muted">{t.photoNoteBody}</span>
-          </span>
-        </aside>
-
-        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+        {/* Phone: the actions ride the bottom of the viewport. This form is tall — a map, a
+            description and three photo slots — and having to scroll past all of it to find
+            Submit is how a half-written report gets abandoned. Static from sm up. */}
+        <div className="sticky bottom-0 -mx-4 flex gap-3 border-t border-line bg-surface/95 px-4
+          py-3 backdrop-blur-sm sm:static sm:mx-0 sm:justify-end sm:border-0 sm:bg-transparent
+          sm:px-0 sm:pt-2 sm:backdrop-blur-none">
           <button type="button" onClick={() => navigate('/feed')}
-            className="min-h-13 w-full cursor-pointer rounded-lg border border-line bg-surface px-6 text-base font-medium text-ink shadow-sm transition-colors hover:bg-canvas sm:w-auto">
+            className="min-h-13 shrink-0 cursor-pointer rounded-lg border border-line bg-surface px-5 text-base font-medium text-ink shadow-sm transition-colors hover:bg-canvas sm:px-6">
             {t.cancel}
           </button>
-          <button type="submit" disabled={submitting} className={`${primaryBtn} w-full sm:w-auto`}>
+          <button type="submit" disabled={submitting} className={`${primaryBtn} flex-1 sm:flex-none`}>
             {submitting ? <Spinner label="Submitting" /> : <Icon name="send" className="size-5" />}
             {submitting ? t.submitting : t.submit}
           </button>
@@ -268,25 +285,35 @@ const Report = () => {
   );
 };
 
-function Step({ n, icon, label, required, optional, hint, children }) {
+function Step({ n, icon, label, required, optional, hint, done, children }) {
   return (
-    <section className="rounded-card border border-line bg-surface p-5 shadow-sm sm:p-6">
-      <div className="grid gap-5 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
-        <div className="flex gap-3">
-          <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-600 text-xs font-semibold text-white">{n}</span>
-          <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600">
+    <section className="rounded-card border border-line bg-surface p-4 shadow-sm sm:p-6">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] md:gap-5">
+        <div className="flex items-start gap-3">
+          {/* One tile, not two. A 28px number badge beside a 40px icon tile ate 80px of a
+              390px screen before the heading got a chance to start.
+              The badge ticks over once the step is satisfied — on a form this tall, "what is
+              left to fill in" should be answerable by glancing down the badges. */}
+          <span aria-hidden="true" className={`relative grid size-10 shrink-0 place-items-center rounded-xl
+            transition-colors ${done ? 'bg-resolved-50 text-resolved-600' : 'bg-brand-50 text-brand-600'}`}>
             <Icon name={icon} className="size-5" />
+            <span className={`absolute -right-1.5 -top-1.5 grid size-[18px] place-items-center rounded-full
+              text-[10px] font-bold text-white transition-colors ${done ? 'bg-resolved-600' : 'bg-brand-600'}`}>
+              {done ? <Icon name="tick" className="size-3" /> : n}
+            </span>
           </span>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-sm font-semibold">
               {label}
               {required && <span className="ml-1 text-rejected-600" aria-hidden="true">*</span>}
               {optional && <span className="ml-1 font-normal text-ink-muted">(optional)</span>}
             </h2>
-            <p className="mt-1 text-xs text-ink-muted">{hint}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">{hint}</p>
           </div>
         </div>
-        <div>{children}</div>
+        {/* min-w-0: a grid item defaults to min-width:auto, so without this the track is sized
+            to the map's content width and the whole card scrolls sideways. */}
+        <div className="min-w-0">{children}</div>
       </div>
     </section>
   );

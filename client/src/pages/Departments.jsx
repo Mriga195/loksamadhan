@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useLang } from '../LangContext';
 import Icon from '../components/Icon';
@@ -151,23 +151,61 @@ export default function Departments() {
     });
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const selectTab = (id) => setParams(id === EN_DEPTS[0].id ? {} : { dept: id });
+  const selectTab = (id, replace = false) =>
+    setParams(id === EN_DEPTS[0].id ? {} : { dept: id }, { replace });
+
+  // The strip scrolls on a phone, so a shared ?dept=parks link would otherwise land with the
+  // selected tab off-screen and nothing looking selected.
+  const activeTab = useRef(null);
+  const strip = useRef(null);
+  const fromSwipe = useRef(false);
+  const settle = useRef(null);
+
+  useEffect(() => {
+    // Don't yank the strip back to where the reader just swiped it.
+    if (fromSwipe.current) { fromSwipe.current = false; return; }
+    activeTab.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeId]);
+
+  // Swiping the strip selects. Without this the dots tracked the selection while the swipe
+  // only moved the scroll position, so a swipe appeared to do nothing at all.
+  // Debounced rather than per-frame: selecting mid-flick would fire off four departments.
+  const onStripScroll = (e) => {
+    const el = e.currentTarget;
+    if (el.scrollWidth <= el.clientWidth) return;   // wrapped layout from sm up — nothing to swipe
+    clearTimeout(settle.current);
+    settle.current = setTimeout(() => {
+      const first = [...el.children].findIndex(c => c.offsetLeft + c.offsetWidth > el.scrollLeft + 8);
+      const id = depts[first]?.id;
+      // replace, not push: a flick past four departments should not be four back-button steps.
+      if (id && id !== activeId) { fromSwipe.current = true; selectTab(id, true); }
+    }, 120);
+  };
+  useEffect(() => () => clearTimeout(settle.current), []);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:py-10">
       {/* Page header */}
-      <h1 className="text-3xl font-extrabold">{ui.pageTitle}</h1>
+      <h1 className="text-2xl font-extrabold sm:text-3xl">{ui.pageTitle}</h1>
       <div className="mt-2 h-1 w-10 rounded-full bg-brand-600" />
-      <p className="mt-4 max-w-2xl text-sm text-ink-muted">{ui.pageDesc}</p>
+      <p className="mt-3 max-w-2xl text-sm text-ink-muted sm:mt-4">{ui.pageDesc}</p>
 
       {/* Department tabs */}
-      <div role="tablist" aria-label="Departments" className="mt-6 flex flex-wrap gap-3">
+      {/* Six pills, each on its own row, pushed the actual department off the bottom of a phone.
+          Below sm they become one snap-scrolling strip; from sm up they wrap as before.
+          -mx-4/px-4 so the strip bleeds to the screen edge instead of ending in a hard cut. */}
+      <div role="tablist" aria-label="Departments"
+        ref={strip}
+        onScroll={onStripScroll}
+        className="no-scrollbar relative -mx-4 mt-5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4
+          sm:mx-0 sm:mt-6 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:px-0">
         {depts.map((dept) => {
           const t = THEMES[dept.id] || THEMES['water-supply'];
           const isActive = dept.id === active.id;
           return (
             <button
               key={dept.id}
+              ref={isActive ? activeTab : null}
               type="button"
               role="tab"
               aria-selected={isActive}
@@ -176,19 +214,20 @@ export default function Departments() {
                 ? { backgroundColor: t.tabBg, color: t.tabText, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }
                 : {}}
               className={
-                'flex min-h-[56px] items-center gap-3 rounded-2xl px-4 text-left text-sm transition-all duration-200 ' +
+                'flex min-h-11 shrink-0 snap-start cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl ' +
+                'px-3 text-left text-sm transition-all duration-200 sm:min-h-[56px] sm:gap-3 sm:px-4 ' +
                 (isActive
                   ? 'ring-1'
                   : 'bg-surface text-ink shadow-sm hover:shadow-md')
               }
             >
               <span
-                className="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200"
+                className="flex size-7 shrink-0 items-center justify-center rounded-full transition-colors duration-200 sm:size-9"
                 style={isActive
                   ? { backgroundColor: 'rgba(255,255,255,0.6)', color: t.tabText }
                   : { backgroundColor: t.iconBg, color: t.accent }}
               >
-                <Icon name={dept.icon} className="size-[18px]" />
+                <Icon name={dept.icon} className="size-4 sm:size-[18px]" />
               </span>
               <span className="font-medium leading-tight">{dept.name}</span>
             </button>
@@ -196,8 +235,33 @@ export default function Departments() {
         })}
       </div>
 
+      {/* Below sm the strip scrolls, so nothing on screen says there are six of these. The dots
+          say how many and which one you are on — and they select, which beats scrolling to the
+          far end of the strip. The button is 32px tall so the 8px dot is still tappable. */}
+      <div className="mt-3 flex items-center justify-center gap-1 sm:hidden">
+        {depts.map((dept) => {
+          const isActive = dept.id === active.id;
+          const t = THEMES[dept.id] || THEMES['water-supply'];
+          return (
+            <button
+              key={dept.id}
+              type="button"
+              onClick={() => selectTab(dept.id)}
+              aria-label={dept.name}
+              aria-current={isActive}
+              className="grid h-8 cursor-pointer place-items-center px-1"
+            >
+              <span
+                className={`block h-2 rounded-full transition-all duration-200 ${isActive ? 'w-6' : 'w-2 bg-line'}`}
+                style={isActive ? { backgroundColor: t.accent } : undefined}
+              />
+            </button>
+          );
+        })}
+      </div>
+
       {/* Main panel */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="mt-5 grid gap-4 sm:mt-6 lg:grid-cols-[2fr_1fr]">
         {/* Left: image + details */}
         <div
           role="tabpanel"
@@ -206,7 +270,7 @@ export default function Departments() {
         >
           {/* Image */}
           <div
-            className="flex min-h-[200px] flex-shrink-0 items-center justify-center overflow-hidden sm:w-56"
+            className="flex h-40 flex-shrink-0 items-center justify-center overflow-hidden sm:h-auto sm:min-h-[200px] sm:w-56"
             style={{ background: `linear-gradient(135deg, ${theme.tabBg}80, ${theme.iconBg})` }}
           >
             {active.image
@@ -215,7 +279,7 @@ export default function Departments() {
           </div>
 
           {/* Details */}
-          <div className="flex flex-1 flex-col p-6">
+          <div className="flex flex-1 flex-col p-4 sm:p-6">
             {/* Title row */}
             <div className="flex items-center gap-3">
               <span
@@ -279,7 +343,7 @@ export default function Departments() {
 
         {/* Right: Did you know? */}
         <div
-          className="relative overflow-hidden rounded-2xl p-6 shadow-sm border border-line"
+          className="relative overflow-hidden rounded-2xl border border-line p-4 shadow-sm sm:p-6"
           style={{ backgroundColor: theme.factBg }}
         >
           <span

@@ -2,6 +2,7 @@ const router = require('express').Router();
 const Issue = require('../models/Issue');
 const { auth, requireRole } = require('../middleware/auth');
 const { STATUSES, CATEGORIES, DEPARTMENTS } = require('../constants');
+const { slaFor, resolvedAt } = require('../lib/sla');
 
 const DAY = 86400000;
 const WINDOW = 14;              // sparkline length, in days
@@ -15,11 +16,6 @@ function statusAt(issue, t) {
     if (new Date(h.at).getTime() <= t) status = h.status;
   }
   return status;
-}
-
-function resolvedAt(issue) {
-  const entry = (issue.statusHistory || []).filter(h => h.status === 'Resolved' || h.status === 'Closed').pop();
-  return entry ? new Date(entry.at).getTime() : null;
 }
 
 function dayPoints() {
@@ -112,8 +108,23 @@ router.get('/', auth(false), async (req, res, next) => {
 
     const last = s => s[s.length - 1];
 
+    // Punctuality. `settled` is what the promise is actually judged on — an open issue that is
+    // not yet late is neither a hit nor a miss, and counting it as either would let a
+    // department improve its score simply by sitting on new reports.
+    const slas = allIssues.map(i => slaFor(i));
+    const settled = slas.filter(s => s.state === 'met' || s.state === 'missed');
+    const onTimeRate = settled.length
+      ? Math.round((settled.filter(s => s.state === 'met').length / settled.length) * 100)
+      : null;
+
     res.json({
       total,
+      sla: {
+        onTimeRate,                                                  // null until anything is settled
+        settled: settled.length,
+        overdue: slas.filter(s => s.state === 'overdue').length,
+        dueSoon: slas.filter(s => s.state === 'due-soon').length,
+      },
       byStatus: statusMap,
       byCategory: categoryMap,
       byDepartment: deptMap,

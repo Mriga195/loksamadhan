@@ -41,7 +41,15 @@ const EN = {
   parks: 'Parks & Gardens',
 };
 
-const linkClass = 'flex items-center gap-2 hover:text-brand-600';
+// Rows on a real screen. On a phone they get a 44px target — a 20px text row is not something
+// a thumb can hit at the very bottom of a page.
+const linkClass = 'flex min-h-11 items-center gap-2 hover:text-brand-600 sm:min-h-0';
+
+// Departments are chips below sm and rows from sm up. Six stacked rows of "Solid Waste
+// Management" was a third of the footer's height on a phone; wrapped chips halve it.
+const chipClass = 'inline-flex items-center gap-2 rounded-full border border-line bg-canvas' +
+  ' px-3 py-2 hover:border-brand-200 hover:text-brand-600 sm:min-h-0 sm:rounded-none sm:border-0' +
+  ' sm:bg-transparent sm:px-0 sm:py-0';
 
 export default function Footer() {
   const { lang, translate } = useLang();
@@ -59,14 +67,14 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-line bg-surface">
-      <div className="mx-auto max-w-7xl px-4 py-12">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
+        <div className="grid gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-4">
           <div>
             <Link to="/" className="inline-flex items-center gap-2 text-lg font-bold">
               <Logo />
               <span className="text-brand-600">Lok</span>Samadhan
             </Link>
-            <p className="mt-3 max-w-xs text-sm text-ink-muted">
+            <p className="mt-2 max-w-xs text-sm text-ink-muted sm:mt-3">
               {t.tagline}
             </p>
           </div>
@@ -75,7 +83,7 @@ export default function Footer() {
             <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               {t.explore}
             </h3>
-            <ul className="mt-4 space-y-3 text-sm">
+            <ul className="mt-2 text-sm sm:mt-4 sm:space-y-3">
               <li>
                 <Link to="/feed" className={linkClass}>
                   <Icon name="home" className="size-[18px]" />
@@ -95,18 +103,19 @@ export default function Footer() {
             <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               {t.departments}
             </h3>
-            <ul className="mt-4 space-y-3 text-sm">
+            <ul className="mt-3 flex flex-wrap gap-2 text-sm sm:mt-4 sm:flex-col sm:gap-3">
               {DEPARTMENTS.map(({ dept, icon }, idx) => (
                 <li key={dept}>
-                  <Link to={`/departments?dept=${dept}`} className={linkClass}>
-                    <Icon name={icon} className="size-[18px]" />
+                  <Link to={`/departments?dept=${dept}`} className={chipClass}>
+                    <Icon name={icon} className="size-4 sm:size-[18px]" />
                     {deptLabels[idx]}
                   </Link>
                 </li>
               ))}
               <li>
-                <Link to="/departments" className={linkClass}>
-                  <Icon name="building" className="size-[18px]" />
+                <Link to="/departments"
+                  className={`${chipClass} border-brand-200 bg-brand-50 font-medium text-brand-700`}>
+                  <Icon name="building" className="size-4 sm:size-[18px]" />
                   {t.viewAll}
                 </Link>
               </li>
@@ -117,7 +126,7 @@ export default function Footer() {
             <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               {t.promise}
             </h3>
-            <ul className="mt-4 space-y-3 text-sm text-ink-muted">
+            <ul className="mt-3 space-y-2 text-sm text-ink-muted sm:mt-4 sm:space-y-3">
               <li>{t.p1}</li>
               <li>{t.p2}</li>
               <li>{t.p3}</li>
@@ -125,7 +134,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <p className="mt-10 border-t border-line pt-6 text-xs text-ink-muted">
+        <p className="mt-8 border-t border-line pt-5 text-xs leading-relaxed text-ink-muted sm:mt-10 sm:pt-6">
           {t.copyright}
         </p>
       </div>

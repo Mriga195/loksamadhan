@@ -5,17 +5,23 @@ import { useAuth } from '../AuthContext';
 import FeedMap from '../components/FeedMap';
 import Icon from '../components/Icon';
 import StatusPill from '../components/StatusPill';
+import SlaBadge from '../components/SlaBadge';
 import StatusTimeline from '../components/StatusTimeline';
 import ErrorState from '../components/ErrorState';
 import Spinner, { Skeleton } from '../components/Spinner';
 import { timeAgo } from '../components/IssueCard';
 import SafeImage from '../components/SafeImage';
+import ShareIssue from '../components/ShareIssue';
+import { shortId } from '../components/IssueDrawer';
 import ConfirmDialog from '../components/ConfirmDialog';
 import AttachDuplicateModal from '../components/AttachDuplicateModal';
 import NotFound from './NotFound';
 import { useSeo } from '../seo';
 
 const card = 'rounded-2xl border border-line bg-surface';
+
+// Same shape FindIssue accepts, so a reference works in the URL as well as in the dialog.
+const REF = /^#?LS-\d{4}-[0-9a-f]{6}$/i;
 
 function Field({ icon, label, children }) {
   return (
@@ -65,14 +71,24 @@ export default function IssueDetail() {
     setError(null);
     setNotFound(false);
     try {
-      setIssue(await apiFetch(`/api/issues/${id}`));
+      // The reference is what a citizen is given — on the report, in an email, read out over
+      // the phone — so /issues/LS-2026-61AB11 has to open the report just like the canonical
+      // /issues/<objectid> does. Resolve it, then swap the URL for the real one so the address
+      // bar, a bookmark and the share link all agree.
+      let target = id;
+      if (REF.test(id)) {
+        const { _id } = await apiFetch(`/api/issues/lookup/${encodeURIComponent(id)}`);
+        target = _id;
+        navigate(`/issues/${_id}`, { replace: true });
+      }
+      setIssue(await apiFetch(`/api/issues/${target}`));
     } catch (e) {
       if (e.status === 404 || e.status === 400) setNotFound(true);
       else setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, navigate]);
 
   useEffect(() => { load(); }, [load, user?._id]);
 
@@ -85,6 +101,17 @@ export default function IssueDetail() {
   );
   const isStaff = user?.role === 'officer' || user?.role === 'admin';
   const canSupport = !isMine && !isStaff;
+
+  const [refCopied, setRefCopied] = useState(false);
+  const copyRef = async () => {
+    try {
+      await navigator.clipboard.writeText(shortId(issue));
+      setRefCopied(true);
+      setTimeout(() => setRefCopied(false), 2000);
+    } catch {
+      window.prompt('Copy this reference', shortId(issue));
+    }
+  };
 
   async function support() {
     if (!user) return navigate('/login', { state: { from: `/issues/${id}` } });
@@ -463,6 +490,9 @@ export default function IssueDetail() {
               <span className="rounded-full bg-canvas px-2.5 py-1 text-sm text-ink-muted">
                 {issue.category}
               </span>
+              {/* showMet here but not in the feed: "fixed on time" is worth saying once on the
+                  report itself, and is wallpaper on every resolved card in a list. */}
+              <SlaBadge sla={issue.sla} showMet />
               {/* Priority badge with color coding */}
               {issue.priority === 'high' && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 border border-red-200 px-2.5 py-0.5 text-xs font-bold text-red-700">
@@ -508,7 +538,19 @@ export default function IssueDetail() {
                 </button>
               )}
             </div>
-            <h1 className="mt-3 text-2xl font-bold leading-tight sm:text-[1.75rem]">{issue.title}</h1>
+            {/* The reference was officer-only until now, which made "Find by ID" unusable for the
+                person who filed the report — they had never been shown the thing it asks for.
+                Tap to copy: it is what you quote on a phone call or in a WhatsApp message. */}
+            <button type="button" onClick={copyRef} title="Copy reference"
+              className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-canvas
+                px-2.5 py-1 font-mono text-xs font-semibold text-ink-muted transition-colors
+                hover:bg-brand-50 hover:text-brand-700">
+              #{shortId(issue)}
+              <Icon name={refCopied ? 'tick' : 'link'}
+                className={`size-3.5 ${refCopied ? 'text-resolved-600' : ''}`} />
+            </button>
+
+            <h1 className="mt-2 text-2xl font-bold leading-tight sm:text-[1.75rem]">{issue.title}</h1>
             <p className="mt-3 text-ink-muted">{issue.description}</p>
           </header>
 
@@ -684,6 +726,8 @@ export default function IssueDetail() {
             </p>
             <StatusTimeline history={issue.statusHistory} />
           </section>
+
+          <ShareIssue issue={issue} />
 
           {canSupport && (
             <section className={`p-5 ${card}`}>
