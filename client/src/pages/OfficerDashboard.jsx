@@ -383,11 +383,13 @@ export default function OfficerDashboard() {
                       : 'text-ink-muted hover:bg-canvas hover:text-ink'
                   }`}
                 >
-                  <span className="flex items-center gap-2.5">
-                    <Icon name="chart" className="size-4" />
-                    Analytics & Insights
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <Icon name="chart" className="size-4 shrink-0" />
+                    <span className="truncate whitespace-nowrap">Analytics</span>
                   </span>
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 ${
+                    viewMode === 'analytics' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
+                  }`}>
                     Live
                   </span>
                 </button>
@@ -407,11 +409,13 @@ export default function OfficerDashboard() {
                         : 'text-ink-muted hover:bg-canvas hover:text-ink'
                     }`}
                   >
-                    <span className="flex items-center gap-2.5">
-                      <Icon name="users" className="size-4" />
-                      Office Users & Staff
+                    <span className="flex items-center gap-2.5 min-w-0">
+                      <Icon name="users" className="size-4 shrink-0" />
+                      <span className="truncate whitespace-nowrap">Office Users</span>
                     </span>
-                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 ${
+                      viewMode === 'users' ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
+                    }`}>
                       Admin
                     </span>
                   </button>
