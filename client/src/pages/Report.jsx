@@ -40,12 +40,20 @@ const Report = () => {
 
   const [category, setCategory] = useState(draft?.category || '');
   const [address, setAddress] = useState(draft?.address || '');
-  const [location, setLocation] = useState(draft?.location || null);
+  const [location, setLocation] = useState(draft?.location || [92.7926, 26.6338]);
+  const [pinAddress, setPinAddress] = useState(draft?.pinAddress || '');
+  const [pinArea, setPinArea] = useState(draft?.pinArea || '');
   const [title, setTitle] = useState(draft?.title || '');
   const [description, setDescription] = useState(draft?.description || '');
   const [photos, setPhotos] = useState(draft?.photos || []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  const handleLocationChange = (coords, info) => {
+    setLocation(coords);
+    if (info?.displayName) setPinAddress(info.displayName);
+    if (info?.area) setPinArea(info.area);
+  };
 
   useEffect(() => {
     if (lang === 'en') { setT(EN); return; }
@@ -77,7 +85,7 @@ const Report = () => {
     if (!title.trim() || title.trim().length < 5) { setError(t.errTitle); return; }
     if (!description.trim() || description.trim().length < 10) { setError(t.errDesc); return; }
     if (!user) {
-      const ds = { category, address, location, title, description, photos };
+      const ds = { category, address, location, pinAddress, pinArea, title, description, photos };
       try { navigate('/login', { state: { from: '/report', draft: ds } }); }
       catch { navigate('/login', { state: { from: '/report', draft: { ...ds, photos: [] } } }); }
       return;
@@ -87,7 +95,24 @@ const Report = () => {
       const fd = new FormData();
       fd.append('title', title.trim()); fd.append('description', description.trim());
       fd.append('category', category);
-      if (address.trim()) fd.append('address', address.trim());
+
+      // Save the location according to the pin; if Landmark or street is filled then save both
+      const landmark = address.trim();
+      let finalAddress = '';
+      if (landmark && pinAddress) {
+        finalAddress = `${landmark}, ${pinAddress}`;
+      } else if (landmark) {
+        finalAddress = landmark;
+      } else if (pinAddress) {
+        finalAddress = pinAddress;
+      } else {
+        finalAddress = 'Tezpur, Assam';
+      }
+
+      const finalArea = pinArea || (landmark ? landmark : 'Tezpur');
+
+      fd.append('address', finalAddress);
+      fd.append('area', finalArea);
       fd.append('lng', location[0]); fd.append('lat', location[1]);
       photos.forEach(f => fd.append('photos', f));
       const res = await api('/api/issues', { method: 'POST', body: fd, isForm: true });
@@ -127,7 +152,7 @@ const Report = () => {
         </Step>
 
         <Step n={2} icon="map" label={t.step2Label} required hint={t.step2Hint}>
-          <MapPicker onLocationChange={setLocation} />
+          <MapPicker onLocationChange={handleLocationChange} initialLocation={location} />
           <input type="text" value={address} onChange={e => setAddress(e.target.value)}
             placeholder={t.step2AddressPlaceholder} className={`${field} mt-4`} />
           <p className="mt-1.5 text-right text-xs text-ink-muted">{t.step2AddressHint}</p>
