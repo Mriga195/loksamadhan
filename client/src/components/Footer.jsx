@@ -54,12 +54,6 @@ export default function Footer() {
                   Report an Issue
                 </Link>
               </li>
-              <li>
-                <Link to="/login" className={linkClass}>
-                  <Icon name="dashboard" className="size-[18px]" />
-                  Officer login
-                </Link>
-              </li>
             </ul>
           </nav>
 
