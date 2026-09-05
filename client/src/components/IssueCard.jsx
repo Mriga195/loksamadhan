@@ -126,7 +126,7 @@ export default function IssueCard({ issue, index }) {
                     <rect x="9" y="9" width="11" height="11" rx="2" />
                     <path strokeLinecap="round" d="M15 5H6a2 2 0 0 0-2 2v9" />
                   </svg>
-                  {issue.duplicateCount} nearby report{issue.duplicateCount === 1 ? '' : 's'}
+                  {issue.duplicateCount} similar report{issue.duplicateCount === 1 ? '' : 's'}
                 </span>
               )}
 
