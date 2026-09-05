@@ -35,7 +35,7 @@ export default function App() {
     <div className="flex min-h-screen flex-col bg-canvas">
       <ScrollToTop />
       <Nav />
-      <div className="flex-1">
+      <div className="flex-1 pt-20">
         <Outlet />
       </div>
       <Footer />

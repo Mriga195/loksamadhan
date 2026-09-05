@@ -84,10 +84,10 @@ export default function Nav() {
   );
 
   return (
-    <header className="sticky top-0 z-30 px-4 pt-4">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-30 px-4 pt-4">
       <nav
         aria-label="Main"
-        className="mx-auto max-w-7xl rounded-2xl border border-line bg-surface px-3 py-2
+        className="pointer-events-auto mx-auto max-w-7xl rounded-2xl border border-line bg-surface px-3 py-2
           shadow-[0_2px_12px_rgba(15,23,42,0.06)] md:px-4 md:py-2.5"
       >
         <div className="flex items-center gap-2">
