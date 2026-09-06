@@ -211,9 +211,9 @@ async function seed() {
   // ── CLUSTER 1: Kolia Bhomora Setu (Roads) — Root + 2 Similar Reports ──
   // Showcases: Similar reports group with >1 item, demonstrating the "Show more" button!
   const roadRoot = await Issue.create({
-    title: 'Deep pothole on NH-15 near Kolia Bhomora Setu approach',
+    title: 'Deep hazardous pothole on NH-15 near Kolia Bhomora Setu approach',
     description:
-      'Large pothole on the main highway approaching Kolia Bhomora Setu bridge. Very dangerous for two-wheelers especially at night. Multiple accidents reported.',
+      'Severe 4-foot wide pothole on the NH-15 highway approaching Kolia Bhomora Setu bridge. Deep asphalt crater with exposed ballast gravel causing heavy vehicular swerving and high accident risk for night commuters and two-wheelers.',
     category: 'Road',
     location: { type: 'Point', coordinates: [92.7845, 26.6310] },
     address: 'NH-15, Kolia Bhomora Setu Approach Road, Tezpur',
@@ -226,12 +226,12 @@ async function seed() {
     status: 'In Progress',
     supporters: [citizen2._id, citizen3._id],
     photos: [
-      'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
+      'https://res.cloudinary.com/de3mpiotu/image/upload/v1788666904/loksamadhan/seed/pothole_nh15_root.webp',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen1._id, at: daysAgo(4) },
-      { status: 'Acknowledged', note: 'Assigned to Roads & Infrastructure team', by: admin._id, at: daysAgo(3, 18) },
-      { status: 'In Progress', note: 'Road repair team mobilized with bitumen hot-mix batch', by: officerRoads._id, at: daysAgo(2) },
+      { status: 'Submitted', note: 'Reported by citizen with road hazard photographic proof', by: citizen1._id, at: daysAgo(4) },
+      { status: 'Acknowledged', note: 'Assigned to Roads & Infrastructure team. Field engineer notified for bitumen hot-mix dispatch.', by: admin._id, at: daysAgo(3, 18) },
+      { status: 'In Progress', note: 'Road repair team mobilized with bitumen hot-mix batch and vibratory roller compactor', by: officerRoads._id, at: daysAgo(2) },
     ],
     createdAt: daysAgo(4),
   });
@@ -243,7 +243,7 @@ async function seed() {
   await Issue.create({
     title: 'Dangerous road crater near Kolia Bhomora bridge junction',
     description:
-      'Big crater-like pothole near the bridge junction. Rainwater fills it up making it invisible. Urgent repair needed before monsoon worsens it.',
+      'Big crater-like pothole near the bridge junction. Rainwater fills it up making it invisible to passing traffic. Urgent repair needed before monsoon rains worsen it.',
     category: 'Road',
     location: { type: 'Point', coordinates: [92.7849, 26.6313] }, // ~50m away
     address: 'Kolia Bhomora Bridge Junction, NH-15, Tezpur',
@@ -256,10 +256,10 @@ async function seed() {
     status: 'In Progress',
     duplicateOf: roadRoot._id,
     photos: [
-      'https://images.unsplash.com/photo-1590674899484-d5640e854abe?w=800&auto=format&fit=crop&q=80',
+      'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667694/loksamadhan/seed/road_crater_junction.webp',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen2._id, at: daysAgo(3) },
+      { status: 'Submitted', note: 'Reported by citizen with junction crater photo', by: citizen2._id, at: daysAgo(3) },
       {
         status: 'In Progress',
         note: `Linked as similar report to #LS-${roadYear}-${roadHex}. Handled under original report by assigned officer.`,
@@ -272,9 +272,9 @@ async function seed() {
 
   // Similar report 2 under Kolia Bhomora Setu
   await Issue.create({
-    title: 'Huge road cave-in right before Kolia Bhomora toll gate',
+    title: 'Huge sunken asphalt cave-in before Kolia Bhomora toll gate',
     description:
-      'Vehicles are swerving dangerously into oncoming traffic to avoid this sunken asphalt patch. Please patch it ASAP.',
+      'Vehicles are swerving dangerously into oncoming traffic to avoid this sunken asphalt patch. Heavy trucks grinding loose gravel and debris onto highway lanes.',
     category: 'Road',
     location: { type: 'Point', coordinates: [92.7842, 26.6308] }, // ~40m away
     address: 'NH-15 Toll Plaza approach, Tezpur',
@@ -287,10 +287,10 @@ async function seed() {
     status: 'In Progress',
     duplicateOf: roadRoot._id,
     photos: [
-      'https://images.unsplash.com/photo-1578885136359-16c8bd4d3a8e?w=800&auto=format&fit=crop&q=80',
+      'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667699/loksamadhan/seed/road_cavein_toll.webp',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen3._id, at: daysAgo(2) },
+      { status: 'Submitted', note: 'Reported by citizen with toll plaza approach photo', by: citizen3._id, at: daysAgo(2) },
       {
         status: 'In Progress',
         note: `Linked as similar report to #LS-${roadYear}-${roadHex}. Handled under original report by assigned officer.`,
@@ -303,9 +303,9 @@ async function seed() {
 
   // ── CLUSTER 2: Hazara Pukhuri (Water) — Root + 1 Similar Report ──
   const waterRoot = await Issue.create({
-    title: 'Burst water pipe leaking continuously near Hazara Pukhuri',
+    title: 'Ruptured municipal water main leaking continuously near Hazara Pukhuri',
     description:
-      'Drinking water main pipe has burst and is leaking continuously for 3 days near Hazara Pukhuri. Heavy water wastage and lane flooding.',
+      'Main drinking water supply pipeline has ruptured and is gushing continuously onto the pond approach road for 3 days. Severe potable water wastage, flooded lane, and pressure drop in neighboring wards.',
     category: 'Water',
     location: { type: 'Point', coordinates: [92.7920, 26.6340] },
     address: 'Near Hazara Pukhuri, Tezpur',
@@ -318,11 +318,11 @@ async function seed() {
     status: 'Acknowledged',
     supporters: [citizen2._id],
     photos: [
-      'https://images.unsplash.com/photo-1542013936693-884638332954?w=800&auto=format&fit=crop&q=80',
+      'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667738/loksamadhan/seed/water_burst_hazara.webp',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen1._id, at: daysAgo(2) },
-      { status: 'Acknowledged', note: 'Assigned to Water Supply team for valve shutoff and pipe joint replacement', by: officerWater._id, at: daysAgo(1, 12) },
+      { status: 'Submitted', note: 'Reported by citizen with burst pipe photo', by: citizen1._id, at: daysAgo(2) },
+      { status: 'Acknowledged', note: 'Assigned to Water Supply team for sluice valve shutoff and cast-iron pipe joint sleeve replacement', by: officerWater._id, at: daysAgo(1, 12) },
     ],
     createdAt: daysAgo(2),
   });
@@ -331,9 +331,9 @@ async function seed() {
   const waterHex = String(waterRoot._id).slice(-6).toUpperCase();
 
   await Issue.create({
-    title: 'Water supply pipe broken and flooding Hazara Pukhuri road',
+    title: 'Water supply pipe broken and flooding market lane near Hazara Pukhuri',
     description:
-      'Main water pipe ruptured. Road is covered in potable drinking water and pressure has dropped in neighboring homes.',
+      'Underground main water pipe ruptured in front of commercial shops. Street is covered in drinking water, forcing pedestrians to wade through flooded asphalt.',
     category: 'Water',
     location: { type: 'Point', coordinates: [92.7925, 26.6344] }, // ~65m away
     address: 'Hazara Pukhuri Road, Tezpur',
@@ -346,10 +346,10 @@ async function seed() {
     status: 'Acknowledged',
     duplicateOf: waterRoot._id,
     photos: [
-      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
+      'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667750/loksamadhan/seed/water_leak_lane.webp',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen2._id, at: daysAgo(1) },
+      { status: 'Submitted', note: 'Reported by citizen with lane flooding photo', by: citizen2._id, at: daysAgo(1) },
       {
         status: 'Acknowledged',
         note: `Linked as similar report to #LS-${waterYear}-${waterHex}. Handled under original report by assigned officer.`,
@@ -367,7 +367,7 @@ async function seed() {
   await Issue.create({
     title: 'Hazardous open manhole missing cover on Bamuni Maidan road',
     description:
-      'Large storm manhole cover is completely missing on the main road near Bamuni Maidan. Extremely hazardous for pedestrians and vehicles.',
+      'Large storm sewer manhole cover is completely missing on the main asphalt road near Bamuni Maidan. Extremely hazardous deep hole for pedestrians and school children. Tree branch with warning cloth inserted as a makeshift warning.',
     category: 'Drainage',
     location: { type: 'Point', coordinates: [92.7905, 26.6300] },
     address: 'Bamuni Maidan Road, Tezpur',
@@ -379,24 +379,32 @@ async function seed() {
     priority: 'high',
     status: 'Pending Verification',
     photos: [
-      'https://images.unsplash.com/photo-1584467735815-f778f274e296?w=800&auto=format&fit=crop&q=80',
+      'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667772/loksamadhan/seed/open_manhole_before.webp',
     ],
     resolution: {
-      note: 'Installed new heavy-duty reinforced ductile iron manhole frame and cover with anti-theft locking hinge.',
+      note: 'Procured and installed new heavy-duty reinforced ductile iron manhole frame and circular cover embossed with municipal sewerage insignia. Anchored flush with fresh bituminous asphalt paving.',
       evidence: [
-        'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80',
+        'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667775/loksamadhan/seed/open_manhole_after.webp',
       ],
       submittedBy: officerDrainage._id,
       submittedAt: daysAgo(1),
     },
+    aiVerification: {
+      verified: true,
+      matchScore: 94,
+      summary: 'AI Vision verified: The missing manhole cover has been replaced with a newly installed heavy ductile iron cover flush with asphalt. The hazard marker tree branch has been cleared.',
+      confidence: 'High',
+      verifiedAt: daysAgo(1),
+      provider: 'groq',
+    },
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen1._id, at: daysAgo(3) },
-      { status: 'Acknowledged', note: 'Prioritized as urgent road hazard', by: admin._id, at: daysAgo(2, 12) },
-      { status: 'In Progress', note: 'Procured cast iron replacement lid from central depot', by: officerDrainage._id, at: daysAgo(2) },
+      { status: 'Submitted', note: 'Reported by citizen with photo of open manhole and marker branch', by: citizen1._id, at: daysAgo(3) },
+      { status: 'Acknowledged', note: 'Prioritized as urgent street fall hazard', by: admin._id, at: daysAgo(2, 12) },
+      { status: 'In Progress', note: 'Procured ductile iron replacement lid from central municipal depot', by: officerDrainage._id, at: daysAgo(2) },
       {
         status: 'Pending Verification',
-        note: 'Installed new heavy-duty reinforced ductile iron manhole frame and cover. Submitted proof photos for admin review.',
-        evidence: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80',
+        note: 'Installed new heavy-duty reinforced ductile iron manhole frame and cover flush with road. Submitted photographic proof for admin verification.',
+        evidence: 'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667775/loksamadhan/seed/open_manhole_after.webp',
         by: officerDrainage._id,
         at: daysAgo(1),
       },
@@ -409,7 +417,7 @@ async function seed() {
   await Issue.create({
     title: 'Commercial garbage dump overflowing at Chowkidingi Market',
     description:
-      'The secondary waste collection point at Chowkidingi market area has been overflowing for 5 days. Severe stench and stray animals spreading refuse.',
+      'The secondary waste collection point at Chowkidingi market area has been overflowing for 5 days. Rotten vegetable refuse, plastic sacks, and cardboard attracting stray animals and creating severe stench.',
     category: 'Sanitation',
     location: { type: 'Point', coordinates: [92.7888, 26.6360] },
     address: 'Chowkidingi Market, Tezpur',
@@ -422,27 +430,35 @@ async function seed() {
     status: 'Resolved',
     supporters: [citizen1._id],
     photos: [
-      'https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=800&auto=format&fit=crop&q=80',
+      'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667781/loksamadhan/seed/garbage_dump_before.webp',
     ],
     resolution: {
-      note: 'Cleared accumulated municipal waste with compactor truck and sanitized ground with bleaching powder. Placed two new 1100-liter wheeled bins.',
+      note: 'Cleared all accumulated municipal waste with hydraulic compactor truck. Ground thoroughly swept and sanitized with bleaching powder. Placed two new 1100-liter wheeled bins for wet and dry segregation.',
       evidence: [
-        'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&auto=format&fit=crop&q=80',
+        'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667820/loksamadhan/seed/garbage_dump_after.webp',
       ],
       submittedBy: officerSanitation._id,
       submittedAt: daysAgo(2),
       verifiedBy: admin._id,
       verifiedAt: daysAgo(1),
-      adminNotes: 'Resolution photographic proof verified by municipal administration. Sanitation cleared.',
+      adminNotes: 'Photographic resolution evidence verified by municipal administration. Sanitation cleared and bins installed.',
+    },
+    aiVerification: {
+      verified: true,
+      matchScore: 96,
+      summary: 'AI Vision verified: Complete clearance of municipal waste heap. Ground sanitized with bleaching powder and two 1100L waste collection bins installed.',
+      confidence: 'High',
+      verifiedAt: daysAgo(2),
+      provider: 'groq',
     },
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen2._id, at: daysAgo(5) },
+      { status: 'Submitted', note: 'Reported by citizen with market dump photo', by: citizen2._id, at: daysAgo(5) },
       { status: 'Acknowledged', note: 'Assigned to Solid Waste Management division', by: admin._id, at: daysAgo(4) },
-      { status: 'In Progress', note: 'Compactor vehicle scheduled for evening dispatch', by: officerSanitation._id, at: daysAgo(3) },
+      { status: 'In Progress', note: 'Sanitation compactor vehicle scheduled for evening dispatch', by: officerSanitation._id, at: daysAgo(3) },
       {
         status: 'Pending Verification',
-        note: 'Waste cleared and bins installed. Photographic proof uploaded.',
-        evidence: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&auto=format&fit=crop&q=80',
+        note: 'Waste cleared, ground disinfected with bleaching powder, and new 1100L bins installed. Proof photo uploaded.',
+        evidence: 'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667820/loksamadhan/seed/garbage_dump_after.webp',
         by: officerSanitation._id,
         at: daysAgo(2),
       },
@@ -461,7 +477,7 @@ async function seed() {
   await Issue.create({
     title: 'Concrete road divider damaged at Cardboard Factory Chariali',
     description:
-      'Broken concrete median dividers at Cardboard Factory Chariali junction. Vehicles make illegal U-turns through the gap causing near-miss accidents daily.',
+      'Smashed concrete median dividers at Cardboard Factory Chariali junction. Concrete rubble scattered on lane and two-wheelers making unauthorized illegal U-turns through the broken gap.',
     category: 'Road',
     location: { type: 'Point', coordinates: [92.7810, 26.6328] },
     address: 'Cardboard Factory Chariali, Tezpur',
@@ -473,12 +489,12 @@ async function seed() {
     priority: 'medium',
     status: 'Unsatisfied',
     photos: [
-      'https://images.unsplash.com/photo-1590674899484-d5640e854abe?w=800&auto=format&fit=crop&q=80',
+      'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667842/loksamadhan/seed/divider_damaged_before.webp',
     ],
     resolution: {
-      note: 'Placed temporary plastic barricades to block unauthorized crossing.',
+      note: 'Placed temporary water-ballast plastic barricades to block unauthorized U-turn crossing.',
       evidence: [
-        'https://images.unsplash.com/photo-1578885136359-16c8bd4d3a8e?w=800&auto=format&fit=crop&q=80',
+        'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667853/loksamadhan/seed/divider_temporary_after.webp',
       ],
       submittedBy: officerRoads._id,
       submittedAt: daysAgo(3),
@@ -487,23 +503,23 @@ async function seed() {
     },
     citizenFeedback: {
       satisfied: false,
-      notes: 'Temporary plastic barricades blew away in the rainstorm yesterday. The gap is wide open again and rubble is scattered on the driving lane.',
+      notes: 'Temporary plastic barricades blew away and toppled in the thunderstorm yesterday. The gap is wide open again and concrete rubble is scattered on the driving lane. Permanent concrete casting is required.',
       submittedAt: daysAgo(1),
     },
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen1._id, at: daysAgo(6) },
-      { status: 'Acknowledged', note: 'Assigned to Roads team', by: admin._id, at: daysAgo(5) },
-      { status: 'In Progress', note: 'Barricades deployed', by: officerRoads._id, at: daysAgo(4) },
+      { status: 'Submitted', note: 'Reported by citizen with photo of smashed median', by: citizen1._id, at: daysAgo(6) },
+      { status: 'Acknowledged', note: 'Assigned to Roads division', by: admin._id, at: daysAgo(5) },
+      { status: 'In Progress', note: 'Field team dispatched with barricades', by: officerRoads._id, at: daysAgo(4) },
       {
         status: 'Resolved',
-        note: 'Temporary barricades placed at median break.',
-        evidence: 'https://images.unsplash.com/photo-1578885136359-16c8bd4d3a8e?w=800&auto=format&fit=crop&q=80',
+        note: 'Temporary plastic traffic barricades placed across median gap.',
+        evidence: 'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667853/loksamadhan/seed/divider_temporary_after.webp',
         by: officerRoads._id,
         at: daysAgo(2),
       },
       {
         status: 'Unsatisfied',
-        note: 'Citizen reported resolution was ineffective: temporary barricades blew away.',
+        note: 'Citizen disputed resolution: temporary plastic barricades toppled; permanent concrete structure needed.',
         by: citizen1._id,
         at: daysAgo(1),
       },
@@ -516,7 +532,7 @@ async function seed() {
   await Issue.create({
     title: 'Streetlight pole #42 dark on Mahabhairab Temple Road',
     description:
-      'Streetlight pole #42 near Mahabhairab temple gate has been dark for over a week. Narrow road becomes unsafe for walkers and scooterists after dusk.',
+      'Streetlight pole #42 near Mahabhairab temple gate has been dark for over a week. Narrow road becomes completely pitch dark and unsafe for walkers and scooters after dusk.',
     category: 'Streetlight',
     location: { type: 'Point', coordinates: [92.7968, 26.6321] },
     address: 'Mahabhairab Temple Road, Tezpur',
@@ -528,32 +544,40 @@ async function seed() {
     priority: 'medium',
     status: 'Closed',
     photos: [
-      'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&auto=format&fit=crop&q=80',
+      'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667860/loksamadhan/seed/streetlight_dark_before.webp',
     ],
     resolution: {
-      note: 'Replaced failed sodium lamp with new high-efficiency 70W LED fixture and replaced tripped MCB breaker in control panel.',
+      note: 'Replaced failed sodium lamp with new high-efficiency 70W IP66 LED streetlight fixture and replaced tripped MCB breaker in control panel.',
       evidence: [
-        'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=800&auto=format&fit=crop&q=80',
+        'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667872/loksamadhan/seed/streetlight_bright_after.webp',
       ],
       submittedBy: officerElectricity._id,
       submittedAt: daysAgo(3),
       verifiedBy: admin._id,
       verifiedAt: daysAgo(2),
-      adminNotes: 'Confirmed luminaire installation and lux meter readings.',
+      adminNotes: 'Confirmed LED luminaire installation and lux meter readings on roadway.',
+    },
+    aiVerification: {
+      verified: true,
+      matchScore: 98,
+      summary: 'AI Vision verified: Streetlight pole #42 is fully operational with new LED luminaire brightly illuminating the residential roadway.',
+      confidence: 'High',
+      verifiedAt: daysAgo(3),
+      provider: 'groq',
     },
     citizenFeedback: {
       satisfied: true,
-      notes: 'Light is working perfectly now! The road is bright and safe again. Thank you for the swift response.',
+      notes: 'Light is working perfectly now! The road is bright, safe, and clearly visible at night. Thank you for the swift action.',
       submittedAt: daysAgo(1),
     },
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen1._id, at: daysAgo(7) },
+      { status: 'Submitted', note: 'Reported by citizen with photo of dark street', by: citizen1._id, at: daysAgo(7) },
       { status: 'Acknowledged', note: 'Assigned to Electricity division', by: admin._id, at: daysAgo(6) },
       { status: 'In Progress', note: 'Linesman dispatched with cherry picker truck', by: officerElectricity._id, at: daysAgo(4) },
       {
         status: 'Pending Verification',
         note: 'LED fixture replaced and tested. Proof photos submitted.',
-        evidence: 'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=800&auto=format&fit=crop&q=80',
+        evidence: 'https://res.cloudinary.com/de3mpiotu/image/upload/v1788667872/loksamadhan/seed/streetlight_bright_after.webp',
         by: officerElectricity._id,
         at: daysAgo(3),
       },
@@ -566,9 +590,9 @@ async function seed() {
   // [STATUS: SUBMITTED — UNASSIGNED TRIAGE QUEUE]
   // Shows up in Admin triage queue / unassigned tab
   await Issue.create({
-    title: 'Broken streetlight sparking near Agnigarh Hill entrance',
+    title: 'Broken streetlight bracket with exposed wires near Agnigarh Hill entrance',
     description:
-      'The overhead lighting bracket at Agnigarh Hill parking entrance is dangling with exposed wires. Sparking observed during light drizzle.',
+      'The overhead lighting bracket at Agnigarh Hill parking entrance is dangling with exposed electrical wires over the pedestrian path. Sparking observed during light drizzle.',
     category: 'Streetlight',
     location: { type: 'Point', coordinates: [92.7980, 26.6265] },
     address: 'Agnigarh Hill Entrance, Tezpur',
@@ -580,19 +604,19 @@ async function seed() {
     priority: null,
     status: 'Submitted',
     photos: [
-      'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800&auto=format&fit=crop&q=80',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen2._id, at: daysAgo(1) },
+      { status: 'Submitted', note: 'Reported by citizen with photo of hanging overhead wire hazard', by: citizen2._id, at: daysAgo(1) },
     ],
     createdAt: daysAgo(1),
   });
 
   // [STATUS: SUBMITTED — UNASSIGNED TRIAGE QUEUE]
   await Issue.create({
-    title: 'Dead animal carcass on bypass road near Dekargaon',
+    title: 'Illegal bio-waste and tree debris blocking Dekargaon bypass shoulder',
     description:
-      'Stray cow carcass lying near the bypass road divider for 24 hours. Creating sanitation hazard and health risk for nearby residences.',
+      'Large pile of decomposing organic refuse, tree cuttings, and construction debris dumped along Dekargaon bypass road shoulder. Creating sanitation hazard and obstructing vehicular lane.',
     category: 'Sanitation',
     location: { type: 'Point', coordinates: [92.8030, 26.6290] },
     address: 'Bypass Road, Dekargaon, Tezpur',
@@ -603,8 +627,11 @@ async function seed() {
     assignedOfficer: null,
     priority: null,
     status: 'Submitted',
+    photos: [
+      'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=800&auto=format&fit=crop&q=80',
+    ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen3._id, at: daysAgo(0, 8) },
+      { status: 'Submitted', note: 'Reported by citizen with roadside waste photo', by: citizen3._id, at: daysAgo(0, 8) },
     ],
     createdAt: daysAgo(0, 8),
   });
@@ -612,9 +639,9 @@ async function seed() {
   // [STATUS: ACKNOWLEDGED]
   // Assigned to officer, priority set, inspection scheduled
   await Issue.create({
-    title: 'Storm drain clogged causing severe waterlogging at Dekargaon',
+    title: 'Storm drain clogged with plastic waste causing street waterlogging in Dekargaon Lane 3',
     description:
-      'Main roadside storm drain in Dekargaon Lane 3 is clogged with plastic bags and silt. Street gets flooded knee-deep even during mild showers.',
+      'Main roadside concrete storm drain in Dekargaon Lane 3 is clogged with plastic bottles and silt. Road gets flooded knee-deep even during mild showers.',
     category: 'Drainage',
     location: { type: 'Point', coordinates: [92.8045, 26.6280] },
     address: 'Dekargaon Lane 3, Tezpur',
@@ -626,11 +653,11 @@ async function seed() {
     priority: 'high',
     status: 'Acknowledged',
     photos: [
-      'https://images.unsplash.com/photo-1584467735815-f778f274e296?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?w=800&auto=format&fit=crop&q=80',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen1._id, at: daysAgo(2) },
-      { status: 'Acknowledged', note: 'Assigned to Public Health & Drainage; excavation crew alerted.', by: admin._id, at: daysAgo(1) },
+      { status: 'Submitted', note: 'Reported by citizen with drainage waterlogging photo', by: citizen1._id, at: daysAgo(2) },
+      { status: 'Acknowledged', note: 'Assigned to Public Health & Drainage; desilting crew alerted.', by: admin._id, at: daysAgo(1) },
     ],
     createdAt: daysAgo(2),
   });
@@ -638,9 +665,9 @@ async function seed() {
   // [STATUS: IN PROGRESS]
   // Officer actively working on physical repair
   await Issue.create({
-    title: 'Road surface crumbling on Mission Chariali road stretch',
+    title: 'Eroded bitumen and loose gravel hazard on Mission Chariali road stretch',
     description:
-      'Bitumen layer has completely eroded on the 200m stretch connecting Mission Chariali to Tezpur Medical College. Heavy dust and loose gravel causing skidding.',
+      'Bitumen surface layer has completely eroded on the 200m stretch connecting Mission Chariali toward Tezpur Medical College. Heavy dust and loose gravel causing skidding.',
     category: 'Road',
     location: { type: 'Point', coordinates: [92.7950, 26.6370] },
     address: 'Mission Chariali Road, Tezpur',
@@ -652,10 +679,10 @@ async function seed() {
     priority: 'medium',
     status: 'In Progress',
     photos: [
-      'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=800&auto=format&fit=crop&q=80',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen', by: citizen2._id, at: daysAgo(9) },
+      { status: 'Submitted', note: 'Reported by citizen with road surface erosion photo', by: citizen2._id, at: daysAgo(9) },
       { status: 'Acknowledged', note: 'Surveyed by engineering division', by: officerRoads._id, at: daysAgo(6) },
       { status: 'In Progress', note: 'Road grader and leveling equipment deployed on site', by: officerRoads._id, at: daysAgo(3) },
     ],
@@ -664,9 +691,9 @@ async function seed() {
 
   // ── JORHAT REGIONAL DEMO ISSUE ──
   await Issue.create({
-    title: 'Severe waterlogging and damaged culvert near Gar-Ali market',
+    title: 'Monsoon waterlogging and blocked drainage culvert near Gar-Ali market',
     description:
-      'The drainage culvert on Gar-Ali road is clogged and cracked. Rainwater floods the commercial area and enters shop basements.',
+      'Commercial drainage culvert on Gar-Ali road is clogged with silt and cracked. Incessant rainwater floods the commercial market street and enters shop basements.',
     category: 'Road',
     location: { type: 'Point', coordinates: [94.2167, 26.7509] },
     address: 'Gar-Ali Market Road, Jorhat',
@@ -678,10 +705,10 @@ async function seed() {
     priority: 'high',
     status: 'In Progress',
     photos: [
-      'https://images.unsplash.com/photo-1541888946425-d0fbb1861593?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1547683905-f686c993aae5?w=800&auto=format&fit=crop&q=80',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen in Jorhat', by: citizen1._id, at: daysAgo(2) },
+      { status: 'Submitted', note: 'Reported by citizen in Jorhat with flooded street photo', by: citizen1._id, at: daysAgo(2) },
       { status: 'Acknowledged', note: 'Assigned to Roads & Infrastructure (Jorhat Division). A local field officer has been allotted to take action.', by: citizen1._id, at: daysAgo(2) },
       { status: 'In Progress', note: 'Jorhat Municipal engineering division initiated desilting.', by: officerRoadsJorhat._id, at: daysAgo(1) },
     ],
@@ -690,9 +717,9 @@ async function seed() {
 
   // ── SIVASAGAR REGIONAL DEMO ISSUE ──
   await Issue.create({
-    title: 'Drinking water pipeline leakage near historic Joysagar tank',
+    title: 'High-pressure water distribution pipe leak near historic Joysagar tank',
     description:
-      'Main supply pipeline has sprung a high pressure leak. Clean water overflowing onto the public path while nearby wards face shortage.',
+      'Main supply pipeline has sprung a high pressure leak. Clean water overflowing onto the public path while nearby wards face low water pressure.',
     category: 'Water',
     location: { type: 'Point', coordinates: [94.6300, 26.9800] },
     address: 'Joysagar Tank Road, Sivasagar',
@@ -707,7 +734,7 @@ async function seed() {
       'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?w=800&auto=format&fit=crop&q=80',
     ],
     statusHistory: [
-      { status: 'Submitted', note: 'Reported by citizen in Sivasagar', by: citizen3._id, at: daysAgo(1) },
+      { status: 'Submitted', note: 'Reported by citizen in Sivasagar with pipeline leak photo', by: citizen3._id, at: daysAgo(1) },
       { status: 'Acknowledged', note: 'Assigned to Water Supply & Sewage (Sivasagar Division). A local field officer has been allotted to take action.', by: citizen3._id, at: daysAgo(1) },
     ],
     createdAt: daysAgo(1),
