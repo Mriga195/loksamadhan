@@ -16,7 +16,12 @@ const DEMO = [
   { role: 'Citizen', email: 'citizen1@example.com', name: 'Ankur Sharma' },
   { role: 'Officer (Tezpur)', email: 'officer.roads@loksamadhan.gov.in', name: 'Rina Das' },
   { role: 'Officer (Jorhat)', email: 'officer.roads.jorhat@loksamadhan.gov.in', name: 'Pranjal Bora' },
-  { role: 'Admin', email: 'admin@loksamadhan.gov.in', name: 'Admin Bora' },
+  { role: 'Admin', email: 'admin@loksamadhan.gov.in', name: 'Admin Bora' }, {
+    role: 'Officer', email: 'officer.drainage@loksamadhan.gov.in', name: 'Jatin Baruah'
+  },
+  {
+    role: 'Citizen', email: 'duttarittam2@gmail.com', name: 'Rittam Dutta'
+  }
 ];
 const DEMO_PASSWORD = 'password123';
 
