@@ -27,7 +27,7 @@ const STATS_META = [
 ];
 
 const EN = {
-  heroTitle: 'Report a civic issue. Watch it get fixed — in public.',
+  heroTitle: 'Report a civic issue. Watch it get fixed in public.',
   heroSub: 'Potholes, broken streetlights, uncollected garbage, water leaks. File it once, see it on the map, and follow every status change your municipality makes.',
   ctaReport: 'Report an Issue',
   ctaFeed: 'View public feed',
