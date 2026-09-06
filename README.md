@@ -1,11 +1,15 @@
 # 🏛️ LokSamadhan (লোকসমাধান)
 ### Transparent Civic Issue Resolution & Grievance Tracker
 
+[![Website](https://img.shields.io/badge/Live_Site-loksamadhan.online-2ea44f?style=for-the-badge&logo=googlechrome&logoColor=white)](https://www.loksamadhan.online)
+
 [![Node.js](https://img.shields.io/badge/Node.js-v18+-68a063?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-v19-61dafb?logo=react&logoColor=black)](https://react.dev/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose_9-47a248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> 🌐 **Live Website:** [https://www.loksamadhan.online](https://www.loksamadhan.online)
 
 **LokSamadhan** is a public civic grievance redressal and tracking platform designed for municipalities across Assam, India (built for hackathon challenge **WEB03**). It bridges citizens, municipal field officers, and administrative authorities through an open, accountable, and tamper-resistant workflow.
 
@@ -272,7 +276,9 @@ loksamadhan/
 ---
 
 ## 🔑 Demo Credentials
-
+ 
+> 🌐 **Live Website:** [https://www.loksamadhan.online](https://www.loksamadhan.online)
+ 
 Run `npm run seed` in the `server` directory to populate the following demo accounts (all accounts share the default password: `password123`):
 
 | Role | Name | Email | Department / Region |
